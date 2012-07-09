@@ -6,6 +6,7 @@ import (
   "encoding/gob"
   "github.com/runningwild/glop/gui"
   gl "github.com/chsc/gogl/gl21"
+  "runningwild/pnf"
 )
 
 type Axis int
@@ -154,7 +155,7 @@ type Game struct {
   Players []Player
 }
 
-func (g *Game) Copy() *Game {
+func (g *Game) Copy() interface{} {
   var g2 Game
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
@@ -198,8 +199,31 @@ func (g *Game) Think() {
   }
 }
 
+type TurnLeft struct {
+  Player int
+}
+
+func (tl TurnLeft) ApplyFirst(g interface{}) {}
+func (tl TurnLeft) ApplyFinal(g interface{}) {}
+func (tl TurnLeft) Apply(_g interface{}) {
+  g := _g.(*Game)
+  g.Players[tl.Player].Direction = (g.Players[tl.Player].Direction + 3) % 4
+}
+
+type TurnRight struct {
+  Player int
+}
+
+func (tr TurnRight) ApplyFirst(g interface{}) {}
+func (tr TurnRight) ApplyFinal(g interface{}) {}
+func (tr TurnRight) Apply(_g interface{}) {
+  g := _g.(*Game)
+  g.Players[tr.Player].Direction = (g.Players[tr.Player].Direction + 1) % 4
+}
+
 type GameWindow struct {
-  Game   *Game
+  Engine *pnf.Engine
+  game   *Game
   region gui.Region
 }
 
@@ -210,12 +234,17 @@ func (gw *GameWindow) Expandable() (bool, bool) {
   return false, false
 }
 func (gw *GameWindow) Requested() gui.Dims {
-  return gui.Dims{gw.Game.Dx, gw.Game.Dy}
+  if gw.game == nil {
+    return gui.Dims{}
+  }
+  return gui.Dims{gw.game.Dx, gw.game.Dy}
 }
 func (gw *GameWindow) Rendered() gui.Region {
   return gw.region
 }
-func (gw *GameWindow) Think(g *gui.Gui, t int64) {}
+func (gw *GameWindow) Think(g *gui.Gui, t int64) {
+  gw.game = gw.Engine.GetState().(*Game)
+}
 func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
   return false
 }
@@ -238,7 +267,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 
   gl.Begin(gl.LINES)
   {
-    for _, seg := range gw.Game.Segments {
+    for _, seg := range gw.game.Segments {
       switch seg.Color {
       case Red:
         gl.Color4ub(255, 0, 0, 255)

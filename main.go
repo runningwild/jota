@@ -10,6 +10,7 @@ import (
   "github.com/runningwild/glop/render"
   "github.com/runningwild/glop/system"
   "path/filepath"
+  "runningwild/pnf"
 )
 
 var (
@@ -95,7 +96,9 @@ func main() {
     Speed:     5,
     Color:     Blue,
   })
-  anchor.AddChild(&GameWindow{Game: &g}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
+  var engine *pnf.Engine
+  engine = pnf.NewLocalEngine(&g, 16)
+  anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   for gin.In().GetKey('q').FramePressCount() == 0 {
     sys.Think()
@@ -103,22 +106,16 @@ func main() {
       sys.SwapBuffers()
     })
     render.Purge()
-    if gin.In().GetKey(gin.Up).FramePressCount() > 0 && g.Players[0].Direction != Down {
-      g.Players[0].Direction = Up
+
+    if gin.In().GetKey(gin.Left).FramePressCount() > 0 {
+      engine.ApplyEvent(TurnLeft{0})
     }
-    if gin.In().GetKey(gin.Down).FramePressCount() > 0 && g.Players[0].Direction != Up {
-      g.Players[0].Direction = Down
-    }
-    if gin.In().GetKey(gin.Left).FramePressCount() > 0 && g.Players[0].Direction != Right {
-      g.Players[0].Direction = Left
-    }
-    if gin.In().GetKey(gin.Right).FramePressCount() > 0 && g.Players[0].Direction != Left {
-      g.Players[0].Direction = Right
+    if gin.In().GetKey(gin.Right).FramePressCount() > 0 {
+      engine.ApplyEvent(TurnRight{0})
     }
     render.Queue(func() {
       ui.Draw()
     })
-    g.Think()
     v += 0.01
   }
 }
