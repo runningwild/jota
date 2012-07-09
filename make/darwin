@@ -1,0 +1,10 @@
+go build .
+
+rm -rf tron.app
+mkdir -p tron.app/Contents/MacOS
+mkdir -p tron.app/Contents/lib
+
+mv tron tron.app/Contents/MacOS/tron
+cp lib/darwin/* tron.app/Contents/lib/
+cp -r data/* tron.app/Contents/
+
