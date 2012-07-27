@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
   "os"
   "runtime"
   gl "github.com/chsc/gogl/gl21"
@@ -9,6 +10,7 @@ import (
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/glop/system"
+  "runtime/pprof"
   "path/filepath"
   "runningwild/pnf"
 )
@@ -100,6 +102,7 @@ func main() {
   engine = pnf.NewLocalEngine(&g, 16)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
+  var profile_output *os.File
   for gin.In().GetKey('q').FramePressCount() == 0 {
     sys.Think()
     render.Queue(func() {
@@ -116,6 +119,28 @@ func main() {
     render.Queue(func() {
       ui.Draw()
     })
+
+    if gin.In().GetKey('p').FramePressCount() > 0 {
+      if profile_output == nil {
+        profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))
+        if err == nil {
+          err = pprof.StartCPUProfile(profile_output)
+          if err != nil {
+            fmt.Printf("Unable to start CPU profile: %v\n", err)
+            profile_output.Close()
+            profile_output = nil
+          }
+          fmt.Printf("profout: %v\n", profile_output)
+        } else {
+          fmt.Printf("Unable to start CPU profile: %v\n", err)
+        }
+      } else {
+        pprof.StopCPUProfile()
+        profile_output.Close()
+        profile_output = nil
+      }
+    }
+
     v += 0.01
   }
 }

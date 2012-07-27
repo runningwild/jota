@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "bytes"
   "encoding/gob"
   "github.com/runningwild/glop/gui"
@@ -189,7 +188,6 @@ func (g *Game) Think() {
       }
     }
     g.Segments = append(g.Segments, seg)
-    fmt.Printf("append %d %d %d %d\n", seg.Axis, seg.Pos, seg.Start, seg.End)
     switch seg.Axis {
     case X:
       g.Players[i].Y = seg.End
