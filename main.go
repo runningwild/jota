@@ -2,18 +2,18 @@ package main
 
 import (
   "fmt"
-  "os"
-  "runtime"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/glop/gin"
   "github.com/runningwild/glop/gos"
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/glop/system"
-  "runningwild/tron/base"
-  "runtime/pprof"
+  "os"
   "path/filepath"
   "runningwild/pnf"
+  "runningwild/tron/base"
+  "runtime"
+  "runtime/pprof"
 )
 
 var (
@@ -64,7 +64,6 @@ func main() {
 
   anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
   ui.AddChild(anchor)
-  anchor.AddChild(gui.MakeTextLine("standard", "foo", 300, 1, 1, 1, 1), gui.Anchor{0.5, 0.5, 0.5, 0.5})
   sys.Think()
   var g Game
   g.Dx = 600
@@ -83,6 +82,7 @@ func main() {
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File
+  var num_mem_profiles int
   ui.AddChild(base.MakeConsole())
   for key_map["quit"].FramePressCount() == 0 {
     sys.Think()
@@ -123,6 +123,16 @@ func main() {
         profile_output.Close()
         profile_output = nil
       }
+    }
+
+    if key_map["mem profile"].FramePressCount() > 0 {
+      f, err := os.Create(filepath.Join(datadir, fmt.Sprintf("mem.%d.prof", num_mem_profiles)))
+      if err != nil {
+        base.Error().Printf("Unable to write mem profile: %v", err)
+      }
+      pprof.WriteHeapProfile(f)
+      f.Close()
+      num_mem_profiles++
     }
 
     v += 0.01

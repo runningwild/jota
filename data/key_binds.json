@@ -1,5 +1,6 @@
 {
   "cpu profile"  : "alt+p",
+  "mem profile"  : "alt+m",
   "console"      : "os+c",
   "quit"         : "os+q"
 }

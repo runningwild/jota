@@ -3,13 +3,13 @@ package main
 import (
   "bytes"
   "encoding/gob"
+  gl "github.com/chsc/gogl/gl21"
+  "github.com/runningwild/glop/gui"
   "math"
   "path/filepath"
-  "github.com/runningwild/glop/gui"
-  "runningwild/tron/texture"
-  "runningwild/tron/base"
-  gl "github.com/chsc/gogl/gl21"
   "runningwild/pnf"
+  "runningwild/tron/base"
+  "runningwild/tron/texture"
 )
 
 type playerTempData struct {
@@ -53,6 +53,11 @@ func (g *Game) Merge(g2 *Game) {
 
 func (g *Game) Copy() interface{} {
   var g2 Game
+  g2 = *g
+  for i := range g2.Players {
+    g2.Players[i].temp = playerTempData{}
+  }
+  return &g2
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
   err := enc.Encode(g)
