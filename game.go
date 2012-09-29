@@ -12,22 +12,18 @@ import (
   "runningwild/tron/texture"
 )
 
-type playerTempData struct {
-  delta struct {
-    speed float64
-    angle float64
-  }
-}
-
 type Player struct {
   Alive bool
   X, Y  float64
   Angle float64
   Speed float64
+  Delta struct {
+    Speed float64
+    Angle float64
+  }
   Color struct {
     R, G, B byte
   }
-  temp playerTempData
 }
 
 type Game struct {
@@ -43,21 +39,21 @@ type Game struct {
 }
 
 func (g *Game) Merge(g2 *Game) {
-  frac := 0.5
+  frac := 0.75
+  px := g.Players[0].X
+  py := g.Players[0].Y
   for i := range g.Players {
     g.Players[i].X = frac*g2.Players[i].X + (1-frac)*g.Players[i].X
     g.Players[i].Y = frac*g2.Players[i].Y + (1-frac)*g.Players[i].Y
     g.Players[i].Angle = frac*g2.Players[i].Angle + (1-frac)*g.Players[i].Angle
   }
+  base.Log().Printf("Merging %d with %d - (%.2f, %.2f) -> (%.2f, %.2f)", g.Game_thinks, g2.Game_thinks, px, py, g.Players[0].X, g.Players[0].Y)
 }
 
 func (g *Game) Copy() interface{} {
   var g2 Game
-  g2 = *g
-  for i := range g2.Players {
-    g2.Players[i].temp = playerTempData{}
-  }
-  return &g2
+  // g2 = *g
+  // return &g2
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
   err := enc.Encode(g)
@@ -80,24 +76,23 @@ func (g *Game) Think() {
       continue
     }
     p := &g.Players[i]
-    if p.temp.delta.speed > g.Max_acc {
-      p.temp.delta.speed = g.Max_acc
+    if p.Delta.Speed > g.Max_acc {
+      p.Delta.Speed = g.Max_acc
     }
-    if p.temp.delta.speed < -g.Max_acc {
-      p.temp.delta.speed = -g.Max_acc
+    if p.Delta.Speed < -g.Max_acc {
+      p.Delta.Speed = -g.Max_acc
     }
-    if p.temp.delta.angle < -g.Max_turn {
-      p.temp.delta.angle = -g.Max_turn
+    if p.Delta.Angle < -g.Max_turn {
+      p.Delta.Angle = -g.Max_turn
     }
-    if p.temp.delta.angle > g.Max_turn {
-      p.temp.delta.angle = g.Max_turn
+    if p.Delta.Angle > g.Max_turn {
+      p.Delta.Angle = g.Max_turn
     }
-    p.Angle += p.temp.delta.angle
-    p.Speed += p.temp.delta.speed
+    p.Angle += p.Delta.Angle
+    p.Speed += p.Delta.Speed
     p.Speed *= g.Friction
     p.X += p.Speed * math.Cos(p.Angle)
     p.Y += p.Speed * math.Sin(p.Angle)
-    p.temp = playerTempData{}
   }
 }
 
@@ -110,7 +105,7 @@ func (t Turn) ApplyFirst(g interface{}) {}
 func (t Turn) ApplyFinal(g interface{}) {}
 func (t Turn) Apply(_g interface{}) {
   g := _g.(*Game)
-  g.Players[t.Player].temp.delta.angle += t.Delta
+  g.Players[t.Player].Delta.Angle = t.Delta
 }
 
 type Accelerate struct {
@@ -122,7 +117,7 @@ func (a Accelerate) ApplyFirst(g interface{}) {}
 func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
   g := _g.(*Game)
-  g.Players[a.Player].temp.delta.speed += a.Delta
+  g.Players[a.Player].Delta.Speed = a.Delta
 }
 
 type GameWindow struct {
@@ -147,16 +142,10 @@ func (gw *GameWindow) Rendered() gui.Region {
   return gw.region
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
-  cur := gw.Engine.GetState().(*Game)
+  cur := gw.Engine.GetState().Copy().(*Game)
   if gw.game == nil {
     gw.game = cur.Copy().(*Game)
-    return
   }
-  if cur.Game_thinks == gw.game.Game_thinks {
-    gw.game.Merge(cur)
-    return
-  }
-  cur = cur.Copy().(*Game)
   cur.Merge(gw.game)
   gw.game = cur
 }
@@ -168,11 +157,17 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.PushMatrix()
   defer gl.PopMatrix()
   gl.Translated(float64(gw.region.X), float64(gw.region.Y), 0)
-  t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
   base.Log().Printf("Drawing GameThink: %d", gw.game.Game_thinks)
   for _, p := range gw.game.Players {
+    var t *texture.Data
+    if p.X < 300 {
+      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
+    } else {
+      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+    }
     t.RenderAdvanced(p.X, p.Y, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
   }
+  base.Log().Printf("Drawpos: %.2f %.2f", gw.game.Players[0].X, gw.game.Players[0].Y)
   // gl.Color4ub(255, 0, 0, 255)
   // gl.Begin(gl.QUADS)
   // {

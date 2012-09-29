@@ -68,8 +68,8 @@ func main() {
   var g Game
   g.Dx = 600
   g.Dy = 400
-  g.Max_turn = 0.1
-  g.Max_acc = 0.5
+  g.Max_turn = 0.05
+  g.Max_acc = 0.25
   g.Friction = 0.95
   var p Player
   p.Alive = true
@@ -78,14 +78,21 @@ func main() {
   p.Color.R = 255
   g.Players = append(g.Players, p)
   var engine *pnf.Engine
-  engine = pnf.NewLocalEngine(&g, 17)
+  engine = pnf.NewLocalEngine(&g, 10)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File
   var num_mem_profiles int
   ui.AddChild(base.MakeConsole())
   for key_map["quit"].FramePressCount() == 0 {
+    base.Log().Printf("Sys.Think()")
     sys.Think()
+    base.Log().Printf("Done: Sys.Think()")
+    render.Queue(func() {
+      base.Log().Printf("Ui.Draw()")
+      ui.Draw()
+      base.Log().Printf("Done: Ui.Draw()")
+    })
     render.Queue(func() {
       sys.SwapBuffers()
     })
@@ -94,15 +101,8 @@ func main() {
     down := gin.In().GetKey(gin.Down).FramePressAvg()
     left := gin.In().GetKey(gin.Left).FramePressAvg()
     right := gin.In().GetKey(gin.Right).FramePressAvg()
-    if up-down != 0 {
-      engine.ApplyEvent(Accelerate{0, up - down})
-    }
-    if left-right != 0 {
-      engine.ApplyEvent(Turn{0, (left - right) / 10})
-    }
-    render.Queue(func() {
-      ui.Draw()
-    })
+    engine.ApplyEvent(Accelerate{0, 2 * (up - down)})
+    engine.ApplyEvent(Turn{0, (left - right) / 10})
 
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {
