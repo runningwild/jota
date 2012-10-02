@@ -66,8 +66,8 @@ func main() {
   ui.AddChild(anchor)
   sys.Think()
   var g Game
-  g.Dx = 600
-  g.Dy = 400
+  g.Dx = 900
+  g.Dy = 600
   g.Max_turn = 0.05
   g.Max_acc = 0.25
   g.Friction = 0.95
@@ -77,6 +77,7 @@ func main() {
   p.Y = float64(g.Dy) / 2
   p.Color.R = 255
   g.Players = append(g.Players, p)
+  g.GenerateNodes(100)
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})

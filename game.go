@@ -4,13 +4,32 @@ import (
   "bytes"
   "encoding/gob"
   gl "github.com/chsc/gogl/gl21"
+  "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gui"
+  "github.com/runningwild/kdtree"
   "math"
   "path/filepath"
   "runningwild/pnf"
   "runningwild/tron/base"
   "runningwild/tron/texture"
+  "sort"
 )
+
+type Color int
+type Node struct {
+  Color    Color
+  X, Y     float64
+  Capacity float64
+  Amt      float64
+  Regen    float64
+}
+
+func (n *Node) Think() {
+  n.Amt += n.Regen
+  if n.Amt > n.Capacity {
+    n.Amt = n.Capacity
+  }
+}
 
 type Player struct {
   Alive bool
@@ -35,25 +54,45 @@ type Game struct {
   Max_acc  float64
   Players  []Player
 
+  Nodes    *kd.Tree2
+  NodeList []*Node
+
   Game_thinks int
+}
+
+func (g *Game) GenerateNodes(n int) {
+  c := cmwc.MakeCmwc(4224759397, 3)
+  c.SeedWithDevRand()
+  for i := 0; i < n; i++ {
+    g.NodeList = append(g.NodeList, &Node{
+      X:        float64(c.Int63() % int64(g.Dx)),
+      Y:        float64(c.Int63() % int64(g.Dy)),
+      Color:    Color(c.Int63() % 3),
+      Capacity: 1000,
+      Amt:      10,
+      Regen:    1,
+    })
+  }
+
+  g.Nodes = kd.MakeTree2()
+  for _, n := range g.NodeList {
+    g.Nodes.Add([2]float64{n.X, n.Y}, n)
+  }
 }
 
 func (g *Game) Merge(g2 *Game) {
   frac := 0.75
-  px := g.Players[0].X
-  py := g.Players[0].Y
   for i := range g.Players {
     g.Players[i].X = frac*g2.Players[i].X + (1-frac)*g.Players[i].X
     g.Players[i].Y = frac*g2.Players[i].Y + (1-frac)*g.Players[i].Y
     g.Players[i].Angle = frac*g2.Players[i].Angle + (1-frac)*g.Players[i].Angle
   }
-  base.Log().Printf("Merging %d with %d - (%.2f, %.2f) -> (%.2f, %.2f)", g.Game_thinks, g2.Game_thinks, px, py, g.Players[0].X, g.Players[0].Y)
 }
 
 func (g *Game) Copy() interface{} {
   var g2 Game
-  // g2 = *g
-  // return &g2
+  g2 = *g
+  return &g2
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
   err := enc.Encode(g)
@@ -66,6 +105,26 @@ func (g *Game) Copy() interface{} {
   }
   return &g2
 }
+
+type nodeDistArray struct {
+  center [2]float64
+  ps     [][2]float64
+  nodes  []*Node
+}
+
+func (nda *nodeDistArray) Len() int { return len(nda.ps) }
+func (nda *nodeDistArray) Less(i, j int) bool {
+  dx0 := nda.center[0] - nda.ps[i][0]
+  dy0 := nda.center[1] - nda.ps[i][1]
+  dx1 := nda.center[0] - nda.ps[j][0]
+  dy1 := nda.center[1] - nda.ps[j][1]
+  return (dx0*dx0 + dy0*dy0) < (dx1*dx1 + dy1*dy1)
+}
+func (nda *nodeDistArray) Swap(i, j int) {
+  nda.ps[i], nda.ps[j] = nda.ps[j], nda.ps[i]
+  nda.nodes[i], nda.nodes[j] = nda.nodes[j], nda.nodes[i]
+}
+
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
@@ -93,6 +152,30 @@ func (g *Game) Think() {
     p.Speed *= g.Friction
     p.X += p.Speed * math.Cos(p.Angle)
     p.Y += p.Speed * math.Sin(p.Angle)
+  }
+
+  var ps [][2]float64
+  var nodes []*Node
+  center := [2]float64{g.Players[0].X, g.Players[0].Y}
+  g.Nodes.PointsInCircle(center, 300, &ps, &nodes)
+
+  sort.Sort(&nodeDistArray{center, ps, nodes})
+  suck := 100.0
+  for _, nd := range nodes {
+    if suck <= 0 {
+      break
+    }
+    if suck > nd.Amt {
+      suck -= nd.Amt
+      nd.Amt = 0
+    } else {
+      nd.Amt -= suck
+      suck = 0
+    }
+  }
+
+  for i := range g.NodeList {
+    g.NodeList[i].Think()
   }
 }
 
@@ -157,7 +240,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.PushMatrix()
   defer gl.PopMatrix()
   gl.Translated(float64(gw.region.X), float64(gw.region.Y), 0)
-  base.Log().Printf("Drawing GameThink: %d", gw.game.Game_thinks)
+  gl.Color4d(1, 1, 1, 1)
   for _, p := range gw.game.Players {
     var t *texture.Data
     if p.X < 300 {
@@ -165,44 +248,24 @@ func (gw *GameWindow) Draw(region gui.Region) {
     } else {
       t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
     }
-    t.RenderAdvanced(p.X, p.Y, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
+    t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
   }
-  base.Log().Printf("Drawpos: %.2f %.2f", gw.game.Players[0].X, gw.game.Players[0].Y)
-  // gl.Color4ub(255, 0, 0, 255)
-  // gl.Begin(gl.QUADS)
-  // {
-  //   dx := int32(gw.region.Dx)
-  //   dy := int32(gw.region.Dy)
-  //   gl.Vertex2i(0, 0)
-  //   gl.Vertex2i(0, dy)
-  //   gl.Vertex2i(dx, dy)
-  //   gl.Vertex2i(dx, 0)
-  // }
-  // gl.End()
-
-  // gl.Begin(gl.LINES)
-  // {
-  //   for _, seg := range gw.game.Segments {
-  //     switch seg.Color {
-  //     case Red:
-  //       gl.Color4ub(255, 0, 0, 255)
-  //     case Green:
-  //       gl.Color4ub(0, 255, 0, 255)
-  //     case Blue:
-  //       gl.Color4ub(0, 0, 255, 255)
-  //     default:
-  //       gl.Color4ub(255, 0, 255, 255)
-  //     }
-  //     switch seg.Axis {
-  //     case X:
-  //       gl.Vertex2i(int32(seg.Pos), int32(seg.start()))
-  //       gl.Vertex2i(int32(seg.Pos), int32(seg.end()+1))
-  //     case Y:
-  //       gl.Vertex2i(int32(seg.start()), int32(seg.Pos))
-  //       gl.Vertex2i(int32(seg.end()+1), int32(seg.Pos))
-  //     }
-  //   }
-  // }
-  // gl.End()
+  gl.Disable(gl.TEXTURE_2D)
+  gl.Enable(gl.BLEND)
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+  gl.Begin(gl.POINTS)
+  for _, node := range gw.game.NodeList {
+    alpha := node.Amt / node.Capacity
+    switch node.Color {
+    case 0:
+      gl.Color4d(1, 0, 0, alpha)
+    case 1:
+      gl.Color4d(0, 1, 0, alpha)
+    case 2:
+      gl.Color4d(0, 0, 1, alpha)
+    }
+    gl.Vertex2d(node.X, node.Y)
+  }
+  gl.End()
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}
