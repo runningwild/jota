@@ -24,6 +24,10 @@ type Node struct {
   Regen    float64
 }
 
+func init() {
+  gob.Register(Node{})
+}
+
 func (n *Node) Think() {
   n.Amt += n.Regen
   if n.Amt > n.Capacity {

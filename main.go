@@ -50,7 +50,7 @@ func main() {
   render.Init()
   render.Queue(func() {
     sys.CreateWindow(10, 10, wdx, wdy)
-    sys.EnableVSync(true)
+    // sys.EnableVSync(true)
     err := gl.Init()
     if err != nil {
       panic(err)
@@ -77,7 +77,7 @@ func main() {
   p.Y = float64(g.Dy) / 2
   p.Color.R = 255
   g.Players = append(g.Players, p)
-  g.GenerateNodes(100)
+  g.GenerateNodes(1)
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
