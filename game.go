@@ -295,10 +295,10 @@ func (g *Game) allNodesInCircle(x, y, radius float64, nodes *[]*Node) {
   x /= node_spacing
   y /= node_spacing
   radius /= node_spacing
-  minx := clamp(x-radius, 0, float64(len(g.Nodes)-1))
-  maxx := clamp(x+radius+1, 0, float64(len(g.Nodes)-1))
-  miny := clamp(y-radius, 0, float64(len(g.Nodes[0])-1))
-  maxy := clamp(y+radius+1, 0, float64(len(g.Nodes[0])-1))
+  minx := clamp(x-radius, 0, float64(len(g.Nodes)))
+  maxx := clamp(x+radius+1, 0, float64(len(g.Nodes)))
+  miny := clamp(y-radius, 0, float64(len(g.Nodes[0])))
+  maxy := clamp(y+radius+1, 0, float64(len(g.Nodes[0])))
   *nodes = (*nodes)[0:0]
   for x := int(minx); x < int(maxx); x++ {
     for y := int(miny); y < int(maxy); y++ {
