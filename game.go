@@ -6,6 +6,7 @@ import (
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gui"
+  "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/kdtree"
   "math"
   "path/filepath"
@@ -15,6 +16,15 @@ import (
 )
 
 type Color int
+
+const (
+  ColorRed Color = iota
+  ColorGreen
+  ColorBlue
+)
+
+var all_colors = [...]Color{ColorRed, ColorGreen, ColorBlue}
+
 type Node struct {
   Color    Color
   X, Y     float64
@@ -57,6 +67,16 @@ type Player struct {
   // the highest priority will be able to, where the priority is
   // Priority(D) = Max_rate(D) * Dominance
   Dominance int32
+
+  // If Exile_frames > 0 then the Player is not present in the game right now
+  // and is excluded from all combat/mana/rendering/processing/etc...
+  // Exile_frames is the number of frames remaining that the player is in
+  // exile.
+  Exile_frames int32
+
+  // Processes contains all of the processes that this player is casting
+  // right now.
+  Processes []Process
 }
 
 func (p *Player) Rate(distance float64) float64 {
@@ -76,6 +96,54 @@ func (p *Player) Priority(distance float64) float64 {
 // distance their rate should be exactly 0.
 func (p *Player) MaxDist() float64 {
   return float64(p.Influence) * math.Sqrt(float64(p.Max_rate))
+}
+
+func (p *Player) Exiled() bool {
+  return p.Exile_frames > 0
+}
+
+func (p *Player) Think(g *Game) {
+  if p.Exile_frames > 0 {
+    p.Exile_frames--
+    return
+  }
+  if p.Delta.Speed > g.Max_acc {
+    p.Delta.Speed = g.Max_acc
+  }
+  if p.Delta.Speed < -g.Max_acc {
+    p.Delta.Speed = -g.Max_acc
+  }
+  if p.Delta.Angle < -g.Max_turn {
+    p.Delta.Angle = -g.Max_turn
+  }
+  if p.Delta.Angle > g.Max_turn {
+    p.Delta.Angle = g.Max_turn
+  }
+  p.Angle += p.Delta.Angle
+  p.Speed += p.Delta.Speed
+  p.Speed *= g.Friction
+  p.X += p.Speed * math.Cos(p.Angle)
+  p.Y += p.Speed * math.Sin(p.Angle)
+  for _, process := range p.Processes {
+    process.Think(p, g)
+  }
+  algorithm.Choose(&p.Processes, func(p Process) bool { return !p.Complete() })
+}
+
+func (p *Player) Request() map[Color]float64 {
+  request := make(map[Color]float64, 3)
+  for _, process := range p.Processes {
+    for color, value := range process.Request() {
+      request[color] = request[color] + value
+    }
+  }
+  return request
+}
+func (p *Player) Supply(supply map[Color]float64) map[Color]float64 {
+  for _, process := range p.Processes {
+    supply = process.Supply(supply)
+  }
+  return supply
 }
 
 type noGob struct {
@@ -161,24 +229,7 @@ func (g *Game) Think() {
     if !g.Players[i].Alive {
       continue
     }
-    p := &g.Players[i]
-    if p.Delta.Speed > g.Max_acc {
-      p.Delta.Speed = g.Max_acc
-    }
-    if p.Delta.Speed < -g.Max_acc {
-      p.Delta.Speed = -g.Max_acc
-    }
-    if p.Delta.Angle < -g.Max_turn {
-      p.Delta.Angle = -g.Max_turn
-    }
-    if p.Delta.Angle > g.Max_turn {
-      p.Delta.Angle = g.Max_turn
-    }
-    p.Angle += p.Delta.Angle
-    p.Speed += p.Delta.Speed
-    p.Speed *= g.Friction
-    p.X += p.Speed * math.Cos(p.Angle)
-    p.Y += p.Speed * math.Sin(p.Angle)
+    g.Players[i].Think(g)
   }
 
   var ps [][2]float64
@@ -192,27 +243,41 @@ func (g *Game) Think() {
     nodes[i], nodes[swap] = nodes[swap], nodes[i]
   }
 
-  target_drain := 1000.0
+  supply := make(map[Color]float64)
   for _, node_index := range nodes {
-    nd := g.Nodes[node_index]
-    dx := (g.Players[0].X - nd.X)
-    dy := (g.Players[0].Y - nd.Y)
+    node := g.Nodes[node_index]
+    dx := (g.Players[0].X - node.X)
+    dy := (g.Players[0].Y - node.Y)
     drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
-    if drain > target_drain {
-      drain = target_drain
+    if drain > node.Amt {
+      drain = node.Amt
     }
-    if drain > nd.Amt {
-      target_drain -= nd.Amt
-      nd.Amt = 0
-    } else {
-      nd.Amt -= drain
-      target_drain -= drain
-    }
-    if target_drain <= 0 {
-      break
-    }
+    supply[node.Color] += drain
   }
-  base.Log().Printf("Remaining drain: %v", target_drain)
+  used := make(map[Color]float64)
+  for color, amt := range supply {
+    used[color] = amt
+  }
+  supply = g.Players[0].Supply(supply)
+  for color, amt := range supply {
+    used[color] -= amt
+  }
+  for _, node_index := range nodes {
+    node := g.Nodes[node_index]
+    dx := (g.Players[0].X - node.X)
+    dy := (g.Players[0].Y - node.Y)
+    drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
+    if drain > used[node.Color] {
+      drain = used[node.Color]
+    }
+    if drain > node.Amt {
+      drain = node.Amt
+    }
+    node.Amt -= drain
+    used[node.Color] -= drain
+    supply[node.Color] += drain
+  }
+
   for i := range g.Nodes {
     g.Nodes[i].Think()
   }
@@ -240,6 +305,24 @@ func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
   g := _g.(*Game)
   g.Players[a.Player].Delta.Speed = a.Delta
+}
+
+type Blink struct {
+  Player int
+  Frames int
+}
+
+func (b Blink) ApplyFirst(g interface{}) {}
+func (b Blink) ApplyFinal(g interface{}) {}
+func (b Blink) Apply(_g interface{}) {
+  g := _g.(*Game)
+  player := &g.Players[b.Player]
+  if !player.Alive || player.Exiled() {
+    return
+  }
+  params := map[string]int{"frames": b.Frames}
+  process := (&blinkAbility{}).Activate(player, params)
+  player.Processes = append(player.Processes, process)
 }
 
 type GameWindow struct {
@@ -281,12 +364,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.Translated(float64(gw.region.X), float64(gw.region.Y), 0)
   gl.Color4d(1, 1, 1, 1)
   for _, p := range gw.game.Players {
-    var t *texture.Data
-    if p.X < 300 {
-      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
-    } else {
-      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+    if p.Exiled() {
+      continue
     }
+    var t *texture.Data
+    t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
     t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
   }
   gl.Disable(gl.TEXTURE_2D)
@@ -296,11 +378,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
   for _, node := range gw.game.Nodes {
     alpha := node.Amt / node.Capacity
     switch node.Color {
-    case 0:
+    case ColorRed:
       gl.Color4d(1, 0, 0, alpha)
-    case 1:
+    case ColorGreen:
       gl.Color4d(0, 1, 0, alpha)
-    case 2:
+    case ColorBlue:
       gl.Color4d(0, 0, 1, alpha)
     }
     gl.Vertex2d(node.X, node.Y)

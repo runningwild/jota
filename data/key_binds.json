@@ -2,5 +2,8 @@
   "cpu profile"  : "alt+p",
   "mem profile"  : "alt+m",
   "console"      : "os+c",
+  "blink5"       : "1",
+  "blink25"      : "2",
+  "blink50"      : "3",
   "quit"         : "os+q"
 }

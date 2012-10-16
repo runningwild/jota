@@ -106,7 +106,15 @@ func main() {
     right := gin.In().GetKey(gin.Right).FramePressAvg()
     engine.ApplyEvent(Accelerate{0, 2 * (up - down)})
     engine.ApplyEvent(Turn{0, (left - right) / 10})
-
+    if key_map["blink5"].FramePressCount() > 0 {
+      engine.ApplyEvent(Blink{0, 50})
+    }
+    if key_map["blink25"].FramePressCount() > 0 {
+      engine.ApplyEvent(Blink{0, 250})
+    }
+    if key_map["blink50"].FramePressCount() > 0 {
+      engine.ApplyEvent(Blink{0, 500})
+    }
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {
         profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))
