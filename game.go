@@ -171,18 +171,20 @@ type Game struct {
   Game_thinks int
 }
 
-func (g *Game) GenerateNodes(n int) {
+func (g *Game) GenerateNodes(d int) {
   c := cmwc.MakeCmwc(4224759397, 3)
   c.SeedWithDevRand()
-  for i := 0; i < n; i++ {
-    g.Nodes = append(g.Nodes, &Node{
-      X:        float64(c.Int63() % int64(g.Dx)),
-      Y:        float64(c.Int63() % int64(g.Dy)),
-      Color:    Color(c.Int63() % 3),
-      Capacity: 1000,
-      Amt:      10,
-      Regen:    1,
-    })
+  for x := 0; x < g.Dx; x += d {
+    for y := 0; y < g.Dy; y += d {
+      g.Nodes = append(g.Nodes, &Node{
+        X:        float64(x),
+        Y:        float64(y),
+        Color:    Color(c.Int63() % 3),
+        Capacity: 1000,
+        Amt:      1000,
+        Regen:    1,
+      })
+    }
   }
 
   g.Node_indexes = kd.MakeTree2()
