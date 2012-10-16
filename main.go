@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   gl "github.com/chsc/gogl/gl21"
+  "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gin"
   "github.com/runningwild/glop/gos"
   "github.com/runningwild/glop/gui"
@@ -50,7 +51,7 @@ func main() {
   render.Init()
   render.Queue(func() {
     sys.CreateWindow(10, 10, wdx, wdy)
-    // sys.EnableVSync(true)
+    sys.EnableVSync(true)
     err := gl.Init()
     if err != nil {
       panic(err)
@@ -66,6 +67,8 @@ func main() {
   ui.AddChild(anchor)
   sys.Think()
   var g Game
+  g.Rng = cmwc.MakeCmwc(4224759397, 3)
+  g.Rng.SeedWithDevRand()
   g.Dx = 900
   g.Dy = 600
   g.Max_turn = 0.05
@@ -76,8 +79,11 @@ func main() {
   p.X = float64(g.Dx) / 2
   p.Y = float64(g.Dy) / 2
   p.Color.R = 255
+  p.Max_rate = 10
+  p.Influence = 75
+  p.Dominance = 10
   g.Players = append(g.Players, p)
-  g.GenerateNodes(1)
+  g.GenerateNodes(1000)
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
@@ -86,13 +92,9 @@ func main() {
   var num_mem_profiles int
   ui.AddChild(base.MakeConsole())
   for key_map["quit"].FramePressCount() == 0 {
-    base.Log().Printf("Sys.Think()")
     sys.Think()
-    base.Log().Printf("Done: Sys.Think()")
     render.Queue(func() {
-      base.Log().Printf("Ui.Draw()")
       ui.Draw()
-      base.Log().Printf("Done: Ui.Draw()")
     })
     render.Queue(func() {
       sys.SwapBuffers()

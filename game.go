@@ -12,7 +12,6 @@ import (
   "runningwild/pnf"
   "runningwild/tron/base"
   "runningwild/tron/texture"
-  "sort"
 )
 
 type Color int
@@ -25,7 +24,7 @@ type Node struct {
 }
 
 func init() {
-  gob.Register(Node{})
+  gob.Register(&Node{})
 }
 
 func (n *Node) Think() {
@@ -47,9 +46,52 @@ type Player struct {
   Color struct {
     R, G, B byte
   }
+
+  // Max_rate and Influence determine the rate that a player can drain mana
+  // from a node a distance D away:
+  // Rate(D) = max(0, Max_rate - (D / Influence) ^ 2)
+  Max_rate  int32
+  Influence int32
+
+  // If two players try to drain mana from the same node only the player with
+  // the highest priority will be able to, where the priority is
+  // Priority(D) = Max_rate(D) * Dominance
+  Dominance int32
+}
+
+func (p *Player) Rate(distance float64) float64 {
+  term := distance / float64(p.Influence)
+  rate := float64(p.Max_rate) - term*term
+  if rate < 0 {
+    return 0
+  }
+  return rate
+}
+
+func (p *Player) Priority(distance float64) float64 {
+  return float64(p.Dominance) * p.Rate(distance)
+}
+
+// Max distance at which this player can drain mana from a node.  At this
+// distance their rate should be exactly 0.
+func (p *Player) MaxDist() float64 {
+  return float64(p.Influence) * math.Sqrt(float64(p.Max_rate))
+}
+
+type noGob struct {
+  // Node_indexes contains all of the nodes in a kdtree, but only keeps an
+  // index into Nodes
+  Node_indexes *kd.Tree2
+
+  // All of the nodes on the map
+  Nodes []*Node
 }
 
 type Game struct {
+  noGob
+
+  Rng *cmwc.Cmwc
+
   // Dimensions of the board
   Dx, Dy int
 
@@ -58,9 +100,6 @@ type Game struct {
   Max_acc  float64
   Players  []Player
 
-  Nodes    *kd.Tree2
-  NodeList []*Node
-
   Game_thinks int
 }
 
@@ -68,7 +107,7 @@ func (g *Game) GenerateNodes(n int) {
   c := cmwc.MakeCmwc(4224759397, 3)
   c.SeedWithDevRand()
   for i := 0; i < n; i++ {
-    g.NodeList = append(g.NodeList, &Node{
+    g.Nodes = append(g.Nodes, &Node{
       X:        float64(c.Int63() % int64(g.Dx)),
       Y:        float64(c.Int63() % int64(g.Dy)),
       Color:    Color(c.Int63() % 3),
@@ -78,9 +117,9 @@ func (g *Game) GenerateNodes(n int) {
     })
   }
 
-  g.Nodes = kd.MakeTree2()
-  for _, n := range g.NodeList {
-    g.Nodes.Add([2]float64{n.X, n.Y}, n)
+  g.Node_indexes = kd.MakeTree2()
+  for i, n := range g.Nodes {
+    g.Node_indexes.Add([2]float64{n.X, n.Y}, i)
   }
 }
 
@@ -95,8 +134,8 @@ func (g *Game) Merge(g2 *Game) {
 
 func (g *Game) Copy() interface{} {
   var g2 Game
-  g2 = *g
-  return &g2
+  // g2 = *g
+  // return &g2
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
   err := enc.Encode(g)
@@ -107,26 +146,10 @@ func (g *Game) Copy() interface{} {
   if err != nil {
     panic(err)
   }
+  g2.noGob = g.noGob
+  // var ps [][2]float64
+  // g2.Nodes.PointsInCircle([2]float64{0, 0}, 30000, &ps, &g2.Nodes)
   return &g2
-}
-
-type nodeDistArray struct {
-  center [2]float64
-  ps     [][2]float64
-  nodes  []*Node
-}
-
-func (nda *nodeDistArray) Len() int { return len(nda.ps) }
-func (nda *nodeDistArray) Less(i, j int) bool {
-  dx0 := nda.center[0] - nda.ps[i][0]
-  dy0 := nda.center[1] - nda.ps[i][1]
-  dx1 := nda.center[0] - nda.ps[j][0]
-  dy1 := nda.center[1] - nda.ps[j][1]
-  return (dx0*dx0 + dy0*dy0) < (dx1*dx1 + dy1*dy1)
-}
-func (nda *nodeDistArray) Swap(i, j int) {
-  nda.ps[i], nda.ps[j] = nda.ps[j], nda.ps[i]
-  nda.nodes[i], nda.nodes[j] = nda.nodes[j], nda.nodes[i]
 }
 
 func (g *Game) ThinkFirst() {}
@@ -159,27 +182,39 @@ func (g *Game) Think() {
   }
 
   var ps [][2]float64
-  var nodes []*Node
+  var nodes []int
   center := [2]float64{g.Players[0].X, g.Players[0].Y}
-  g.Nodes.PointsInCircle(center, 300, &ps, &nodes)
+  g.Node_indexes.PointsInCircle(center, g.Players[0].MaxDist(), &ps, &nodes)
 
-  sort.Sort(&nodeDistArray{center, ps, nodes})
-  suck := 100.0
-  for _, nd := range nodes {
-    if suck <= 0 {
-      break
-    }
-    if suck > nd.Amt {
-      suck -= nd.Amt
-      nd.Amt = 0
-    } else {
-      nd.Amt -= suck
-      suck = 0
-    }
+  // Shuffle the nodes
+  for i := range nodes {
+    swap := int(g.Rng.Int63()%int64(len(nodes)-i)) + i
+    nodes[i], nodes[swap] = nodes[swap], nodes[i]
   }
 
-  for i := range g.NodeList {
-    g.NodeList[i].Think()
+  target_drain := 1000.0
+  for _, node_index := range nodes {
+    nd := g.Nodes[node_index]
+    dx := (g.Players[0].X - nd.X)
+    dy := (g.Players[0].Y - nd.Y)
+    drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
+    if drain > target_drain {
+      drain = target_drain
+    }
+    if drain > nd.Amt {
+      target_drain -= nd.Amt
+      nd.Amt = 0
+    } else {
+      nd.Amt -= drain
+      target_drain -= drain
+    }
+    if target_drain <= 0 {
+      break
+    }
+  }
+  base.Log().Printf("Remaining drain: %v", target_drain)
+  for i := range g.Nodes {
+    g.Nodes[i].Think()
   }
 }
 
@@ -258,7 +293,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.Begin(gl.POINTS)
-  for _, node := range gw.game.NodeList {
+  for _, node := range gw.game.Nodes {
     alpha := node.Amt / node.Capacity
     switch node.Color {
     case 0:
