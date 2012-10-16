@@ -83,7 +83,7 @@ func main() {
   p.Influence = 75
   p.Dominance = 10
   g.Players = append(g.Players, p)
-  g.GenerateNodes(10)
+  g.GenerateNodes()
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})

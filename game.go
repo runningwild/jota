@@ -7,13 +7,14 @@ import (
   "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/util/algorithm"
-  "github.com/runningwild/kdtree"
   "math"
   "path/filepath"
   "runningwild/pnf"
   "runningwild/tron/base"
   "runningwild/tron/texture"
 )
+
+const node_spacing = 10
 
 type Color int
 
@@ -147,12 +148,8 @@ func (p *Player) Supply(supply map[Color]float64) map[Color]float64 {
 }
 
 type noGob struct {
-  // Node_indexes contains all of the nodes in a kdtree, but only keeps an
-  // index into Nodes
-  Node_indexes *kd.Tree2
-
   // All of the nodes on the map
-  Nodes []*Node
+  Nodes [][]*Node
 }
 
 type Game struct {
@@ -171,25 +168,22 @@ type Game struct {
   Game_thinks int
 }
 
-func (g *Game) GenerateNodes(d int) {
+func (g *Game) GenerateNodes() {
   c := cmwc.MakeCmwc(4224759397, 3)
   c.SeedWithDevRand()
-  for x := 0; x < g.Dx; x += d {
-    for y := 0; y < g.Dy; y += d {
-      g.Nodes = append(g.Nodes, &Node{
-        X:        float64(x),
-        Y:        float64(y),
+  g.Nodes = make([][]*Node, 1+g.Dx/node_spacing)
+  for x := 0; x < 1+g.Dx/node_spacing; x++ {
+    g.Nodes[x] = make([]*Node, 1+g.Dy/node_spacing)
+    for y := 0; y < 1+g.Dy/node_spacing; y++ {
+      g.Nodes[x][y] = &Node{
+        X:        float64(x * node_spacing),
+        Y:        float64(y * node_spacing),
         Color:    Color(c.Int63() % 3),
-        Capacity: 1000,
-        Amt:      1000,
-        Regen:    1,
-      })
+        Capacity: 250,
+        Amt:      250,
+        Regen:    0.3,
+      }
     }
-  }
-
-  g.Node_indexes = kd.MakeTree2()
-  for i, n := range g.Nodes {
-    g.Node_indexes.Add([2]float64{n.X, n.Y}, i)
   }
 }
 
@@ -234,11 +228,13 @@ func (g *Game) Think() {
     g.Players[i].Think(g)
   }
 
-  var ps [][2]float64
-  var nodes []int
-  center := [2]float64{g.Players[0].X, g.Players[0].Y}
-  g.Node_indexes.PointsInCircle(center, g.Players[0].MaxDist(), &ps, &nodes)
-
+  var nodes []*Node
+  g.allNodesInCircle(
+    g.Players[0].X,
+    g.Players[0].Y,
+    float64(g.Players[0].MaxDist()),
+    &nodes)
+  base.Log().Printf("Hits: %d", len(nodes))
   // Shuffle the nodes
   for i := range nodes {
     swap := int(g.Rng.Int63()%int64(len(nodes)-i)) + i
@@ -246,8 +242,7 @@ func (g *Game) Think() {
   }
 
   supply := make(map[Color]float64)
-  for _, node_index := range nodes {
-    node := g.Nodes[node_index]
+  for _, node := range nodes {
     dx := (g.Players[0].X - node.X)
     dy := (g.Players[0].Y - node.Y)
     drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
@@ -264,8 +259,7 @@ func (g *Game) Think() {
   for color, amt := range supply {
     used[color] -= amt
   }
-  for _, node_index := range nodes {
-    node := g.Nodes[node_index]
+  for _, node := range nodes {
     dx := (g.Players[0].X - node.X)
     dy := (g.Players[0].Y - node.Y)
     drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
@@ -280,8 +274,36 @@ func (g *Game) Think() {
     supply[node.Color] += drain
   }
 
-  for i := range g.Nodes {
-    g.Nodes[i].Think()
+  for x := range g.Nodes {
+    for _, node := range g.Nodes[x] {
+      node.Think()
+    }
+  }
+}
+
+func clamp(v, low, high float64) float64 {
+  if v < low {
+    return low
+  }
+  if v > high {
+    return high
+  }
+  return v
+}
+
+func (g *Game) allNodesInCircle(x, y, radius float64, nodes *[]*Node) {
+  x /= node_spacing
+  y /= node_spacing
+  radius /= node_spacing
+  minx := clamp(x-radius, 0, float64(len(g.Nodes)-1))
+  maxx := clamp(x+radius+1, 0, float64(len(g.Nodes)-1))
+  miny := clamp(y-radius, 0, float64(len(g.Nodes[0])-1))
+  maxy := clamp(y+radius+1, 0, float64(len(g.Nodes[0])-1))
+  *nodes = (*nodes)[0:0]
+  for x := int(minx); x < int(maxx); x++ {
+    for y := int(miny); y < int(maxy); y++ {
+      *nodes = append(*nodes, g.Nodes[x][y])
+    }
   }
 }
 
@@ -377,17 +399,19 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.Begin(gl.POINTS)
-  for _, node := range gw.game.Nodes {
-    alpha := node.Amt / node.Capacity
-    switch node.Color {
-    case ColorRed:
-      gl.Color4d(1, 0, 0, alpha)
-    case ColorGreen:
-      gl.Color4d(0, 1, 0, alpha)
-    case ColorBlue:
-      gl.Color4d(0, 0, 1, alpha)
+  for x := range gw.game.Nodes {
+    for _, node := range gw.game.Nodes[x] {
+      alpha := node.Amt / node.Capacity
+      switch node.Color {
+      case ColorRed:
+        gl.Color4d(1, 0.1, 0.1, alpha)
+      case ColorGreen:
+        gl.Color4d(0, 1, 0, alpha)
+      case ColorBlue:
+        gl.Color4d(0.5, 0.5, 1, alpha)
+      }
+      gl.Vertex2d(node.X, node.Y)
     }
-    gl.Vertex2d(node.X, node.Y)
   }
   gl.End()
 }
