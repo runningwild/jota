@@ -24,6 +24,13 @@ const (
   ColorBlue
 )
 
+// One value for each color
+type Mana [3]float64
+
+func (m Mana) Magnitude() float64 {
+  return m[0] + m[1] + m[2]
+}
+
 var all_colors = [...]Color{ColorRed, ColorGreen, ColorBlue}
 
 type Node struct {
@@ -131,8 +138,8 @@ func (p *Player) Think(g *Game) {
   algorithm.Choose(&p.Processes, func(p Process) bool { return !p.Complete() })
 }
 
-func (p *Player) Request() map[Color]float64 {
-  request := make(map[Color]float64, 3)
+func (p *Player) Request() Mana {
+  var request Mana
   for _, process := range p.Processes {
     for color, value := range process.Request() {
       request[color] = request[color] + value
@@ -140,7 +147,7 @@ func (p *Player) Request() map[Color]float64 {
   }
   return request
 }
-func (p *Player) Supply(supply map[Color]float64) map[Color]float64 {
+func (p *Player) Supply(supply Mana) Mana {
   for _, process := range p.Processes {
     supply = process.Supply(supply)
   }
@@ -234,14 +241,13 @@ func (g *Game) Think() {
     g.Players[0].Y,
     float64(g.Players[0].MaxDist()),
     &nodes)
-  base.Log().Printf("Hits: %d", len(nodes))
   // Shuffle the nodes
   for i := range nodes {
     swap := int(g.Rng.Int63()%int64(len(nodes)-i)) + i
     nodes[i], nodes[swap] = nodes[swap], nodes[i]
   }
 
-  supply := make(map[Color]float64)
+  var supply Mana
   for _, node := range nodes {
     dx := (g.Players[0].X - node.X)
     dy := (g.Players[0].Y - node.Y)
@@ -251,7 +257,7 @@ func (g *Game) Think() {
     }
     supply[node.Color] += drain
   }
-  used := make(map[Color]float64)
+  var used Mana
   for color, amt := range supply {
     used[color] = amt
   }
