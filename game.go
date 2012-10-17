@@ -152,13 +152,9 @@ func (p *Player) Supply(supply Mana) Mana {
   return supply
 }
 
-type noGob struct {
-  // All of the nodes on the map
-  Nodes [][]*Node
-}
-
 type Game struct {
-  noGob
+  // All of the nodes on the map
+  Nodes [][]Node
 
   Rng *cmwc.Cmwc
 
@@ -176,11 +172,11 @@ type Game struct {
 func (g *Game) GenerateNodes() {
   c := cmwc.MakeCmwc(4224759397, 3)
   c.SeedWithDevRand()
-  g.Nodes = make([][]*Node, 1+g.Dx/node_spacing)
+  g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
   for x := 0; x < 1+g.Dx/node_spacing; x++ {
-    g.Nodes[x] = make([]*Node, 1+g.Dy/node_spacing)
+    g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
     for y := 0; y < 1+g.Dy/node_spacing; y++ {
-      g.Nodes[x][y] = &Node{
+      g.Nodes[x][y] = Node{
         X:        float64(x * node_spacing),
         Y:        float64(y * node_spacing),
         Color:    Color(c.Int63() % 3),
@@ -203,8 +199,6 @@ func (g *Game) Merge(g2 *Game) {
 
 func (g *Game) Copy() interface{} {
   var g2 Game
-  // g2 = *g
-  // return &g2
   buf := bytes.NewBuffer(nil)
   enc := gob.NewEncoder(buf)
   err := enc.Encode(g)
@@ -215,15 +209,40 @@ func (g *Game) Copy() interface{} {
   if err != nil {
     panic(err)
   }
-  g2.noGob = g.noGob
-  // var ps [][2]float64
-  // g2.Nodes.PointsInCircle([2]float64{0, 0}, 30000, &ps, &g2.Nodes)
   return &g2
+}
+
+func (g *Game) OverwriteWith(_g2 interface{}) {
+  g2 := (_g2.(*Game))
+  g.Rng.OverwriteWith(g2.Rng)
+  g.Dx = g2.Dx
+  g.Dy = g2.Dy
+  g.Friction = g2.Friction
+  g.Max_turn = g2.Max_turn
+  g.Max_acc = g2.Max_acc
+
+  g.Players = g.Players[0:0]
+  for _, p := range g2.Players {
+    g.Players = append(g.Players, p)
+  }
+
+  if len(g.Nodes) != len(g2.Nodes) {
+    g.Nodes = make([][]Node, len(g2.Nodes))
+  }
+  for x := range g.Nodes {
+    g.Nodes[x] = g.Nodes[x][0:0]
+    for y := range g2.Nodes[x] {
+      g.Nodes[x] = append(g.Nodes[x], g2.Nodes[x][y])
+    }
+  }
+
+  g.Game_thinks = g2.Game_thinks
 }
 
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
+  g.Nodes[0][0].Amt -= 1
   g.Game_thinks++
   // Advance players, check for collisions, add segments
   for i := range g.Players {
@@ -233,20 +252,21 @@ func (g *Game) Think() {
     g.Players[i].Think(g)
   }
 
-  var nodes []*Node
-  g.allNodesInCircle(
+  var indexes []nodeIndex
+  g.allNodesInSquare(
     g.Players[0].X,
     g.Players[0].Y,
     float64(g.Players[0].MaxDist()),
-    &nodes)
+    &indexes)
   // Shuffle the nodes
-  for i := range nodes {
-    swap := int(g.Rng.Int63()%int64(len(nodes)-i)) + i
-    nodes[i], nodes[swap] = nodes[swap], nodes[i]
+  for i := range indexes {
+    swap := int(g.Rng.Int63()%int64(len(indexes)-i)) + i
+    indexes[i], indexes[swap] = indexes[swap], indexes[i]
   }
 
   var supply Mana
-  for _, node := range nodes {
+  for _, index := range indexes {
+    node := &g.Nodes[index.x][index.y]
     dx := (g.Players[0].X - node.X)
     dy := (g.Players[0].Y - node.Y)
     drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
@@ -263,7 +283,8 @@ func (g *Game) Think() {
   for color, amt := range supply {
     used[color] -= amt
   }
-  for _, node := range nodes {
+  for _, index := range indexes {
+    node := &g.Nodes[index.x][index.y]
     dx := (g.Players[0].X - node.X)
     dy := (g.Players[0].Y - node.Y)
     drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
@@ -279,8 +300,8 @@ func (g *Game) Think() {
   }
 
   for x := range g.Nodes {
-    for _, node := range g.Nodes[x] {
-      node.Think()
+    for y := range g.Nodes[x] {
+      g.Nodes[x][y].Think()
     }
   }
 }
@@ -295,7 +316,11 @@ func clamp(v, low, high float64) float64 {
   return v
 }
 
-func (g *Game) allNodesInCircle(x, y, radius float64, nodes *[]*Node) {
+type nodeIndex struct {
+  x, y int
+}
+
+func (g *Game) allNodesInSquare(x, y, radius float64, indexes *[]nodeIndex) {
   x /= node_spacing
   y /= node_spacing
   radius /= node_spacing
@@ -303,10 +328,10 @@ func (g *Game) allNodesInCircle(x, y, radius float64, nodes *[]*Node) {
   maxx := clamp(x+radius+1, 0, float64(len(g.Nodes)))
   miny := clamp(y-radius, 0, float64(len(g.Nodes[0])))
   maxy := clamp(y+radius+1, 0, float64(len(g.Nodes[0])))
-  *nodes = (*nodes)[0:0]
+  *indexes = (*indexes)[0:0]
   for x := int(minx); x < int(maxx); x++ {
     for y := int(miny); y < int(maxy); y++ {
-      *nodes = append(*nodes, g.Nodes[x][y])
+      *indexes = append(*indexes, nodeIndex{x, y})
     }
   }
 }
@@ -375,12 +400,11 @@ func (gw *GameWindow) Rendered() gui.Region {
   return gw.region
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
-  cur := gw.Engine.GetState().Copy().(*Game)
   if gw.game == nil {
-    gw.game = cur.Copy().(*Game)
+    gw.game = gw.Engine.GetState().Copy().(*Game)
+  } else {
+    gw.game.OverwriteWith(gw.Engine.GetState())
   }
-  cur.Merge(gw.game)
-  gw.game = cur
 }
 func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
   return false
