@@ -1,10 +1,10 @@
 package base
 
 import (
-  "github.com/runningwild/glop/gin"
-  "github.com/runningwild/glop/gui"
   "bufio"
   gl "github.com/chsc/gogl/gl21"
+  "github.com/runningwild/glop/gin"
+  "github.com/runningwild/glop/gui"
   "strings"
   "unicode"
 )
@@ -61,11 +61,13 @@ func (c *Console) Respond(ui *gui.Gui, group gui.EventGroup) bool {
     }
     return true
   }
-  if found, event := group.FindEvent(gin.Left); found && event.Type == gin.Press {
-    c.xscroll += 250
-  }
-  if found, event := group.FindEvent(gin.Right); found && event.Type == gin.Press {
-    c.xscroll -= 250
+  if group.Focus {
+    if found, event := group.FindEvent(gin.Left); found && event.Type == gin.Press {
+      c.xscroll += 250
+    }
+    if found, event := group.FindEvent(gin.Right); found && event.Type == gin.Press {
+      c.xscroll -= 250
+    }
   }
   if c.xscroll > 0 {
     c.xscroll = 0
