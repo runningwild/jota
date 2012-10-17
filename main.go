@@ -72,19 +72,29 @@ func main() {
   g.Dx = 900
   g.Dy = 600
   g.Max_turn = 0.05
-  g.Max_acc = 0.25
+  g.Max_acc = 0.15
   g.Friction = 0.95
   var p Player
   p.Alive = true
-  p.Mass = 1000 // who knows
+  p.Mass = 150 // who knows
   p.X = float64(g.Dx) / 2
   p.Y = float64(g.Dy) / 2
   p.Color.R = 255
   p.Max_rate = 10
   p.Influence = 75
   p.Dominance = 10
-  g.Players = append(g.Players, p)
-  g.Players = append(g.Players, p)
+  for x := 0; x < 5; x++ {
+    for y := 0; y < 5; y++ {
+      p.X += float64(x) * 25
+      p.Y += float64(y) * 25
+      p.Mass += float64(x+y) * 150
+      g.Players = append(g.Players, p)
+      p.Mass -= float64(x+y) * 150
+      p.X -= float64(x) * 25
+      p.Y -= float64(y) * 25
+    }
+  }
+  g.Players[0], g.Players[12] = g.Players[12], g.Players[0]
   g.GenerateNodes()
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)

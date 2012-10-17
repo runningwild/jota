@@ -256,6 +256,27 @@ func (g *Game) Think() {
     g.Players[i].X = clamp(g.Players[i].X, 0, float64(g.Dx))
     g.Players[i].Y = clamp(g.Players[i].Y, 0, float64(g.Dy))
   }
+  for i := range g.Players {
+    for j := range g.Players {
+      if i == j {
+        continue
+      }
+      dx := g.Players[i].X - g.Players[j].X
+      dy := g.Players[i].Y - g.Players[j].Y
+      dist := math.Sqrt(dx*dx + dy*dy)
+      if dist > 25 {
+        continue
+      }
+      if dist <= 0.5 {
+        dist = 0.5
+      }
+      force := 2500.0 / dist
+      force /= g.Players[i].Mass
+      angle := math.Atan2(dy, dx)
+      g.Players[i].Vx += force * math.Cos(angle)
+      g.Players[i].Vy += force * math.Sin(angle)
+    }
+  }
 
   var indexes []nodeIndex
   g.allNodesInSquare(
@@ -438,14 +459,18 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gw.region = region
   gl.PushMatrix()
   defer gl.PopMatrix()
-  gl.Translated(float64(gw.region.X), float64(gw.region.Y), 0)
+  gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
   gl.Color4d(1, 1, 1, 1)
-  for _, p := range gw.game.Players {
+  for i, p := range gw.game.Players {
     if p.Exiled() {
       continue
     }
     var t *texture.Data
-    t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+    if i == 0 {
+      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+    } else {
+      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
+    }
     t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
   }
   gl.Disable(gl.TEXTURE_2D)
@@ -454,7 +479,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.Begin(gl.POINTS)
   for x := range gw.game.Nodes {
     for _, node := range gw.game.Nodes[x] {
-      alpha := node.Amt / node.Capacity
+      alpha := gl.Double(node.Amt / node.Capacity)
       switch node.Color {
       case ColorRed:
         gl.Color4d(1, 0.1, 0.1, alpha)
@@ -463,7 +488,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
       case ColorBlue:
         gl.Color4d(0.5, 0.5, 1, alpha)
       }
-      gl.Vertex2d(node.X, node.Y)
+      gl.Vertex2d(gl.Double(node.X), gl.Double(node.Y))
     }
   }
   gl.End()
