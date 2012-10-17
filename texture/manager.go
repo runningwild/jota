@@ -1,11 +1,10 @@
 package texture
 
 import (
+  gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/mathgl"
   "github.com/runningwild/memory"
-  "github.com/runningwild/opengl/gl"
-  "github.com/runningwild/opengl/glu"
   "image"
   "image/draw"
   _ "image/jpeg"
@@ -36,7 +35,7 @@ func (o *Object) Data() *Data {
 
 type Data struct {
   dx, dy   int
-  texture  gl.Texture
+  texture  gl.Uint
   accessed int
 }
 
@@ -47,7 +46,7 @@ func (d *Data) Dy() int {
   return d.dy
 }
 
-var textureList uint
+var textureList gl.Uint
 var textureListSync sync.Once
 
 func setupTextureList() {
@@ -88,7 +87,7 @@ func Render(x, y, dx, dy float64) {
 
   gl.PushMatrix()
   gl.Enable(gl.TEXTURE_2D)
-  gl.MultMatrixf(&run[0])
+  gl.MultMatrixf((*gl.Float)(&run[0]))
   gl.CallList(textureList)
   gl.PopMatrix()
 }
@@ -127,7 +126,7 @@ func RenderAdvanced(x, y, dx, dy, rot float64, flip bool) {
       run.Multiply(&op)
     }
     gl.PushMatrix()
-    gl.MultMatrixf(&run[0])
+    gl.MultMatrixf((*gl.Float)(&run[0]))
     gl.Enable(gl.TEXTURE_2D)
     gl.CallList(textureList)
     gl.PopMatrix()
@@ -139,9 +138,9 @@ func (d *Data) Bind() {
     if error_texture == 0 {
       makeErrorTexture()
     }
-    error_texture.Bind(gl.TEXTURE_2D)
+    gl.BindTexture(gl.TEXTURE_2D, error_texture)
   } else {
-    d.texture.Bind(gl.TEXTURE_2D)
+    gl.BindTexture(gl.TEXTURE_2D, d.texture)
   }
 }
 
@@ -203,7 +202,7 @@ func (m *Manager) Scavenger() {
     }
     render.Queue(func() {
       for _, d := range unused_data {
-        d.texture.Delete()
+        gl.DeleteTextures(1, (*gl.Uint)(&d.texture))
         d.texture = 0
       }
     })
@@ -318,18 +317,38 @@ func handleLoadRequest(req loadRequest) {
   render.Queue(func() {
     {
       gl.Enable(gl.TEXTURE_2D)
-      req.data.texture = gl.GenTexture()
-      req.data.texture.Bind(gl.TEXTURE_2D)
-      gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+      gl.GenTextures(1, (*gl.Uint)(&req.data.texture))
+      gl.BindTexture(gl.TEXTURE_2D, req.data.texture)
+      gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
     }
     if gray {
-      glu.Build2DMipmaps(gl.TEXTURE_2D, gl.LUMINANCE_ALPHA, req.data.dx, req.data.dy, gl.LUMINANCE_ALPHA, pix)
+      gl.TexImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.LUMINANCE_ALPHA,
+        gl.Sizei(req.data.dx),
+        gl.Sizei(req.data.dy),
+        0,
+        gl.LUMINANCE_ALPHA,
+        gl.BYTE,
+        gl.Pointer(&pix[0]))
     } else {
-      glu.Build2DMipmaps(gl.TEXTURE_2D, gl.RGBA, req.data.dx, req.data.dy, gl.RGBA, pix)
+      gl.TexImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.Sizei(req.data.dx),
+        gl.Sizei(req.data.dy),
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        gl.Pointer(&pix[0]))
+      // gl.TexImage2D(target, level, internalformat, width, height, border, format, type_, pixels)
+      // glu.Build2DMipmaps(gl.TEXTURE_2D, gl.RGBA, req.data.dx, req.data.dy, gl.RGBA, pix)
     }
     memory.FreeBlock(pix)
     if manual_unlock {
