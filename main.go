@@ -83,6 +83,7 @@ func main() {
   p.Influence = 75
   p.Dominance = 10
   g.Players = append(g.Players, p)
+  g.Players = append(g.Players, p)
   g.GenerateNodes()
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 10)
@@ -106,6 +107,14 @@ func main() {
     right := gin.In().GetKey(gin.Right).FramePressAvg()
     engine.ApplyEvent(Accelerate{0, 2 * (up - down)})
     engine.ApplyEvent(Turn{0, (left - right) / 10})
+
+    up = gin.In().GetKey('w').FramePressAvg()
+    down = gin.In().GetKey('s').FramePressAvg()
+    left = gin.In().GetKey('a').FramePressAvg()
+    right = gin.In().GetKey('d').FramePressAvg()
+    engine.ApplyEvent(Accelerate{1, 2 * (up - down)})
+    engine.ApplyEvent(Turn{1, (left - right) / 10})
+
     if key_map["blink5"].FramePressCount() > 0 {
       engine.ApplyEvent(Blink{0, 50})
     }

@@ -51,11 +51,11 @@ func (n *Node) Think() {
 }
 
 type Player struct {
-  Alive bool
-  X, Y  float64
-  Angle float64
-  Speed float64
-  Delta struct {
+  Alive  bool
+  X, Y   float64
+  Vx, Vy float64
+  Angle  float64
+  Delta  struct {
     Speed float64
     Angle float64
   }
@@ -125,11 +125,13 @@ func (p *Player) Think(g *Game) {
   if p.Delta.Angle > g.Max_turn {
     p.Delta.Angle = g.Max_turn
   }
+  p.Vx *= g.Friction
+  p.Vy *= g.Friction
   p.Angle += p.Delta.Angle
-  p.Speed += p.Delta.Speed
-  p.Speed *= g.Friction
-  p.X += p.Speed * math.Cos(p.Angle)
-  p.Y += p.Speed * math.Sin(p.Angle)
+  p.Vx += p.Delta.Speed * math.Cos(p.Angle)
+  p.Vy += p.Delta.Speed * math.Sin(p.Angle)
+  p.X += p.Vx
+  p.Y += p.Vy
   for _, process := range p.Processes {
     process.Think(p, g)
   }
