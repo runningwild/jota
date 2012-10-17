@@ -52,6 +52,7 @@ func (n *Node) Think() {
 
 type Player struct {
   Alive  bool
+  Mass   float64
   X, Y   float64
   Vx, Vy float64
   Angle  float64
@@ -252,6 +253,8 @@ func (g *Game) Think() {
       continue
     }
     g.Players[i].Think(g)
+    g.Players[i].X = clamp(g.Players[i].X, 0, float64(g.Dx))
+    g.Players[i].Y = clamp(g.Players[i].Y, 0, float64(g.Dy))
   }
 
   var indexes []nodeIndex
@@ -377,6 +380,26 @@ func (b Blink) Apply(_g interface{}) {
   }
   params := map[string]int{"frames": b.Frames}
   process := (&blinkAbility{}).Activate(player, params)
+  player.Processes = append(player.Processes, process)
+}
+
+type Burst struct {
+  Player int
+  Frames int
+  Radius int
+  Force  int
+}
+
+func (b Burst) ApplyFirst(g interface{}) {}
+func (b Burst) ApplyFinal(g interface{}) {}
+func (b Burst) Apply(_g interface{}) {
+  g := _g.(*Game)
+  player := &g.Players[b.Player]
+  if !player.Alive || player.Exiled() {
+    return
+  }
+  params := map[string]int{"frames": b.Frames, "radius": b.Radius, "force": b.Force}
+  process := (&burstAbility{}).Activate(player, params)
   player.Processes = append(player.Processes, process)
 }
 

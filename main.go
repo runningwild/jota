@@ -76,6 +76,7 @@ func main() {
   g.Friction = 0.95
   var p Player
   p.Alive = true
+  p.Mass = 1000 // who knows
   p.X = float64(g.Dx) / 2
   p.Y = float64(g.Dy) / 2
   p.Color.R = 255
@@ -121,8 +122,8 @@ func main() {
     if key_map["blink25"].FramePressCount() > 0 {
       engine.ApplyEvent(Blink{0, 250})
     }
-    if key_map["blink50"].FramePressCount() > 0 {
-      engine.ApplyEvent(Blink{0, 500})
+    if key_map["burst"].FramePressCount() > 0 {
+      engine.ApplyEvent(Burst{0, 15, 200, 500})
     }
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {
