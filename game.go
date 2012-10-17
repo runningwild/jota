@@ -31,8 +31,6 @@ func (m Mana) Magnitude() float64 {
   return m[0] + m[1] + m[2]
 }
 
-var all_colors = [...]Color{ColorRed, ColorGreen, ColorBlue}
-
 type Node struct {
   Color    Color
   X, Y     float64
