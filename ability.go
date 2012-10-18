@@ -108,38 +108,33 @@ type burstAbility struct {
 }
 
 func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
-  if len(params) != 3 {
-    panic(fmt.Sprintf("Burst requires exactly three parameters, not %v", params))
+  if len(params) != 2 {
+    panic(fmt.Sprintf("Burst requires exactly two parameters, not %v", params))
   }
-  for _, req := range []string{"frames", "radius", "force"} {
+  for _, req := range []string{"frames", "force"} {
     if _, ok := params[req]; !ok {
       panic(fmt.Sprintf("Burst requires [%s] to be specified, not %v", req, params))
     }
   }
   frames := params["frames"]
-  radius := params["radius"]
   force := params["force"]
   if frames < 0 {
     panic(fmt.Sprintf("Burst requires [frames] > 0, not %d", frames))
-  }
-  if radius < 0 {
-    panic(fmt.Sprintf("Burst requires [radius] > 0, not %d", radius))
   }
   if force < 0 {
     panic(fmt.Sprintf("Burst requires [force] > 0, not %d", force))
   }
   return &burstProcess{
     Frames:            int32(frames),
-    Radius:            float64(radius),
     Force:             float64(force),
-    Remaining_initial: Mana{float64(radius * force), 0, 0},
-    Continual:         Mana{float64(frames), 0, 0},
+    Remaining_initial: Mana{float64(force*frames) / 100, 0, 0},
+    Continual:         Mana{float64(force) / 100, 0, 0},
   }
 }
 
 type burstProcess struct {
   Frames            int32
-  Radius, Force     float64
+  Force             float64
   Remaining_initial Mana
   Continual         Mana
 }
@@ -194,14 +189,13 @@ func (p *burstProcess) Think(player *Player, game *Game) {
       dx := other.X - player.X
       dy := other.Y - player.Y
       dist := math.Sqrt(dx*dx + dy*dy)
-      if dist > p.Radius {
-        continue
+      if dist < 1 {
+        dist = 1
       }
-      force := p.Force * (1 - dist*dist/(p.Radius*p.Radius))
-      force /= other.Mass
+      acc := p.Force / (dist * other.Mass)
       angle := math.Atan2(dy, dx)
-      other.Vx += force * math.Cos(angle)
-      other.Vy += force * math.Sin(angle)
+      other.Vx += acc * math.Cos(angle)
+      other.Vy += acc * math.Sin(angle)
     }
   }
 }

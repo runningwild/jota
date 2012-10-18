@@ -133,7 +133,7 @@ func main() {
       engine.ApplyEvent(Blink{0, 250})
     }
     if key_map["burst"].FramePressCount() > 0 {
-      engine.ApplyEvent(Burst{0, 15, 200, 500})
+      engine.ApplyEvent(Burst{0, 10, 25000})
     }
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {

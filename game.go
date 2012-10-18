@@ -407,7 +407,6 @@ func (b Blink) Apply(_g interface{}) {
 type Burst struct {
   Player int
   Frames int
-  Radius int
   Force  int
 }
 
@@ -419,7 +418,7 @@ func (b Burst) Apply(_g interface{}) {
   if !player.Alive || player.Exiled() {
     return
   }
-  params := map[string]int{"frames": b.Frames, "radius": b.Radius, "force": b.Force}
+  params := map[string]int{"frames": b.Frames, "force": b.Force}
   process := (&burstAbility{}).Activate(player, params)
   player.Processes = append(player.Processes, process)
 }
