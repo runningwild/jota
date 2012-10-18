@@ -87,22 +87,14 @@ type Player struct {
 }
 
 func (p *Player) Rate(distance float64) float64 {
-  term := distance / float64(p.Influence)
-  rate := float64(p.Max_rate) - term*term
-  if rate < 0 {
-    return 0
+  if distance < 1 {
+    distance = 1
   }
-  return rate
+  return 150 / distance
 }
 
 func (p *Player) Priority(distance float64) float64 {
   return float64(p.Dominance) * p.Rate(distance)
-}
-
-// Max distance at which this player can drain mana from a node.  At this
-// distance their rate should be exactly 0.
-func (p *Player) MaxDist() float64 {
-  return float64(p.Influence) * math.Sqrt(float64(p.Max_rate))
 }
 
 func (p *Player) Exiled() bool {
@@ -279,11 +271,16 @@ func (g *Game) Think() {
   }
 
   var indexes []nodeIndex
-  g.allNodesInSquare(
-    g.Players[0].X,
-    g.Players[0].Y,
-    float64(g.Players[0].MaxDist()),
-    &indexes)
+  for x := range g.Nodes {
+    for y := range g.Nodes[x] {
+      indexes = append(indexes, nodeIndex{x, y})
+    }
+  }
+  // g.allNodesInSquare(
+  //   g.Players[0].X,
+  //   g.Players[0].Y,
+  //   float64(g.Players[0].MaxDist()),
+  //   &indexes)
   // Shuffle the nodes
   for i := range indexes {
     swap := int(g.Rng.Int63()%int64(len(indexes)-i)) + i
