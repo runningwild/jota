@@ -99,7 +99,7 @@ func main() {
   // g.Players[1].Mass = math.Inf(1)
   g.GenerateNodes()
   var engine *pnf.Engine
-  engine = pnf.NewLocalEngine(&g, 16)
+  engine = pnf.NewLocalEngine(&g, 17)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File

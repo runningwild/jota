@@ -184,7 +184,7 @@ func (g *Game) GenerateNodes() {
 }
 
 func (g *Game) Merge(g2 *Game) {
-  frac := 0.75
+  frac := 0.5
   for i := range g.Players {
     g.Players[i].X = frac*g2.Players[i].X + (1-frac)*g.Players[i].X
     g.Players[i].Y = frac*g2.Players[i].Y + (1-frac)*g.Players[i].Y
@@ -421,9 +421,10 @@ func (b Burst) Apply(_g interface{}) {
 }
 
 type GameWindow struct {
-  Engine *pnf.Engine
-  game   *Game
-  region gui.Region
+  Engine    *pnf.Engine
+  game      *Game
+  prev_game *Game
+  region    gui.Region
 }
 
 func (gw *GameWindow) String() string {
@@ -444,8 +445,11 @@ func (gw *GameWindow) Rendered() gui.Region {
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
   if gw.game == nil {
     gw.game = gw.Engine.GetState().Copy().(*Game)
+    gw.prev_game = gw.Engine.GetState().Copy().(*Game)
   } else {
-    gw.game.OverwriteWith(gw.Engine.GetState())
+    gw.game.OverwriteWith(gw.Engine.GetState().(*Game))
+    gw.game.Merge(gw.prev_game)
+    gw.prev_game.OverwriteWith(gw.game)
   }
 }
 func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
