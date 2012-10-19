@@ -9,6 +9,7 @@ import (
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/glop/system"
+  // "math"
   "os"
   "path/filepath"
   "runningwild/pnf"
@@ -71,8 +72,8 @@ func main() {
   g.Rng.SeedWithDevRand()
   g.Dx = 900
   g.Dy = 600
-  g.Max_turn = 0.05
-  g.Max_acc = 0.15
+  g.Max_turn = 0.07
+  g.Max_acc = 0.25
   g.Friction = 0.95
   var p Player
   p.Alive = true
@@ -95,9 +96,10 @@ func main() {
     }
   }
   g.Players[0], g.Players[12] = g.Players[12], g.Players[0]
+  // g.Players[1].Mass = math.Inf(1)
   g.GenerateNodes()
   var engine *pnf.Engine
-  engine = pnf.NewLocalEngine(&g, 10)
+  engine = pnf.NewLocalEngine(&g, 16)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File
@@ -133,7 +135,7 @@ func main() {
       engine.ApplyEvent(Blink{0, 250})
     }
     if key_map["burst"].FramePressCount() > 0 {
-      engine.ApplyEvent(Burst{0, 10, 25000})
+      engine.ApplyEvent(Burst{0, 200, 15000})
     }
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {

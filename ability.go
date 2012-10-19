@@ -127,8 +127,8 @@ func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
   return &burstProcess{
     Frames:            int32(frames),
     Force:             float64(force),
-    Remaining_initial: Mana{float64(force*frames) / 100, 0, 0},
-    Continual:         Mana{float64(force) / 100, 0, 0},
+    Remaining_initial: Mana{float64(force) * float64(force) * float64(frames) / 500000, 0, 0},
+    Continual:         Mana{float64(force) / 50, 0, 0},
   }
 }
 
