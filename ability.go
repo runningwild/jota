@@ -22,6 +22,10 @@ type Process interface {
 
   Think(*Player, *Game)
 
+  // Kills a process.  Any Killed process will return true on any future
+  // calls to Complete().
+  Kill(player *Player)
+
   Complete() bool
 }
 
@@ -56,6 +60,7 @@ func (a *blinkAbility) Activate(player *Player, params map[string]int) Process {
 type blinkProcess struct {
   Frames    int32
   Remaining Mana
+  Killed    bool
 }
 
 func (p *blinkProcess) Request() Mana {
@@ -88,8 +93,11 @@ func (p *blinkProcess) Think(player *Player, game *Game) {
     p.Frames = 0
   }
 }
+func (p *blinkProcess) Kill(player *Player) {
+  p.Killed = true
+}
 func (p *blinkProcess) Complete() bool {
-  return p.Frames == 0
+  return p.Killed || p.Frames == 0
 }
 
 // BURST
@@ -137,6 +145,7 @@ type burstProcess struct {
   Force             float64
   Remaining_initial Mana
   Continual         Mana
+  Killed            bool
 
   // Counting how long to cast
   count int
@@ -207,6 +216,85 @@ func (p *burstProcess) Think(player *Player, game *Game) {
     }
   }
 }
+func (p *burstProcess) Kill(player *Player) {
+  p.Killed = true
+}
 func (p *burstProcess) Complete() bool {
-  return p.Frames <= 0
+  return p.Killed || p.Frames <= 0
+}
+
+// NITRO
+// Increases Max_acc by up to [inc]/nitro_acc_factor.
+// Continual cost: up to [inc]*[inc]/nitro_mana_factor red mana per frame.
+const nitro_mana_factor = 1000
+const nitro_acc_factor = 2500
+
+func init() {
+  gob.Register(nitroAbility{})
+  gob.Register(&nitroProcess{})
+}
+
+type nitroAbility struct {
+}
+
+func (a *nitroAbility) Activate(player *Player, params map[string]int) Process {
+  if len(params) != 1 {
+    panic(fmt.Sprintf("Nitro requires exactly one parameter, not %v", params))
+  }
+  for _, req := range []string{"inc"} {
+    if _, ok := params[req]; !ok {
+      panic(fmt.Sprintf("Nitro requires [%s] to be specified, not %v", req, params))
+    }
+  }
+  inc := params["inc"]
+  if inc <= 0 {
+    panic(fmt.Sprintf("Nitro requires [inc] > 0, not %d", inc))
+  }
+  return &nitroProcess{
+    Inc:       int32(inc),
+    Continual: Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
+  }
+}
+
+type nitroProcess struct {
+  Inc       int32
+  Continual Mana
+  Killed    bool
+
+  Prev_delta float64
+  Supplied   Mana
+}
+
+func (p *nitroProcess) Request() Mana {
+  return p.Continual
+}
+
+// Supplies mana to the process.  Any mana that is unused is returned.
+func (p *nitroProcess) Supply(supply Mana) Mana {
+  for color := range p.Continual {
+    if supply[color] < p.Continual[color] {
+      p.Supplied[color] += supply[color]
+      supply[color] = 0
+    } else {
+      p.Supplied[color] += p.Continual[color]
+      supply[color] -= p.Continual[color]
+    }
+  }
+  return supply
+}
+
+func (p *nitroProcess) Think(player *Player, game *Game) {
+  player.Max_acc -= p.Prev_delta
+  delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
+  base.Log().Printf("Delta: %.3f", delta)
+  p.Supplied = Mana{}
+  player.Max_acc += delta
+  p.Prev_delta = delta
+}
+func (p *nitroProcess) Kill(player *Player) {
+  p.Killed = true
+  player.Max_acc -= p.Prev_delta
+}
+func (p *nitroProcess) Complete() bool {
+  return p.Killed
 }

@@ -63,6 +63,10 @@ type Player struct {
     R, G, B byte
   }
 
+  // Max rate for accelerating and turning.
+  Max_turn float64
+  Max_acc  float64
+
   // Max_rate and Influence determine the rate that a player can drain mana
   // from a node a distance D away:
   // Rate(D) = max(0, Max_rate - (D / Influence) ^ 2)
@@ -105,17 +109,17 @@ func (p *Player) Think(g *Game) {
     p.Exile_frames--
     return
   }
-  if p.Delta.Speed > g.Max_acc {
-    p.Delta.Speed = g.Max_acc
+  if p.Delta.Speed > p.Max_acc {
+    p.Delta.Speed = p.Max_acc
   }
-  if p.Delta.Speed < -g.Max_acc {
-    p.Delta.Speed = -g.Max_acc
+  if p.Delta.Speed < -p.Max_acc {
+    p.Delta.Speed = -p.Max_acc
   }
-  if p.Delta.Angle < -g.Max_turn {
-    p.Delta.Angle = -g.Max_turn
+  if p.Delta.Angle < -p.Max_turn {
+    p.Delta.Angle = -p.Max_turn
   }
-  if p.Delta.Angle > g.Max_turn {
-    p.Delta.Angle = g.Max_turn
+  if p.Delta.Angle > p.Max_turn {
+    p.Delta.Angle = p.Max_turn
   }
   p.Vx *= g.Friction
   p.Vy *= g.Friction
@@ -162,8 +166,6 @@ type Game struct {
   Dx, Dy int
 
   Friction float64
-  Max_turn float64
-  Max_acc  float64
   Players  []Player
 
   Game_thinks int
@@ -218,8 +220,6 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   g.Dx = g2.Dx
   g.Dy = g2.Dy
   g.Friction = g2.Friction
-  g.Max_turn = g2.Max_turn
-  g.Max_acc = g2.Max_acc
 
   g.Players = g.Players[0:0]
   for _, p := range g2.Players {
@@ -279,7 +279,7 @@ func (g *Game) Think() {
   moved := make(map[int]bool)
   for i := range g.Players {
     for j := range g.Players {
-      if i == j {
+      if i == j || g.Players[i].Exiled() || g.Players[j].Exiled() {
         continue
       }
       dx := g.Players[i].X - g.Players[j].X
@@ -404,7 +404,7 @@ func (a Accelerate) ApplyFirst(g interface{}) {}
 func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
   g := _g.(*Game)
-  g.Players[a.Player].Delta.Speed = a.Delta
+  g.Players[a.Player].Delta.Speed = a.Delta / 2
 }
 
 type Blink struct {
@@ -452,6 +452,32 @@ func (b Burst) Apply(_g interface{}) {
   params := map[string]int{"frames": b.Frames, "force": b.Force}
   process := (&burstAbility{}).Activate(player, params)
   player.Processes[b.Id] = process
+}
+
+type Nitro struct {
+  Player int
+  Id     int
+  Inc    int
+}
+
+func (n Nitro) ApplyFirst(g interface{}) {}
+func (n Nitro) ApplyFinal(g interface{}) {}
+func (n Nitro) Apply(_g interface{}) {
+  g := _g.(*Game)
+  player := &g.Players[n.Player]
+  if !player.Alive || player.Exiled() {
+    return
+  }
+  if proc, ok := player.Processes[n.Id]; ok {
+    // Already running this process, so kill it
+    proc.Kill(player)
+    base.Log().Printf("Killed nitro")
+    return
+  }
+  base.Log().Printf("Added nitro")
+  params := map[string]int{"inc": n.Inc}
+  process := (&nitroAbility{}).Activate(player, params)
+  player.Processes[n.Id] = process
 }
 
 type GameWindow struct {

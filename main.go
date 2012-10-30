@@ -72,11 +72,11 @@ func main() {
   g.Rng.SeedWithDevRand()
   g.Dx = 900
   g.Dy = 600
-  g.Max_turn = 0.07
-  g.Max_acc = 0.25
   g.Friction = 0.95
   var p Player
   p.Alive = true
+  p.Max_turn = 0.07
+  p.Max_acc = 0.1
   p.Mass = 750 // who knows
   p.Color.R = 255
   p.Max_rate = 10
@@ -126,8 +126,11 @@ func main() {
       engine.ApplyEvent(Turn{i, (left - right) / 10})
 
       if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Blink{i, 0, 50})
+        engine.ApplyEvent(Nitro{i, 0, 500})
       }
+      // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
+      //   engine.ApplyEvent(Blink{i, 0, 50})
+      // }
       if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
         engine.ApplyEvent(Burst{i, 1, 100, 10000})
       }
