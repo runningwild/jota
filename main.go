@@ -90,6 +90,7 @@ func main() {
       p.X += float64(x * 25)
       p.Y += float64(y * 25)
       // p.Mass += float64(x+y) * 150
+      p.Processes = make(map[int]Process)
       g.Players = append(g.Players, p)
       // p.Mass -= float64(x+y) * 150
       p.X -= float64(x * 25)
@@ -125,13 +126,13 @@ func main() {
       engine.ApplyEvent(Turn{i, (left - right) / 10})
 
       if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Blink{i, 50})
+        engine.ApplyEvent(Blink{i, 0, 50})
       }
       if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Burst{i, 100, 10000})
+        engine.ApplyEvent(Burst{i, 1, 100, 10000})
       }
       if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Burst{i, 3, 100000})
+        engine.ApplyEvent(Burst{i, 2, 3, 100000})
       }
     }
 

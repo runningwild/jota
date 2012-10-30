@@ -6,7 +6,6 @@ import (
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gui"
-  "github.com/runningwild/glop/util/algorithm"
   "math"
   "path/filepath"
   "runningwild/pnf"
@@ -83,7 +82,7 @@ type Player struct {
 
   // Processes contains all of the processes that this player is casting
   // right now.
-  Processes []Process
+  Processes map[int]Process
 }
 
 func (p *Player) Rate(distance float64) float64 {
@@ -125,10 +124,16 @@ func (p *Player) Think(g *Game) {
   p.Vy += p.Delta.Speed * math.Sin(p.Angle)
   p.X += p.Vx
   p.Y += p.Vy
-  for _, process := range p.Processes {
+  var dead []int
+  for i, process := range p.Processes {
     process.Think(p, g)
+    if process.Complete() {
+      dead = append(dead, i)
+    }
   }
-  algorithm.Choose(&p.Processes, func(p Process) bool { return !p.Complete() })
+  for _, i := range dead {
+    delete(p.Processes, i)
+  }
 }
 
 func (p *Player) Request() Mana {
@@ -404,6 +409,7 @@ func (a Accelerate) Apply(_g interface{}) {
 
 type Blink struct {
   Player int
+  Id     int
   Frames int
 }
 
@@ -415,13 +421,18 @@ func (b Blink) Apply(_g interface{}) {
   if !player.Alive || player.Exiled() {
     return
   }
+  if _, ok := player.Processes[b.Id]; ok {
+    // Already running this process
+    return
+  }
   params := map[string]int{"frames": b.Frames}
   process := (&blinkAbility{}).Activate(player, params)
-  player.Processes = append(player.Processes, process)
+  player.Processes[b.Id] = process
 }
 
 type Burst struct {
   Player int
+  Id     int
   Frames int
   Force  int
 }
@@ -434,9 +445,13 @@ func (b Burst) Apply(_g interface{}) {
   if !player.Alive || player.Exiled() {
     return
   }
+  if _, ok := player.Processes[b.Id]; ok {
+    // Already running this process
+    return
+  }
   params := map[string]int{"frames": b.Frames, "force": b.Force}
   process := (&burstAbility{}).Activate(player, params)
-  player.Processes = append(player.Processes, process)
+  player.Processes[b.Id] = process
 }
 
 type GameWindow struct {
