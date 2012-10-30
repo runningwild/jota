@@ -487,6 +487,8 @@ func (gw *GameWindow) Draw(region gui.Region) {
     var t *texture.Data
     if i == 0 {
       t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+    } else if i == 1 {
+      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
     } else {
       t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
     }
