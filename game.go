@@ -175,9 +175,9 @@ func (g *Game) GenerateNodes() {
         X:        float64(x * node_spacing),
         Y:        float64(y * node_spacing),
         Color:    Color(c.Int63() % 3),
-        Capacity: 250,
-        Amt:      250,
-        Regen:    0.3,
+        Capacity: 100,
+        Amt:      100,
+        Regen:    0.2,
       }
     }
   }
@@ -234,6 +234,29 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   g.Game_thinks = g2.Game_thinks
 }
 
+// Returns a mapping from player index to the list of *Nodes that that player
+// has priority on.
+func (g *Game) getPriorities() [][]*Node {
+  r := make([][]*Node, len(g.Players))
+  for x := range g.Nodes {
+    for y := range g.Nodes[x] {
+      var best int
+      var best_dist_sq float64 = 1e9
+      for j := range g.Players {
+        dx := (g.Players[j].X - g.Nodes[x][y].X)
+        dy := (g.Players[j].Y - g.Nodes[x][y].Y)
+        dist_sq := dx*dx + dy*dy
+        if dist_sq < best_dist_sq {
+          best_dist_sq = dist_sq
+          best = j
+        }
+      }
+      r[best] = append(r[best], &g.Nodes[x][y])
+    }
+  }
+  return r
+}
+
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
@@ -248,6 +271,7 @@ func (g *Game) Think() {
     g.Players[i].X = clamp(g.Players[i].X, 0, float64(g.Dx))
     g.Players[i].Y = clamp(g.Players[i].Y, 0, float64(g.Dy))
   }
+  moved := make(map[int]bool)
   for i := range g.Players {
     for j := range g.Players {
       if i == j {
@@ -262,64 +286,59 @@ func (g *Game) Think() {
       if dist <= 0.5 {
         dist = 0.5
       }
-      force := 2500.0 / dist
+      force := 20.0 * (25 - dist)
       force /= g.Players[i].Mass
       angle := math.Atan2(dy, dx)
       g.Players[i].Vx += force * math.Cos(angle)
       g.Players[i].Vy += force * math.Sin(angle)
+      moved[i] = true
     }
   }
 
-  var indexes []nodeIndex
-  for x := range g.Nodes {
-    for y := range g.Nodes[x] {
-      indexes = append(indexes, nodeIndex{x, y})
-    }
-  }
-  // g.allNodesInSquare(
-  //   g.Players[0].X,
-  //   g.Players[0].Y,
-  //   float64(g.Players[0].MaxDist()),
-  //   &indexes)
-  // Shuffle the nodes
-  for i := range indexes {
-    swap := int(g.Rng.Int63()%int64(len(indexes)-i)) + i
-    indexes[i], indexes[swap] = indexes[swap], indexes[i]
-  }
+  priorities := g.getPriorities()
+  for p := range g.Players {
+    player := &g.Players[p]
+    nodes := priorities[p]
 
-  var supply Mana
-  for _, index := range indexes {
-    node := &g.Nodes[index.x][index.y]
-    dx := (g.Players[0].X - node.X)
-    dy := (g.Players[0].Y - node.Y)
-    drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
-    if drain > node.Amt {
-      drain = node.Amt
+    for i := range nodes {
+      swap := int(g.Rng.Uint32()%uint32(len(nodes)-i)) + i
+      nodes[i], nodes[swap] = nodes[swap], nodes[i]
     }
-    supply[node.Color] += drain
-  }
-  var used Mana
-  for color, amt := range supply {
-    used[color] = amt
-  }
-  supply = g.Players[0].Supply(supply)
-  for color, amt := range supply {
-    used[color] -= amt
-  }
-  for _, index := range indexes {
-    node := &g.Nodes[index.x][index.y]
-    dx := (g.Players[0].X - node.X)
-    dy := (g.Players[0].Y - node.Y)
-    drain := g.Players[0].Rate(math.Sqrt(dx*dx + dy*dy))
-    if drain > used[node.Color] {
-      drain = used[node.Color]
+
+    var supply Mana
+    for _, node := range nodes {
+      dx := (player.X - node.X)
+      dy := (player.Y - node.Y)
+      drain := player.Rate(math.Sqrt(dx*dx + dy*dy))
+      if drain > node.Amt {
+        drain = node.Amt
+      }
+
+      supply[node.Color] += drain
     }
-    if drain > node.Amt {
-      drain = node.Amt
+
+    var used Mana
+    for color, amt := range supply {
+      used[color] = amt
     }
-    node.Amt -= drain
-    used[node.Color] -= drain
-    supply[node.Color] += drain
+    supply = player.Supply(supply)
+    for color, amt := range supply {
+      used[color] -= amt
+    }
+    for _, node := range nodes {
+      dx := (player.X - node.X)
+      dy := (player.Y - node.Y)
+      drain := player.Rate(math.Sqrt(dx*dx + dy*dy))
+      if drain > used[node.Color] {
+        drain = used[node.Color]
+      }
+      if drain > node.Amt {
+        drain = node.Amt
+      }
+      node.Amt -= drain
+      used[node.Color] -= drain
+      supply[node.Color] += drain
+    }
   }
 
   for x := range g.Nodes {

@@ -2,8 +2,22 @@
   "cpu profile"  : "alt+p",
   "mem profile"  : "alt+m",
   "console"      : "os+c",
-  "blink5"       : "1",
-  "blink25"      : "2",
-  "burst"        : "3",
+
+  "0up"    : "up",
+  "0down"  : "down",
+  "0left"  : "left",
+  "0right" : "right",
+  "0-1" : "k",
+  "0-2" : "l",
+  "0-3" : ";",
+
+  "1up"    : "w",
+  "1down"  : "s",
+  "1left"  : "a",
+  "1right" : "d",
+  "1-1" : "1",
+  "1-2" : "2",
+  "1-3" : "3",
+
   "quit"         : "os+q"
 }

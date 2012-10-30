@@ -4,7 +4,7 @@ import (
   "encoding/gob"
   "fmt"
   "math"
-  // "runningwild/tron/base"
+  "runningwild/tron/base"
 )
 
 type Ability interface {
@@ -127,7 +127,7 @@ func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
   return &burstProcess{
     Frames:            int32(frames),
     Force:             float64(force),
-    Remaining_initial: Mana{float64(force) * float64(force) * float64(frames) / 500000, 0, 0},
+    Remaining_initial: Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
     Continual:         Mana{float64(force) / 50, 0, 0},
   }
 }
@@ -137,6 +137,9 @@ type burstProcess struct {
   Force             float64
   Remaining_initial Mana
   Continual         Mana
+
+  // Counting how long to cast
+  count int
 }
 
 func (p *burstProcess) Request() Mana {
@@ -149,6 +152,7 @@ func (p *burstProcess) Request() Mana {
 // Supplies mana to the process.  Any mana that is unused is returned.
 func (p *burstProcess) Supply(supply Mana) Mana {
   if p.Remaining_initial.Magnitude() > 0 {
+    p.count++
     for color := range supply {
       if p.Remaining_initial[color] == 0 {
         continue
@@ -180,6 +184,10 @@ func (p *burstProcess) Supply(supply Mana) Mana {
 
 func (p *burstProcess) Think(player *Player, game *Game) {
   if p.Remaining_initial.Magnitude() == 0 {
+    if p.count > 0 {
+      base.Log().Printf("Frames: %d", p.count)
+      p.count = -1
+    }
     p.Frames--
     for i := range game.Players {
       other := &game.Players[i]

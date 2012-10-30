@@ -77,25 +77,26 @@ func main() {
   g.Friction = 0.95
   var p Player
   p.Alive = true
-  p.Mass = 150 // who knows
-  p.X = float64(g.Dx) / 2
-  p.Y = float64(g.Dy) / 2
+  p.Mass = 750 // who knows
   p.Color.R = 255
   p.Max_rate = 10
   p.Influence = 75
   p.Dominance = 10
-  for x := 0; x < 5; x++ {
-    for y := 0; y < 5; y++ {
-      p.X += float64(x) * 25
-      p.Y += float64(y) * 25
-      p.Mass += float64(x+y) * 150
+  N := 5
+  p.X = float64(g.Dx-N) / 2
+  p.Y = float64(g.Dy-N) / 2
+  for x := 0; x < N; x++ {
+    for y := 0; y < N; y++ {
+      p.X += float64(x * 25)
+      p.Y += float64(y * 25)
+      // p.Mass += float64(x+y) * 150
       g.Players = append(g.Players, p)
-      p.Mass -= float64(x+y) * 150
-      p.X -= float64(x) * 25
-      p.Y -= float64(y) * 25
+      // p.Mass -= float64(x+y) * 150
+      p.X -= float64(x * 25)
+      p.Y -= float64(y * 25)
     }
   }
-  g.Players[0], g.Players[12] = g.Players[12], g.Players[0]
+  g.Players[0], g.Players[(N*N)/2+(1-N%2)*N/2] = g.Players[(N*N)/2+(1-N%2)*N/2], g.Players[0]
   // g.Players[1].Mass = math.Inf(1)
   g.GenerateNodes()
   var engine *pnf.Engine
@@ -114,29 +115,26 @@ func main() {
       sys.SwapBuffers()
     })
     render.Purge()
-    up := gin.In().GetKey(gin.Up).FramePressAvg()
-    down := gin.In().GetKey(gin.Down).FramePressAvg()
-    left := gin.In().GetKey(gin.Left).FramePressAvg()
-    right := gin.In().GetKey(gin.Right).FramePressAvg()
-    engine.ApplyEvent(Accelerate{0, 2 * (up - down)})
-    engine.ApplyEvent(Turn{0, (left - right) / 10})
 
-    up = gin.In().GetKey('w').FramePressAvg()
-    down = gin.In().GetKey('s').FramePressAvg()
-    left = gin.In().GetKey('a').FramePressAvg()
-    right = gin.In().GetKey('d').FramePressAvg()
-    engine.ApplyEvent(Accelerate{1, 2 * (up - down)})
-    engine.ApplyEvent(Turn{1, (left - right) / 10})
+    for i := 0; i <= 1; i++ {
+      up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
+      down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
+      left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
+      right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
+      engine.ApplyEvent(Accelerate{i, 2 * (up - down)})
+      engine.ApplyEvent(Turn{i, (left - right) / 10})
 
-    if key_map["blink5"].FramePressCount() > 0 {
-      engine.ApplyEvent(Blink{0, 50})
+      if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
+        engine.ApplyEvent(Blink{i, 50})
+      }
+      if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
+        engine.ApplyEvent(Burst{i, 100, 10000})
+      }
+      if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
+        engine.ApplyEvent(Burst{i, 3, 100000})
+      }
     }
-    if key_map["blink25"].FramePressCount() > 0 {
-      engine.ApplyEvent(Blink{0, 250})
-    }
-    if key_map["burst"].FramePressCount() > 0 {
-      engine.ApplyEvent(Burst{0, 200, 15000})
-    }
+
     if key_map["cpu profile"].FramePressCount() > 0 {
       if profile_output == nil {
         profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))

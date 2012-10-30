@@ -2,8 +2,8 @@ package base
 
 import (
   "fmt"
-  "strings"
   "github.com/runningwild/glop/gin"
+  "strings"
 )
 
 type KeyBinds map[string]string
@@ -56,6 +56,12 @@ func getKeysFromString(str string) []gin.KeyId {
 
     case part == "down":
       kid = gin.Down
+
+    case part == "left":
+      kid = gin.Left
+
+    case part == "right":
+      kid = gin.Right
 
     default:
       key := gin.In().GetKeyByName(part)
