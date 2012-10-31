@@ -121,13 +121,17 @@ func (p *Player) Think(g *Game) {
   if p.Delta.Angle > p.Max_turn {
     p.Delta.Angle = p.Max_turn
   }
-  p.Vx *= g.Friction
-  p.Vy *= g.Friction
-  p.Angle += p.Delta.Angle
+
   p.Vx += p.Delta.Speed * math.Cos(p.Angle)
   p.Vy += p.Delta.Speed * math.Sin(p.Angle)
+  mangle := math.Atan2(p.Vy, p.Vx)
+  p.Vx *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
+  p.Vy *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
   p.X += p.Vx
   p.Y += p.Vy
+
+  p.Angle += p.Delta.Angle
+
   var dead []int
   for i, process := range p.Processes {
     process.Think(p, g)

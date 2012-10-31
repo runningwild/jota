@@ -72,7 +72,7 @@ func main() {
   g.Rng.SeedWithDevRand()
   g.Dx = 900
   g.Dy = 600
-  g.Friction = 0.95
+  g.Friction = 0.97
   var p Player
   p.Alive = true
   p.Max_turn = 0.07
