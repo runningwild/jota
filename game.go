@@ -139,8 +139,6 @@ func (p *Player) Think(g *Game) {
     // First check against the leading vertex
     {
       var v linear.Vec2 = w.P
-      cross := move.Ray().Cross()
-      perp := linear.Seg2{v, cross.Sub(v)}
       dist := v.DistToLine(move)
       if v.Sub(move.Q).Mag() < size {
         dist = v.Sub(move.Q).Mag()
@@ -151,11 +149,14 @@ func (p *Player) Think(g *Game) {
         move.Q.X = final.X
         move.Q.Y = final.Y
       } else if dist < size {
-        if perp.Left(move.P) != perp.Left(move.Q) {
-          shift := perp.Ray().Norm().Scale(size - dist)
-          move.Q.X += shift.X
-          move.Q.Y += shift.Y
-        }
+        // TODO: This tries to prevent passthrough but has other problems
+        // cross := move.Ray().Cross()
+        // perp := linear.Seg2{v, cross.Sub(v)}
+        // if perp.Left(move.P) != perp.Left(move.Q) {
+        //   shift := perp.Ray().Norm().Scale(size - dist)
+        //   move.Q.X += shift.X
+        //   move.Q.Y += shift.Y
+        // }
       }
     }
 
