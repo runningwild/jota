@@ -130,46 +130,49 @@ func (p *Player) Think(g *Game) {
   p.Vy *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
 
   move := linear.MakeSeg2(p.X, p.Y, p.X+p.Vx, p.Y+p.Vy)
-  size := 15.0
+  size := 12.0
   px := p.X
   py := p.Y
   p.X += p.Vx
   p.Y += p.Vy
-  for _, w := range g.Walls {
-    // First check against the leading vertex
-    {
-      var v linear.Vec2 = w.P
-      dist := v.DistToLine(move)
-      if v.Sub(move.Q).Mag() < size {
-        dist = v.Sub(move.Q).Mag()
-        // Add a little extra here otherwise a player can sneak into geometry
-        // through the corners
-        ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
-        final := v.Add(ray)
-        move.Q.X = final.X
-        move.Q.Y = final.Y
-      } else if dist < size {
-        // TODO: This tries to prevent passthrough but has other problems
-        // cross := move.Ray().Cross()
-        // perp := linear.Seg2{v, cross.Sub(v)}
-        // if perp.Left(move.P) != perp.Left(move.Q) {
-        //   shift := perp.Ray().Norm().Scale(size - dist)
-        //   move.Q.X += shift.X
-        //   move.Q.Y += shift.Y
-        // }
+  for _, poly := range g.Polys {
+    for i := range poly {
+      // First check against the leading vertex
+      {
+        v := poly[i]
+        dist := v.DistToLine(move)
+        if v.Sub(move.Q).Mag() < size {
+          dist = v.Sub(move.Q).Mag()
+          // Add a little extra here otherwise a player can sneak into geometry
+          // through the corners
+          ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
+          final := v.Add(ray)
+          move.Q.X = final.X
+          move.Q.Y = final.Y
+        } else if dist < size {
+          // TODO: This tries to prevent passthrough but has other problems
+          // cross := move.Ray().Cross()
+          // perp := linear.Seg2{v, cross.Sub(v)}
+          // if perp.Left(move.P) != perp.Left(move.Q) {
+          //   shift := perp.Ray().Norm().Scale(size - dist)
+          //   move.Q.X += shift.X
+          //   move.Q.Y += shift.Y
+          // }
+        }
       }
-    }
 
-    // Now check against the segment itself
-    if w.Ray().Cross().Dot(move.Ray()) <= 0 {
-      shift := w.Ray().Cross().Norm().Scale(size)
-      col := linear.Seg2{shift.Add(w.P), shift.Add(w.Q)}
-      if move.DoesIsect(col) {
-        cross := col.Ray().Cross()
-        fix := linear.Seg2{move.Q, cross.Add(move.Q)}
-        isect := fix.Isect(col)
-        move.Q.X = isect.X
-        move.Q.Y = isect.Y
+      // Now check against the segment itself
+      w := poly.Seg(i)
+      if w.Ray().Cross().Dot(move.Ray()) <= 0 {
+        shift := w.Ray().Cross().Norm().Scale(size)
+        col := linear.Seg2{shift.Add(w.P), shift.Add(w.Q)}
+        if move.DoesIsect(col) {
+          cross := col.Ray().Cross()
+          fix := linear.Seg2{move.Q, cross.Add(move.Q)}
+          isect := fix.Isect(col)
+          move.Q.X = isect.X
+          move.Q.Y = isect.Y
+        }
       }
     }
   }
@@ -212,7 +215,7 @@ type Game struct {
   // All of the nodes on the map
   Nodes [][]Node
 
-  Walls []linear.Seg2
+  Polys []linear.Poly
 
   Rng *cmwc.Cmwc
 
@@ -601,9 +604,12 @@ func (gw *GameWindow) Draw(region gui.Region) {
 
   gl.Begin(gl.LINES)
   gl.Color4d(1, 1, 1, 1)
-  for _, wall := range gw.game.Walls {
-    gl.Vertex2d(gl.Double(wall.P.X), gl.Double(wall.P.Y))
-    gl.Vertex2d(gl.Double(wall.Q.X), gl.Double(wall.Q.Y))
+  for _, poly := range gw.game.Polys {
+    for i := range poly {
+      seg := poly.Seg(i)
+      gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
+      gl.Vertex2d(gl.Double(seg.Q.X), gl.Double(seg.Q.Y))
+    }
   }
   gl.End()
 

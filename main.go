@@ -74,11 +74,18 @@ func main() {
   g.Dx = 900
   g.Dy = 600
   g.Friction = 0.97
-  g.Walls = []linear.Seg2{
-    linear.MakeSeg2(600, 300, 600, 400),
-    linear.MakeSeg2(700, 300, 600, 300),
-    linear.MakeSeg2(700, 400, 700, 300),
-    linear.MakeSeg2(600, 400, 700, 400),
+  g.Polys = []linear.Poly{
+    linear.Poly{
+      linear.Vec2{600, 300},
+      linear.Vec2{600, 400},
+      linear.Vec2{700, 400},
+      linear.Vec2{700, 300},
+    },
+    linear.Poly{
+      linear.Vec2{200, 300},
+      linear.Vec2{100, 400},
+      linear.Vec2{500, 350},
+    },
   }
   var p Player
   p.Alive = true
