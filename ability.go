@@ -286,7 +286,8 @@ func (p *nitroProcess) Supply(supply Mana) Mana {
 func (p *nitroProcess) Think(player *Player, game *Game) {
   player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
-  base.Log().Printf("Delta: %.3f", delta)
+  delta = 0.3
+  // base.Log().Printf("Delta: %.3f", delta)
   p.Supplied = Mana{}
   player.Max_acc += delta
   p.Prev_delta = delta

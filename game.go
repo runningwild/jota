@@ -8,6 +8,7 @@ import (
   "github.com/runningwild/glop/gui"
   "math"
   "path/filepath"
+  "runningwild/linear"
   "runningwild/pnf"
   "runningwild/tron/base"
   "runningwild/tron/texture"
@@ -127,8 +128,54 @@ func (p *Player) Think(g *Game) {
   mangle := math.Atan2(p.Vy, p.Vx)
   p.Vx *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
   p.Vy *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
+
+  move := linear.MakeSeg2(p.X, p.Y, p.X+p.Vx, p.Y+p.Vy)
+  size := 15.0
+  px := p.X
+  py := p.Y
   p.X += p.Vx
   p.Y += p.Vy
+  for _, w := range g.Walls {
+    // First check against the leading vertex
+    {
+      var v linear.Vec2 = w.P
+      cross := move.Ray().Cross()
+      perp := linear.Seg2{v, cross.Sub(v)}
+      dist := v.DistToLine(move)
+      if v.Sub(move.Q).Mag() < size {
+        dist = v.Sub(move.Q).Mag()
+        // Add a little extra here otherwise a player can sneak into geometry
+        // through the corners
+        ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
+        final := v.Add(ray)
+        move.Q.X = final.X
+        move.Q.Y = final.Y
+      } else if dist < size {
+        if perp.Left(move.P) != perp.Left(move.Q) {
+          shift := perp.Ray().Norm().Scale(size - dist)
+          move.Q.X += shift.X
+          move.Q.Y += shift.Y
+        }
+      }
+    }
+
+    // Now check against the segment itself
+    if w.Ray().Cross().Dot(move.Ray()) <= 0 {
+      shift := w.Ray().Cross().Norm().Scale(size)
+      col := linear.Seg2{shift.Add(w.P), shift.Add(w.Q)}
+      if move.DoesIsect(col) {
+        cross := col.Ray().Cross()
+        fix := linear.Seg2{move.Q, cross.Add(move.Q)}
+        isect := fix.Isect(col)
+        move.Q.X = isect.X
+        move.Q.Y = isect.Y
+      }
+    }
+  }
+  p.X = move.Q.X
+  p.Y = move.Q.Y
+  p.Vx = p.X - px
+  p.Vy = p.Y - py
 
   p.Angle += p.Delta.Angle
 
@@ -163,6 +210,8 @@ func (p *Player) Supply(supply Mana) Mana {
 type Game struct {
   // All of the nodes on the map
   Nodes [][]Node
+
+  Walls []linear.Seg2
 
   Rng *cmwc.Cmwc
 
@@ -305,7 +354,15 @@ func (g *Game) Think() {
   }
 
   priorities := g.getPriorities()
-  for p := range g.Players {
+  indexes := make([]int, len(g.Players))
+  for i := range indexes {
+    indexes[i] = i
+  }
+  for i := range indexes {
+    swap := int(g.Rng.Uint32()%uint32(len(g.Players)-i)) + i
+    indexes[i], indexes[swap] = indexes[swap], indexes[i]
+  }
+  for _, p := range indexes {
     player := &g.Players[p]
     nodes := priorities[p]
 
@@ -540,6 +597,15 @@ func (gw *GameWindow) Draw(region gui.Region) {
     t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
   }
   gl.Disable(gl.TEXTURE_2D)
+
+  gl.Begin(gl.LINES)
+  gl.Color4d(1, 1, 1, 1)
+  for _, wall := range gw.game.Walls {
+    gl.Vertex2d(gl.Double(wall.P.X), gl.Double(wall.P.Y))
+    gl.Vertex2d(gl.Double(wall.Q.X), gl.Double(wall.Q.Y))
+  }
+  gl.End()
+
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.Begin(gl.POINTS)

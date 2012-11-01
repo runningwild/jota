@@ -12,6 +12,7 @@ import (
   // "math"
   "os"
   "path/filepath"
+  "runningwild/linear"
   "runningwild/pnf"
   "runningwild/tron/base"
   "runtime"
@@ -73,6 +74,12 @@ func main() {
   g.Dx = 900
   g.Dy = 600
   g.Friction = 0.97
+  g.Walls = []linear.Seg2{
+    linear.MakeSeg2(600, 300, 600, 400),
+    linear.MakeSeg2(700, 300, 600, 300),
+    linear.MakeSeg2(700, 400, 700, 300),
+    linear.MakeSeg2(600, 400, 700, 400),
+  }
   var p Player
   p.Alive = true
   p.Max_turn = 0.07
@@ -82,7 +89,7 @@ func main() {
   p.Max_rate = 10
   p.Influence = 75
   p.Dominance = 10
-  N := 5
+  N := 2
   p.X = float64(g.Dx-N) / 2
   p.Y = float64(g.Dy-N) / 2
   for x := 0; x < N; x++ {
@@ -126,7 +133,7 @@ func main() {
       engine.ApplyEvent(Turn{i, (left - right) / 10})
 
       if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Nitro{i, 0, 500})
+        engine.ApplyEvent(Nitro{i, 0, 100000})
       }
       // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
       //   engine.ApplyEvent(Blink{i, 0, 50})
