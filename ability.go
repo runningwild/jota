@@ -11,7 +11,7 @@ type Ability interface {
   Activate(player *Player, params map[string]int) Process
 }
 
-type Process interface {
+type Drain interface {
   // Request returns the most mana that this Process could use right now.
   // Some Processes can operate at any amount of mana, and some will need to
   // get all of their requested mana before they are able to do anything.
@@ -19,14 +19,21 @@ type Process interface {
 
   // Supplies mana to the Process and returns the unused portion.
   Supply(Mana) Mana
+}
 
+type Thinker interface {
   Think(*Game)
 
   // Kills a process.  Any Killed process will return true on any future
   // calls to Complete().
-  Kill(game *Game)
+  Kill(*Game)
 
   Complete() bool
+}
+
+type Process interface {
+  Drain
+  Thinker
 }
 
 // BLINK
@@ -307,4 +314,142 @@ func (p *nitroProcess) Kill(game *Game) {
 }
 func (p *nitroProcess) Complete() bool {
   return p.Killed
+}
+
+// SHOCK
+// Fires a projectile at velocity [vel] that shocks any player that comes
+// within [range] of it for [power] damage, and drains that much mana from
+// nearby nodes.
+// Initial cost: [vel]*[range]*[range]*[power] green mana.
+const shock_mana_factor = 1000
+const shock_acc_factor = 2500
+
+func init() {
+  gob.Register(shockAbility{})
+  gob.Register(&shockProcess{})
+}
+
+type shockAbility struct {
+}
+
+func (a *shockAbility) Activate(player *Player, params map[string]int) Process {
+  if len(params) != 3 {
+    panic(fmt.Sprintf("Shock requires exactly three parameters, not %v", params))
+  }
+  for _, req := range []string{"vel", "range", "power"} {
+    if _, ok := params[req]; !ok {
+      panic(fmt.Sprintf("Shock requires [%s] to be specified, not %v", req, params))
+    }
+  }
+  vel := params["vel"]
+  rng := params["range"]
+  power := params["power"]
+  if vel <= 0 {
+    panic(fmt.Sprintf("Shock requires [vel] > 0, not %d", vel))
+  }
+  if rng <= 0 {
+    panic(fmt.Sprintf("Shock requires [rng] > 0, not %d", rng))
+  }
+  if power <= 0 {
+    panic(fmt.Sprintf("Shock requires [power] > 0, not %d", power))
+  }
+  return &shockProcess{
+    Player_id: player.Id,
+    Remaining: Mana{float64(vel) * float64(rng) * float64(rng) * float64(power), 0, 0},
+    Power:     float64(power),
+    Range:     float64(rng),
+    Velocity:  float64(vel),
+  }
+}
+
+type shockState int
+
+const (
+  shockStateGather shockState = iota
+  shockStateLaunched
+  shockStateKilled
+)
+
+type shockProcess struct {
+  Remaining    Mana
+  State        shockState
+  Player_id    int
+  Proj_id      int
+  Power        float64
+  Velocity     float64
+  Range        float64
+  X, Y, Dx, Dy float64
+}
+
+func (p *shockProcess) Request() Mana {
+  return p.Remaining
+}
+
+// Supplies mana to the process.  Any mana that is unused is returned.
+func (p *shockProcess) Supply(supply Mana) Mana {
+  for color := range supply {
+    if p.Remaining[color] == 0 {
+      continue
+    }
+    if supply[color] == 0 {
+      continue
+    }
+    if supply[color] > p.Remaining[color] {
+      supply[color] -= p.Remaining[color]
+      p.Remaining[color] = 0
+    } else {
+      p.Remaining[color] -= supply[color]
+      supply[color] = 0
+    }
+  }
+  return supply
+}
+
+func (p *shockProcess) Think(game *Game) {
+  if p.Remaining.Magnitude() > 0 {
+    return
+  }
+  player := game.GetPlayer(p.Player_id)
+  if p.State == shockStateGather {
+    p.State = shockStateLaunched
+    proj := *player
+    proj.Vx += math.Cos(proj.Angle) * p.Velocity
+    proj.Vy += math.Sin(proj.Angle) * p.Velocity
+    proj.X += proj.Vx
+    proj.Y += proj.Vy
+    p.Proj_id = game.AddPlayer(proj)
+  }
+  proj := game.GetPlayer(p.Proj_id)
+  var hits []*Player
+  activate := false
+  for i := range game.Players {
+    if game.Players[i].Id == p.Player_id {
+      continue
+    }
+    if game.Players[i].Id == p.Proj_id {
+      continue
+    }
+    dx := proj.X - game.Players[i].X
+    dy := proj.Y - game.Players[i].Y
+    dist := math.Sqrt(dx*dx + dy*dy)
+    if dist < p.Range {
+      hits = append(hits, &game.Players[i])
+      if dist < p.Range/2 {
+        activate = true
+      }
+    }
+  }
+  if activate {
+    proj.Alive = false
+    for _, hit := range hits {
+      hit.Alive = false
+    }
+    p.State = shockStateKilled
+  }
+}
+func (p *shockProcess) Kill(game *Game) {
+  p.State = shockStateKilled
+}
+func (p *shockProcess) Complete() bool {
+  return p.State == shockStateKilled
 }

@@ -257,9 +257,14 @@ func (g *Game) GenerateNodes() {
 func (g *Game) Merge(g2 *Game) {
   frac := 0.5
   for i := range g.Players {
-    g.Players[i].X = frac*g2.Players[i].X + (1-frac)*g.Players[i].X
-    g.Players[i].Y = frac*g2.Players[i].Y + (1-frac)*g.Players[i].Y
-    g.Players[i].Angle = frac*g2.Players[i].Angle + (1-frac)*g.Players[i].Angle
+    p1 := &g.Players[i]
+    p2 := g2.GetPlayer(p1.Id)
+    if p2 == nil {
+      continue
+    }
+    p1.X = frac*p2.X + (1-frac)*p1.X
+    p1.Y = frac*p2.Y + (1-frac)*p1.Y
+    p1.Angle = frac*p2.Angle + (1-frac)*p1.Angle
   }
 }
 
@@ -312,10 +317,11 @@ func (g *Game) GetPlayer(id int) *Player {
   return nil
 }
 
-func (g *Game) AddPlayer(player Player) {
+func (g *Game) AddPlayer(player Player) int {
   g.Next_id++
   player.Id = g.Next_id
   g.Players = append(g.Players, player)
+  return g.Players[len(g.Players)-1].Id
 }
 
 // Returns a mapping from player index to the list of *Nodes that that player
@@ -495,16 +501,16 @@ func (a Accelerate) Apply(_g interface{}) {
 }
 
 type Blink struct {
-  Player int
-  Id     int
-  Frames int
+  Player_id int
+  Id        int
+  Frames    int
 }
 
 func (b Blink) ApplyFirst(g interface{}) {}
 func (b Blink) ApplyFinal(g interface{}) {}
 func (b Blink) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := &g.Players[b.Player]
+  player := g.GetPlayer(b.Player_id)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -518,17 +524,18 @@ func (b Blink) Apply(_g interface{}) {
 }
 
 type Burst struct {
-  Player int
-  Id     int
-  Frames int
-  Force  int
+  Player_id int
+  Id        int
+  Frames    int
+  Force     int
 }
 
 func (b Burst) ApplyFirst(g interface{}) {}
 func (b Burst) ApplyFinal(g interface{}) {}
 func (b Burst) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := &g.Players[b.Player]
+  player := g.GetPlayer(b.Player_id)
+  base.Log().Printf("APPLY: %v\n", player)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -542,16 +549,16 @@ func (b Burst) Apply(_g interface{}) {
 }
 
 type Nitro struct {
-  Player int
-  Id     int
-  Inc    int
+  Player_id int
+  Id        int
+  Inc       int
 }
 
 func (n Nitro) ApplyFirst(g interface{}) {}
 func (n Nitro) ApplyFinal(g interface{}) {}
 func (n Nitro) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := &g.Players[n.Player]
+  player := g.GetPlayer(n.Player_id)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -565,6 +572,30 @@ func (n Nitro) Apply(_g interface{}) {
   params := map[string]int{"inc": n.Inc}
   process := (&nitroAbility{}).Activate(player, params)
   player.Processes[n.Id] = process
+}
+
+type Shock struct {
+  Player_id int
+  Id        int
+  Vel       int
+  Range     int
+  Power     int
+}
+
+func (s Shock) ApplyFirst(g interface{}) {}
+func (s Shock) ApplyFinal(g interface{}) {}
+func (s Shock) Apply(_g interface{}) {
+  g := _g.(*Game)
+  player := g.GetPlayer(s.Player_id)
+  if !player.Alive || player.Exiled() {
+    return
+  }
+  if _, ok := player.Processes[s.Id]; ok {
+    return
+  }
+  params := map[string]int{"vel": s.Vel, "power": s.Power, "range": s.Range}
+  process := (&shockAbility{}).Activate(player, params)
+  player.Processes[s.Id] = process
 }
 
 type GameWindow struct {

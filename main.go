@@ -105,13 +105,15 @@ func main() {
   N := 2
   p.X = float64(g.Dx-N) / 2
   p.Y = float64(g.Dy-N) / 2
+  var ids []int
   for x := 0; x < N; x++ {
     for y := 0; y < N; y++ {
       p.X += float64(x * 25)
       p.Y += float64(y * 25)
       // p.Mass += float64(x+y) * 150
       p.Processes = make(map[int]Process)
-      g.AddPlayer(p)
+      ids = append(ids, g.AddPlayer(p))
+
       // p.Mass -= float64(x+y) * 150
       p.X -= float64(x * 25)
       p.Y -= float64(y * 25)
@@ -142,20 +144,23 @@ func main() {
       down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
       left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
       right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
-      engine.ApplyEvent(Accelerate{i, 2 * (up - down)})
-      engine.ApplyEvent(Turn{i, (left - right) / 10})
+      engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
+      engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
 
       if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Nitro{i, 0, 100000})
+        engine.ApplyEvent(Nitro{ids[i], 0, 100000})
       }
       // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-      //   engine.ApplyEvent(Blink{i, 0, 50})
+      //   engine.ApplyEvent(Blink{ids[i], 0, 50})
       // }
       if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Burst{i, 1, 100, 10000})
+        engine.ApplyEvent(Shock{ids[i], 1, 1, 200, 10})
       }
+      // if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
+      //   engine.ApplyEvent(Burst{ids[i], 1, 100, 10000})
+      // }
       if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Burst{i, 2, 3, 100000})
+        engine.ApplyEvent(Burst{ids[i], 2, 3, 100000})
       }
     }
 
