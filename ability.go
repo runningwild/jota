@@ -4,7 +4,10 @@ import (
   "encoding/gob"
   "fmt"
   "math"
+  "path/filepath"
+  "runningwild/linear"
   "runningwild/tron/base"
+  "runningwild/tron/texture"
 )
 
 type Ability interface {
@@ -236,7 +239,7 @@ func (p *burstProcess) Complete() bool {
 // NITRO
 // Increases Max_acc by up to [inc]/nitro_acc_factor.
 // Continual cost: up to [inc]*[inc]/nitro_mana_factor red mana per frame.
-const nitro_mana_factor = 1000
+const nitro_mana_factor = 200
 const nitro_acc_factor = 2500
 
 func init() {
@@ -353,9 +356,10 @@ func (a *shockAbility) Activate(player *Player, params map[string]int) Process {
   if power <= 0 {
     panic(fmt.Sprintf("Shock requires [power] > 0, not %d", power))
   }
+  base.Log().Printf("Lauched shock from %d", player.Id())
   return &shockProcess{
     Player_id: player.Id(),
-    Remaining: Mana{float64(vel) * float64(rng) * float64(rng) * float64(power), 0, 0},
+    Remaining: Mana{float64(vel) * float64(rng) * float64(rng) * float64(power) / shock_mana_factor, 0, 0},
     Power:     float64(power),
     Range:     float64(rng),
     Velocity:  float64(vel),
@@ -413,28 +417,57 @@ func (p *shockProcess) Think(game *Game) {
   player := _player.(*Player)
   if p.State == shockStateGather {
     p.State = shockStateLaunched
-    proj := *player
-    proj.Vx += math.Cos(proj.Angle) * p.Velocity
-    proj.Vy += math.Sin(proj.Angle) * p.Velocity
-    proj.X += proj.Vx
-    proj.Y += proj.Vy
+    var proj Projectile
+    proj.My_pos.X = player.X
+    proj.My_pos.Y = player.Y
+    proj.My_vel.X = player.Vx
+    proj.My_vel.Y = player.Vy
+    proj.My_vel.X += math.Cos(player.Angle) * p.Velocity * 10
+    proj.My_vel.Y += math.Sin(player.Angle) * p.Velocity * 10
+    proj.Player_id = player.Id()
+    proj.Range = p.Range
+    proj.Think(game)
     p.Proj_id = game.AddEnt(&proj)
+    base.Log().Printf("LAUNCH %d", p.Proj_id)
   }
-  _proj := game.GetEnt(p.Player_id)
-  proj := _proj.(*Player)
+}
+func (p *shockProcess) Kill(game *Game) {
+  p.State = shockStateKilled
+}
+func (p *shockProcess) Complete() bool {
+  return p.State != shockStateGather
+}
+
+type Projectile struct {
+  My_id          int
+  My_pos, My_vel linear.Vec2
+  Dead           bool
+  Player_id      int
+  Range          float64
+}
+
+func (p *Projectile) Draw() {
+  t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/shock.png"))
+  t.RenderAdvanced(p.Pos().X-float64(t.Dx())/2, p.Pos().Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), math.Atan2(p.Vel().Y, p.Vel().X), false)
+}
+func (p *Projectile) Alive() bool {
+  return !p.Dead
+}
+func (p *Projectile) Exiled() bool {
+  return false
+}
+func (p *Projectile) Think(game *Game) {
+  p.My_pos = p.My_pos.Add(p.My_vel)
   var hits []*Player
   activate := false
   for i := range game.Ents {
-    if game.Ents[i].Id() == p.Player_id {
-      continue
-    }
-    if game.Ents[i].Id() == p.Proj_id {
-      continue
-    }
     if _, ok := game.Ents[i].(*Player); !ok {
       continue
     }
-    dist := proj.Pos().Sub(game.Ents[i].Pos()).Mag()
+    if game.Ents[i].Id() == p.Player_id {
+      continue
+    }
+    dist := p.Pos().Sub(game.Ents[i].Pos()).Mag()
     if dist < p.Range {
       hits = append(hits, game.Ents[i].(*Player))
       if dist < p.Range/2 {
@@ -443,16 +476,48 @@ func (p *shockProcess) Think(game *Game) {
     }
   }
   if activate {
-    proj.Alive = false
+    p.Dead = true
     for _, hit := range hits {
-      hit.Alive = false
+      hit.Dead = true
     }
-    p.State = shockStateKilled
+    for x := range game.Nodes {
+      for y := range game.Nodes[x] {
+        node := &game.Nodes[x][y]
+        dist := p.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag()
+        if dist < p.Range*2 {
+          if dist < p.Range {
+            node.Amt = 0
+          } else {
+            node.Amt *= (dist - p.Range) / p.Range
+          }
+        }
+      }
+    }
   }
 }
-func (p *shockProcess) Kill(game *Game) {
-  p.State = shockStateKilled
+func (p *Projectile) ApplyForce(force linear.Vec2) {
 }
-func (p *shockProcess) Complete() bool {
-  return p.State == shockStateKilled
+func (p *Projectile) Mass() float64 {
+  return 1
+}
+func (p *Projectile) Rate(dist float64) float64 {
+  return 0
+}
+func (p *Projectile) SetId(int) {
+}
+func (p *Projectile) Id() int {
+  return p.My_id
+}
+func (p *Projectile) Pos() linear.Vec2 {
+  return p.My_pos
+}
+func (p *Projectile) SetPos(pos linear.Vec2) {
+}
+func (p *Projectile) Vel() linear.Vec2 {
+  return p.My_vel
+}
+func (p *Projectile) SetVel(vel linear.Vec2) {
+}
+func (p *Projectile) Supply(mana Mana) Mana {
+  return mana
 }

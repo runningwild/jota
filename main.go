@@ -94,7 +94,6 @@ func main() {
     },
   }
   var p Player
-  p.Alive = true
   p.Max_turn = 0.07
   p.Max_acc = 0.1
   p.My_mass = 750 // who knows
@@ -148,7 +147,7 @@ func main() {
       engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
 
       if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Nitro{ids[i], 0, 100000})
+        engine.ApplyEvent(Nitro{ids[i], 0, 20000})
       }
       // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
       //   engine.ApplyEvent(Blink{ids[i], 0, 50})

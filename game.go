@@ -6,6 +6,7 @@ import (
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
   "github.com/runningwild/glop/gui"
+  "github.com/runningwild/glop/util/algorithm"
   "math"
   "path/filepath"
   "runningwild/linear"
@@ -51,7 +52,7 @@ func (n *Node) Think() {
 }
 
 type Player struct {
-  Alive   bool
+  Dead    bool
   My_mass float64
   X, Y    float64
   Vx, Vy  float64
@@ -97,8 +98,8 @@ func init() {
   gob.Register(&Player{})
 }
 
-func (p *Player) Dead() bool {
-  return !p.Alive
+func (p *Player) Alive() bool {
+  return !p.Dead
 }
 
 func (p *Player) Exiled() bool {
@@ -107,8 +108,8 @@ func (p *Player) Exiled() bool {
 
 func (p *Player) ApplyForce(f linear.Vec2) {
   dv := f.Scale(1 / p.Mass())
-  p.X += dv.X
-  p.Y += dv.Y
+  p.Vx += dv.X
+  p.Vy += dv.Y
 }
 
 func (p *Player) Mass() float64 {
@@ -150,6 +151,21 @@ func (p *Player) Rate(distance float64) float64 {
 
 func (p *Player) Priority(distance float64) float64 {
   return float64(p.Dominance) * p.Rate(distance)
+}
+
+func (p *Player) Draw() {
+  if p.Exiled() {
+    return
+  }
+  var t *texture.Data
+  if p.Id() == 1 {
+    t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+  } else if p.Id() == 2 {
+    t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
+  } else {
+    t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
+  }
+  t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
 }
 
 func (p *Player) Think(g *Game) {
@@ -259,7 +275,8 @@ func (p *Player) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-  Dead() bool
+  Draw()
+  Alive() bool
   Exiled() bool
   Think(game *Game)
   ApplyForce(force linear.Vec2)
@@ -413,11 +430,10 @@ func (g *Game) getPriorities() [][]*Node {
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
-  g.Nodes[0][0].Amt -= 1
   g.Game_thinks++
   // Advance players, check for collisions, add segments
   for i := range g.Ents {
-    if g.Ents[i].Dead() {
+    if !g.Ents[i].Alive() {
       continue
     }
     g.Ents[i].Think(g)
@@ -426,6 +442,7 @@ func (g *Game) Think() {
     pos.Y = clamp(pos.Y, 0, float64(g.Dy))
     g.Ents[i].SetPos(pos)
   }
+  algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
   moved := make(map[int]bool)
   for i := range g.Ents {
     for j := range g.Ents {
@@ -541,7 +558,11 @@ func (t Turn) ApplyFirst(g interface{}) {}
 func (t Turn) ApplyFinal(g interface{}) {}
 func (t Turn) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetEnt(t.Player_id).(*Player)
+  _player := g.GetEnt(t.Player_id)
+  if _player == nil {
+    return
+  }
+  player := _player.(*Player)
   player.Delta.Angle = t.Delta
 }
 
@@ -554,7 +575,11 @@ func (a Accelerate) ApplyFirst(g interface{}) {}
 func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetEnt(a.Player_id).(*Player)
+  _player := g.GetEnt(a.Player_id)
+  if _player == nil {
+    return
+  }
+  player := _player.(*Player)
   player.Delta.Speed = a.Delta / 2
 }
 
@@ -569,7 +594,7 @@ func (b Blink) ApplyFinal(g interface{}) {}
 func (b Blink) Apply(_g interface{}) {
   g := _g.(*Game)
   player := g.GetEnt(b.Player_id).(*Player)
-  if !player.Alive || player.Exiled() {
+  if !player.Alive() || player.Exiled() {
     return
   }
   if _, ok := player.Processes[b.Id]; ok {
@@ -594,7 +619,7 @@ func (b Burst) Apply(_g interface{}) {
   g := _g.(*Game)
   player := g.GetEnt(b.Player_id).(*Player)
   base.Log().Printf("APPLY: %v\n", player)
-  if !player.Alive || player.Exiled() {
+  if !player.Alive() || player.Exiled() {
     return
   }
   if _, ok := player.Processes[b.Id]; ok {
@@ -617,7 +642,7 @@ func (n Nitro) ApplyFinal(g interface{}) {}
 func (n Nitro) Apply(_g interface{}) {
   g := _g.(*Game)
   player := g.GetEnt(n.Player_id).(*Player)
-  if !player.Alive || player.Exiled() {
+  if !player.Alive() || player.Exiled() {
     return
   }
   if proc, ok := player.Processes[n.Id]; ok {
@@ -645,7 +670,7 @@ func (s Shock) ApplyFinal(g interface{}) {}
 func (s Shock) Apply(_g interface{}) {
   g := _g.(*Game)
   player := g.GetEnt(s.Player_id).(*Player)
-  if !player.Alive || player.Exiled() {
+  if !player.Alive() || player.Exiled() {
     return
   }
   if _, ok := player.Processes[s.Id]; ok {
@@ -697,25 +722,8 @@ func (gw *GameWindow) Draw(region gui.Region) {
   defer gl.PopMatrix()
   gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
   gl.Color4d(1, 1, 1, 1)
-  for i, _player := range gw.game.Ents {
-    var player *Player
-    var ok bool
-    player, ok = _player.(*Player)
-    if !ok {
-      continue
-    }
-    if player.Exiled() {
-      continue
-    }
-    var t *texture.Data
-    if i == 0 {
-      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
-    } else if i == 1 {
-      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
-    } else {
-      t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
-    }
-    t.RenderAdvanced(player.X-float64(t.Dx())/2, player.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), player.Angle, false)
+  for _, ent := range gw.game.Ents {
+    ent.Draw()
   }
   gl.Disable(gl.TEXTURE_2D)
 
