@@ -20,18 +20,18 @@ type Process interface {
   // Supplies mana to the Process and returns the unused portion.
   Supply(Mana) Mana
 
-  Think(*Player, *Game)
+  Think(*Game)
 
   // Kills a process.  Any Killed process will return true on any future
   // calls to Complete().
-  Kill(player *Player)
+  Kill(game *Game)
 
   Complete() bool
 }
 
 // BLINK
 // Causes the player to disappear for [frames] frames, where a frame is 16ms.
-// Cost 50000 + [frames]^2 blue mana.
+// Cost 50000 + [frames]^2 green mana.
 func init() {
   gob.Register(blinkAbility{})
   gob.Register(&blinkProcess{})
@@ -61,6 +61,7 @@ type blinkProcess struct {
   Frames    int32
   Remaining Mana
   Killed    bool
+  Player_id int
 }
 
 func (p *blinkProcess) Request() Mana {
@@ -87,13 +88,14 @@ func (p *blinkProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *blinkProcess) Think(player *Player, game *Game) {
+func (p *blinkProcess) Think(game *Game) {
+  player := game.GetPlayer(p.Player_id)
   if p.Remaining.Magnitude() == 0 {
     player.Exile_frames += p.Frames
     p.Frames = 0
   }
 }
-func (p *blinkProcess) Kill(player *Player) {
+func (p *blinkProcess) Kill(game *Game) {
   p.Killed = true
 }
 func (p *blinkProcess) Complete() bool {
@@ -137,6 +139,7 @@ func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
     Force:             float64(force),
     Remaining_initial: Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
     Continual:         Mana{float64(force) / 50, 0, 0},
+    Player_id:         player.Id,
   }
 }
 
@@ -146,6 +149,7 @@ type burstProcess struct {
   Remaining_initial Mana
   Continual         Mana
   Killed            bool
+  Player_id         int
 
   // Counting how long to cast
   count int
@@ -191,7 +195,8 @@ func (p *burstProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *burstProcess) Think(player *Player, game *Game) {
+func (p *burstProcess) Think(game *Game) {
+  player := game.GetPlayer(p.Player_id)
   if p.Remaining_initial.Magnitude() == 0 {
     if p.count > 0 {
       base.Log().Printf("Frames: %d", p.count)
@@ -216,7 +221,7 @@ func (p *burstProcess) Think(player *Player, game *Game) {
     }
   }
 }
-func (p *burstProcess) Kill(player *Player) {
+func (p *burstProcess) Kill(game *Game) {
   p.Killed = true
 }
 func (p *burstProcess) Complete() bool {
@@ -251,6 +256,7 @@ func (a *nitroAbility) Activate(player *Player, params map[string]int) Process {
     panic(fmt.Sprintf("Nitro requires [inc] > 0, not %d", inc))
   }
   return &nitroProcess{
+    Player_id: player.Id,
     Inc:       int32(inc),
     Continual: Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
   }
@@ -260,6 +266,7 @@ type nitroProcess struct {
   Inc       int32
   Continual Mana
   Killed    bool
+  Player_id int
 
   Prev_delta float64
   Supplied   Mana
@@ -283,7 +290,8 @@ func (p *nitroProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *nitroProcess) Think(player *Player, game *Game) {
+func (p *nitroProcess) Think(game *Game) {
+  player := game.GetPlayer(p.Player_id)
   player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   delta = 0.3
@@ -292,7 +300,8 @@ func (p *nitroProcess) Think(player *Player, game *Game) {
   player.Max_acc += delta
   p.Prev_delta = delta
 }
-func (p *nitroProcess) Kill(player *Player) {
+func (p *nitroProcess) Kill(game *Game) {
+  player := game.GetPlayer(p.Player_id)
   p.Killed = true
   player.Max_acc -= p.Prev_delta
 }

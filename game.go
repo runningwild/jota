@@ -64,6 +64,9 @@ type Player struct {
     R, G, B byte
   }
 
+  // Unique Id over all entities ever
+  Id int
+
   // Max rate for accelerating and turning.
   Max_turn float64
   Max_acc  float64
@@ -185,7 +188,7 @@ func (p *Player) Think(g *Game) {
 
   var dead []int
   for i, process := range p.Processes {
-    process.Think(p, g)
+    process.Think(g)
     if process.Complete() {
       dead = append(dead, i)
     }
@@ -223,7 +226,11 @@ type Game struct {
   Dx, Dy int
 
   Friction float64
-  Players  []Player
+
+  // Last Id assigned to an entity
+  Next_id int
+
+  Players []Player
 
   Game_thinks int
 }
@@ -294,6 +301,21 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   }
 
   g.Game_thinks = g2.Game_thinks
+}
+
+func (g *Game) GetPlayer(id int) *Player {
+  for i := range g.Players {
+    if g.Players[i].Id == id {
+      return &g.Players[i]
+    }
+  }
+  return nil
+}
+
+func (g *Game) AddPlayer(player Player) {
+  g.Next_id++
+  player.Id = g.Next_id
+  g.Players = append(g.Players, player)
 }
 
 // Returns a mapping from player index to the list of *Nodes that that player
@@ -535,7 +557,7 @@ func (n Nitro) Apply(_g interface{}) {
   }
   if proc, ok := player.Processes[n.Id]; ok {
     // Already running this process, so kill it
-    proc.Kill(player)
+    proc.Kill(g)
     base.Log().Printf("Killed nitro")
     return
   }

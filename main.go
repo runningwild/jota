@@ -111,7 +111,7 @@ func main() {
       p.Y += float64(y * 25)
       // p.Mass += float64(x+y) * 150
       p.Processes = make(map[int]Process)
-      g.Players = append(g.Players, p)
+      g.AddPlayer(p)
       // p.Mass -= float64(x+y) * 150
       p.X -= float64(x * 25)
       p.Y -= float64(y * 25)
