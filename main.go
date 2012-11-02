@@ -97,7 +97,7 @@ func main() {
   p.Alive = true
   p.Max_turn = 0.07
   p.Max_acc = 0.1
-  p.Mass = 750 // who knows
+  p.My_mass = 750 // who knows
   p.Color.R = 255
   p.Max_rate = 10
   p.Influence = 75
@@ -112,15 +112,15 @@ func main() {
       p.Y += float64(y * 25)
       // p.Mass += float64(x+y) * 150
       p.Processes = make(map[int]Process)
-      ids = append(ids, g.AddPlayer(p))
+      temp := p
+      ids = append(ids, g.AddEnt(&temp))
 
       // p.Mass -= float64(x+y) * 150
       p.X -= float64(x * 25)
       p.Y -= float64(y * 25)
     }
   }
-  g.Players[0], g.Players[(N*N)/2+(1-N%2)*N/2] = g.Players[(N*N)/2+(1-N%2)*N/2], g.Players[0]
-  // g.Players[1].Mass = math.Inf(1)
+  g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
   g.GenerateNodes()
   var engine *pnf.Engine
   engine = pnf.NewLocalEngine(&g, 17)

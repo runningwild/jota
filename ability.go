@@ -96,7 +96,8 @@ func (p *blinkProcess) Supply(supply Mana) Mana {
 }
 
 func (p *blinkProcess) Think(game *Game) {
-  player := game.GetPlayer(p.Player_id)
+  _player := game.GetEnt(p.Player_id)
+  player := _player.(*Player)
   if p.Remaining.Magnitude() == 0 {
     player.Exile_frames += p.Frames
     p.Frames = 0
@@ -146,7 +147,7 @@ func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
     Force:             float64(force),
     Remaining_initial: Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
     Continual:         Mana{float64(force) / 50, 0, 0},
-    Player_id:         player.Id,
+    Player_id:         player.Id(),
   }
 }
 
@@ -203,28 +204,25 @@ func (p *burstProcess) Supply(supply Mana) Mana {
 }
 
 func (p *burstProcess) Think(game *Game) {
-  player := game.GetPlayer(p.Player_id)
+  _player := game.GetEnt(p.Player_id)
+  player := _player.(*Player)
   if p.Remaining_initial.Magnitude() == 0 {
     if p.count > 0 {
       base.Log().Printf("Frames: %d", p.count)
       p.count = -1
     }
     p.Frames--
-    for i := range game.Players {
-      other := &game.Players[i]
+    for i := range game.Ents {
+      other := game.Ents[i]
       if other == player {
         continue
       }
-      dx := other.X - player.X
-      dy := other.Y - player.Y
-      dist := math.Sqrt(dx*dx + dy*dy)
+      dist := other.Pos().Sub(player.Pos()).Mag()
       if dist < 1 {
         dist = 1
       }
-      acc := p.Force / (dist * other.Mass)
-      angle := math.Atan2(dy, dx)
-      other.Vx += acc * math.Cos(angle)
-      other.Vy += acc * math.Sin(angle)
+      force := p.Force / dist
+      other.ApplyForce(other.Pos().Sub(player.Pos()).Norm().Scale(force))
     }
   }
 }
@@ -263,7 +261,7 @@ func (a *nitroAbility) Activate(player *Player, params map[string]int) Process {
     panic(fmt.Sprintf("Nitro requires [inc] > 0, not %d", inc))
   }
   return &nitroProcess{
-    Player_id: player.Id,
+    Player_id: player.Id(),
     Inc:       int32(inc),
     Continual: Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
   }
@@ -298,7 +296,8 @@ func (p *nitroProcess) Supply(supply Mana) Mana {
 }
 
 func (p *nitroProcess) Think(game *Game) {
-  player := game.GetPlayer(p.Player_id)
+  _player := game.GetEnt(p.Player_id)
+  player := _player.(*Player)
   player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   delta = 0.3
@@ -308,7 +307,8 @@ func (p *nitroProcess) Think(game *Game) {
   p.Prev_delta = delta
 }
 func (p *nitroProcess) Kill(game *Game) {
-  player := game.GetPlayer(p.Player_id)
+  _player := game.GetEnt(p.Player_id)
+  player := _player.(*Player)
   p.Killed = true
   player.Max_acc -= p.Prev_delta
 }
@@ -354,7 +354,7 @@ func (a *shockAbility) Activate(player *Player, params map[string]int) Process {
     panic(fmt.Sprintf("Shock requires [power] > 0, not %d", power))
   }
   return &shockProcess{
-    Player_id: player.Id,
+    Player_id: player.Id(),
     Remaining: Mana{float64(vel) * float64(rng) * float64(rng) * float64(power), 0, 0},
     Power:     float64(power),
     Range:     float64(rng),
@@ -409,7 +409,8 @@ func (p *shockProcess) Think(game *Game) {
   if p.Remaining.Magnitude() > 0 {
     return
   }
-  player := game.GetPlayer(p.Player_id)
+  _player := game.GetEnt(p.Player_id)
+  player := _player.(*Player)
   if p.State == shockStateGather {
     p.State = shockStateLaunched
     proj := *player
@@ -417,23 +418,25 @@ func (p *shockProcess) Think(game *Game) {
     proj.Vy += math.Sin(proj.Angle) * p.Velocity
     proj.X += proj.Vx
     proj.Y += proj.Vy
-    p.Proj_id = game.AddPlayer(proj)
+    p.Proj_id = game.AddEnt(&proj)
   }
-  proj := game.GetPlayer(p.Proj_id)
+  _proj := game.GetEnt(p.Player_id)
+  proj := _proj.(*Player)
   var hits []*Player
   activate := false
-  for i := range game.Players {
-    if game.Players[i].Id == p.Player_id {
+  for i := range game.Ents {
+    if game.Ents[i].Id() == p.Player_id {
       continue
     }
-    if game.Players[i].Id == p.Proj_id {
+    if game.Ents[i].Id() == p.Proj_id {
       continue
     }
-    dx := proj.X - game.Players[i].X
-    dy := proj.Y - game.Players[i].Y
-    dist := math.Sqrt(dx*dx + dy*dy)
+    if _, ok := game.Ents[i].(*Player); !ok {
+      continue
+    }
+    dist := proj.Pos().Sub(game.Ents[i].Pos()).Mag()
     if dist < p.Range {
-      hits = append(hits, &game.Players[i])
+      hits = append(hits, game.Ents[i].(*Player))
       if dist < p.Range/2 {
         activate = true
       }

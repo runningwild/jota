@@ -51,12 +51,12 @@ func (n *Node) Think() {
 }
 
 type Player struct {
-  Alive  bool
-  Mass   float64
-  X, Y   float64
-  Vx, Vy float64
-  Angle  float64
-  Delta  struct {
+  Alive   bool
+  My_mass float64
+  X, Y    float64
+  Vx, Vy  float64
+  Angle   float64
+  Delta   struct {
     Speed float64
     Angle float64
   }
@@ -65,7 +65,7 @@ type Player struct {
   }
 
   // Unique Id over all entities ever
-  Id int
+  Gid int
 
   // Max rate for accelerating and turning.
   Max_turn float64
@@ -93,6 +93,54 @@ type Player struct {
   Processes map[int]Process
 }
 
+func init() {
+  gob.Register(&Player{})
+}
+
+func (p *Player) Dead() bool {
+  return !p.Alive
+}
+
+func (p *Player) Exiled() bool {
+  return p.Exile_frames > 0
+}
+
+func (p *Player) ApplyForce(f linear.Vec2) {
+  dv := f.Scale(1 / p.Mass())
+  p.X += dv.X
+  p.Y += dv.Y
+}
+
+func (p *Player) Mass() float64 {
+  return p.My_mass
+}
+
+func (p *Player) Id() int {
+  return p.Gid
+}
+
+func (p *Player) SetId(id int) {
+  p.Gid = id
+}
+
+func (p *Player) Pos() linear.Vec2 {
+  return linear.Vec2{p.X, p.Y}
+}
+
+func (p *Player) Vel() linear.Vec2 {
+  return linear.Vec2{p.Vx, p.Vy}
+}
+
+func (p *Player) SetPos(pos linear.Vec2) {
+  p.X = pos.X
+  p.Y = pos.Y
+}
+
+func (p *Player) SetVel(vel linear.Vec2) {
+  p.X = vel.X
+  p.Y = vel.Y
+}
+
 func (p *Player) Rate(distance float64) float64 {
   if distance < 1 {
     distance = 1
@@ -102,10 +150,6 @@ func (p *Player) Rate(distance float64) float64 {
 
 func (p *Player) Priority(distance float64) float64 {
   return float64(p.Dominance) * p.Rate(distance)
-}
-
-func (p *Player) Exiled() bool {
-  return p.Exile_frames > 0
 }
 
 func (p *Player) Think(g *Game) {
@@ -214,6 +258,22 @@ func (p *Player) Supply(supply Mana) Mana {
   return supply
 }
 
+type Ent interface {
+  Dead() bool
+  Exiled() bool
+  Think(game *Game)
+  ApplyForce(force linear.Vec2)
+  Mass() float64
+  Rate(dist float64) float64
+  SetId(int)
+  Id() int
+  Pos() linear.Vec2
+  SetPos(pos linear.Vec2)
+  Vel() linear.Vec2
+  SetVel(vel linear.Vec2)
+  Supply(mana Mana) Mana
+}
+
 type Game struct {
   // All of the nodes on the map
   Nodes [][]Node
@@ -230,7 +290,7 @@ type Game struct {
   // Last Id assigned to an entity
   Next_id int
 
-  Players []Player
+  Ents []Ent
 
   Game_thinks int
 }
@@ -256,10 +316,15 @@ func (g *Game) GenerateNodes() {
 
 func (g *Game) Merge(g2 *Game) {
   frac := 0.5
-  for i := range g.Players {
-    p1 := &g.Players[i]
-    p2 := g2.GetPlayer(p1.Id)
-    if p2 == nil {
+  for i := range g.Ents {
+    _p1 := g.Ents[i]
+    var p1 *Player
+    var ok bool
+    if p1, ok = _p1.(*Player); !ok {
+      continue
+    }
+    p2, ok := g2.GetEnt(p1.Id()).(*Player)
+    if p2 == nil || !ok {
       continue
     }
     p1.X = frac*p2.X + (1-frac)*p1.X
@@ -290,9 +355,9 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   g.Dy = g2.Dy
   g.Friction = g2.Friction
 
-  g.Players = g.Players[0:0]
-  for _, p := range g2.Players {
-    g.Players = append(g.Players, p)
+  g.Ents = g.Ents[0:0]
+  for _, ent := range g2.Ents {
+    g.Ents = append(g.Ents, ent)
   }
 
   if len(g.Nodes) != len(g2.Nodes) {
@@ -308,34 +373,32 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   g.Game_thinks = g2.Game_thinks
 }
 
-func (g *Game) GetPlayer(id int) *Player {
-  for i := range g.Players {
-    if g.Players[i].Id == id {
-      return &g.Players[i]
+func (g *Game) GetEnt(id int) Ent {
+  for i := range g.Ents {
+    if g.Ents[i].Id() == id {
+      return g.Ents[i]
     }
   }
   return nil
 }
 
-func (g *Game) AddPlayer(player Player) int {
+func (g *Game) AddEnt(ent Ent) int {
   g.Next_id++
-  player.Id = g.Next_id
-  g.Players = append(g.Players, player)
-  return g.Players[len(g.Players)-1].Id
+  ent.SetId(g.Next_id)
+  g.Ents = append(g.Ents, ent)
+  return g.Ents[len(g.Ents)-1].Id()
 }
 
 // Returns a mapping from player index to the list of *Nodes that that player
 // has priority on.
 func (g *Game) getPriorities() [][]*Node {
-  r := make([][]*Node, len(g.Players))
+  r := make([][]*Node, len(g.Ents))
   for x := range g.Nodes {
     for y := range g.Nodes[x] {
       var best int
       var best_dist_sq float64 = 1e9
-      for j := range g.Players {
-        dx := (g.Players[j].X - g.Nodes[x][y].X)
-        dy := (g.Players[j].Y - g.Nodes[x][y].Y)
-        dist_sq := dx*dx + dy*dy
+      for j := range g.Ents {
+        dist_sq := g.Ents[j].Pos().Sub(linear.MakeVec2(g.Nodes[x][y].X, g.Nodes[x][y].Y)).Mag2()
         if dist_sq < best_dist_sq {
           best_dist_sq = dist_sq
           best = j
@@ -353,23 +416,23 @@ func (g *Game) Think() {
   g.Nodes[0][0].Amt -= 1
   g.Game_thinks++
   // Advance players, check for collisions, add segments
-  for i := range g.Players {
-    if !g.Players[i].Alive {
+  for i := range g.Ents {
+    if g.Ents[i].Dead() {
       continue
     }
-    g.Players[i].Think(g)
-    g.Players[i].X = clamp(g.Players[i].X, 0, float64(g.Dx))
-    g.Players[i].Y = clamp(g.Players[i].Y, 0, float64(g.Dy))
+    g.Ents[i].Think(g)
+    pos := g.Ents[i].Pos()
+    pos.X = clamp(pos.X, 0, float64(g.Dx))
+    pos.Y = clamp(pos.Y, 0, float64(g.Dy))
+    g.Ents[i].SetPos(pos)
   }
   moved := make(map[int]bool)
-  for i := range g.Players {
-    for j := range g.Players {
-      if i == j || g.Players[i].Exiled() || g.Players[j].Exiled() {
+  for i := range g.Ents {
+    for j := range g.Ents {
+      if i == j || g.Ents[i].Exiled() || g.Ents[j].Exiled() {
         continue
       }
-      dx := g.Players[i].X - g.Players[j].X
-      dy := g.Players[i].Y - g.Players[j].Y
-      dist := math.Sqrt(dx*dx + dy*dy)
+      dist := g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Mag()
       if dist > 25 {
         continue
       }
@@ -377,25 +440,22 @@ func (g *Game) Think() {
         dist = 0.5
       }
       force := 20.0 * (25 - dist)
-      force /= g.Players[i].Mass
-      angle := math.Atan2(dy, dx)
-      g.Players[i].Vx += force * math.Cos(angle)
-      g.Players[i].Vy += force * math.Sin(angle)
+      g.Ents[i].ApplyForce(g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Norm().Scale(force))
       moved[i] = true
     }
   }
 
   priorities := g.getPriorities()
-  indexes := make([]int, len(g.Players))
+  indexes := make([]int, len(g.Ents))
   for i := range indexes {
     indexes[i] = i
   }
   for i := range indexes {
-    swap := int(g.Rng.Uint32()%uint32(len(g.Players)-i)) + i
+    swap := int(g.Rng.Uint32()%uint32(len(g.Ents)-i)) + i
     indexes[i], indexes[swap] = indexes[swap], indexes[i]
   }
   for _, p := range indexes {
-    player := &g.Players[p]
+    player := g.Ents[p]
     nodes := priorities[p]
 
     for i := range nodes {
@@ -405,9 +465,7 @@ func (g *Game) Think() {
 
     var supply Mana
     for _, node := range nodes {
-      dx := (player.X - node.X)
-      dy := (player.Y - node.Y)
-      drain := player.Rate(math.Sqrt(dx*dx + dy*dy))
+      drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
       if drain > node.Amt {
         drain = node.Amt
       }
@@ -424,9 +482,7 @@ func (g *Game) Think() {
       used[color] -= amt
     }
     for _, node := range nodes {
-      dx := (player.X - node.X)
-      dy := (player.Y - node.Y)
-      drain := player.Rate(math.Sqrt(dx*dx + dy*dy))
+      drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
       if drain > used[node.Color] {
         drain = used[node.Color]
       }
@@ -477,27 +533,29 @@ func (g *Game) allNodesInSquare(x, y, radius float64, indexes *[]nodeIndex) {
 }
 
 type Turn struct {
-  Player int
-  Delta  float64
+  Player_id int
+  Delta     float64
 }
 
 func (t Turn) ApplyFirst(g interface{}) {}
 func (t Turn) ApplyFinal(g interface{}) {}
 func (t Turn) Apply(_g interface{}) {
   g := _g.(*Game)
-  g.Players[t.Player].Delta.Angle = t.Delta
+  player := g.GetEnt(t.Player_id).(*Player)
+  player.Delta.Angle = t.Delta
 }
 
 type Accelerate struct {
-  Player int
-  Delta  float64
+  Player_id int
+  Delta     float64
 }
 
 func (a Accelerate) ApplyFirst(g interface{}) {}
 func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
   g := _g.(*Game)
-  g.Players[a.Player].Delta.Speed = a.Delta / 2
+  player := g.GetEnt(a.Player_id).(*Player)
+  player.Delta.Speed = a.Delta / 2
 }
 
 type Blink struct {
@@ -510,7 +568,7 @@ func (b Blink) ApplyFirst(g interface{}) {}
 func (b Blink) ApplyFinal(g interface{}) {}
 func (b Blink) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetPlayer(b.Player_id)
+  player := g.GetEnt(b.Player_id).(*Player)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -534,7 +592,7 @@ func (b Burst) ApplyFirst(g interface{}) {}
 func (b Burst) ApplyFinal(g interface{}) {}
 func (b Burst) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetPlayer(b.Player_id)
+  player := g.GetEnt(b.Player_id).(*Player)
   base.Log().Printf("APPLY: %v\n", player)
   if !player.Alive || player.Exiled() {
     return
@@ -558,7 +616,7 @@ func (n Nitro) ApplyFirst(g interface{}) {}
 func (n Nitro) ApplyFinal(g interface{}) {}
 func (n Nitro) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetPlayer(n.Player_id)
+  player := g.GetEnt(n.Player_id).(*Player)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -586,7 +644,7 @@ func (s Shock) ApplyFirst(g interface{}) {}
 func (s Shock) ApplyFinal(g interface{}) {}
 func (s Shock) Apply(_g interface{}) {
   g := _g.(*Game)
-  player := g.GetPlayer(s.Player_id)
+  player := g.GetEnt(s.Player_id).(*Player)
   if !player.Alive || player.Exiled() {
     return
   }
@@ -639,8 +697,14 @@ func (gw *GameWindow) Draw(region gui.Region) {
   defer gl.PopMatrix()
   gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
   gl.Color4d(1, 1, 1, 1)
-  for i, p := range gw.game.Players {
-    if p.Exiled() {
+  for i, _player := range gw.game.Ents {
+    var player *Player
+    var ok bool
+    player, ok = _player.(*Player)
+    if !ok {
+      continue
+    }
+    if player.Exiled() {
       continue
     }
     var t *texture.Data
@@ -651,7 +715,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
     } else {
       t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
     }
-    t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
+    t.RenderAdvanced(player.X-float64(t.Dx())/2, player.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), player.Angle, false)
   }
   gl.Disable(gl.TEXTURE_2D)
 
