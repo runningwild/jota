@@ -86,6 +86,12 @@ func main() {
       linear.Vec2{100, 400},
       linear.Vec2{500, 350},
     },
+    linear.Poly{
+      linear.Vec2{0, 0},
+      linear.Vec2{float64(g.Dx), 0},
+      linear.Vec2{float64(g.Dx), float64(g.Dy)},
+      linear.Vec2{0, float64(g.Dy)},
+    },
   }
   var p Player
   p.Alive = true

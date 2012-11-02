@@ -126,8 +126,8 @@ func (p *Player) Think(g *Game) {
   p.Vx += p.Delta.Speed * math.Cos(p.Angle)
   p.Vy += p.Delta.Speed * math.Sin(p.Angle)
   mangle := math.Atan2(p.Vy, p.Vx)
-  p.Vx *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
-  p.Vy *= math.Pow(g.Friction, 1+math.Abs(math.Sin(p.Angle-mangle)))
+  p.Vx *= math.Pow(g.Friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
+  p.Vy *= math.Pow(g.Friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
 
   move := linear.MakeSeg2(p.X, p.Y, p.X+p.Vx, p.Y+p.Vy)
   size := 12.0
