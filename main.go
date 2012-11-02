@@ -65,64 +65,76 @@ func main() {
     panic(err)
   }
 
-  anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
-  ui.AddChild(anchor)
-  sys.Think()
-  var g Game
-  g.Rng = cmwc.MakeCmwc(4224759397, 3)
-  g.Rng.SeedWithDevRand()
-  g.Dx = 900
-  g.Dy = 600
-  g.Friction = 0.97
-  g.Polys = []linear.Poly{
-    linear.Poly{
-      linear.Vec2{600, 300},
-      linear.Vec2{600, 400},
-      linear.Vec2{700, 400},
-      linear.Vec2{700, 300},
-    },
-    linear.Poly{
-      linear.Vec2{200, 300},
-      linear.Vec2{100, 400},
-      linear.Vec2{500, 350},
-    },
-    linear.Poly{
-      linear.Vec2{0, 0},
-      linear.Vec2{float64(g.Dx), 0},
-      linear.Vec2{float64(g.Dx), float64(g.Dy)},
-      linear.Vec2{0, float64(g.Dy)},
-    },
-  }
-  var p Player
-  p.Max_turn = 0.07
-  p.Max_acc = 0.1
-  p.My_mass = 750 // who knows
-  p.Color.R = 255
-  p.Max_rate = 10
-  p.Influence = 75
-  p.Dominance = 10
-  N := 2
-  p.X = float64(g.Dx-N) / 2
-  p.Y = float64(g.Dy-N) / 2
   var ids []int
-  for x := 0; x < N; x++ {
-    for y := 0; y < N; y++ {
-      p.X += float64(x * 25)
-      p.Y += float64(y * 25)
-      // p.Mass += float64(x+y) * 150
-      p.Processes = make(map[int]Process)
-      temp := p
-      ids = append(ids, g.AddEnt(&temp))
+  var engine *pnf.Engine
+  if IsHost() {
+    sys.Think()
+    var g Game
+    g.Rng = cmwc.MakeCmwc(4224759397, 3)
+    g.Rng.SeedWithDevRand()
+    g.Dx = 900
+    g.Dy = 600
+    g.Friction = 0.97
+    g.Polys = []linear.Poly{
+      linear.Poly{
+        linear.Vec2{600, 300},
+        linear.Vec2{600, 400},
+        linear.Vec2{700, 400},
+        linear.Vec2{700, 300},
+      },
+      linear.Poly{
+        linear.Vec2{200, 300},
+        linear.Vec2{100, 400},
+        linear.Vec2{500, 350},
+      },
+      linear.Poly{
+        linear.Vec2{0, 0},
+        linear.Vec2{float64(g.Dx), 0},
+        linear.Vec2{float64(g.Dx), float64(g.Dy)},
+        linear.Vec2{0, float64(g.Dy)},
+      },
+    }
+    var p Player
+    p.Max_turn = 0.07
+    p.Max_acc = 0.1
+    p.My_mass = 750 // who knows
+    p.Color.R = 255
+    p.Max_rate = 10
+    p.Influence = 75
+    p.Dominance = 10
+    N := 2
+    p.X = float64(g.Dx-N) / 2
+    p.Y = float64(g.Dy-N) / 2
+    for x := 0; x < N; x++ {
+      for y := 0; y < N; y++ {
+        p.X += float64(x * 25)
+        p.Y += float64(y * 25)
+        // p.Mass += float64(x+y) * 150
+        p.Processes = make(map[int]Process)
+        temp := p
+        ids = append(ids, g.AddEnt(&temp))
 
-      // p.Mass -= float64(x+y) * 150
-      p.X -= float64(x * 25)
-      p.Y -= float64(y * 25)
+        // p.Mass -= float64(x+y) * 150
+        p.X -= float64(x * 25)
+        p.Y -= float64(y * 25)
+      }
+    }
+    g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
+    g.GenerateNodes()
+    engine, err = pnf.NewNetEngine(&g, 17*4, 120, 1194)
+    if err != nil {
+      panic(err.Error())
+    }
+  } else {
+    engine, err = pnf.NewNetClientEngine(17*4, 120, 1194)
+    if err != nil {
+      panic(err.Error())
     }
   }
-  g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
-  g.GenerateNodes()
-  var engine *pnf.Engine
-  engine = pnf.NewLocalEngine(&g, 17)
+
+  // engine = pnf.NewLocalEngine(&g, 17*4)
+  anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
+  ui.AddChild(anchor)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File
@@ -138,28 +150,30 @@ func main() {
     })
     render.Purge()
 
-    for i := 0; i <= 1; i++ {
-      up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
-      down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
-      left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
-      right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
-      engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
-      engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
+    if IsHost() {
+      for i := 0; i <= 1; i++ {
+        up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
+        down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
+        left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
+        right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
+        engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
+        engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
 
-      if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Nitro{ids[i], 0, 20000})
-      }
-      // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-      //   engine.ApplyEvent(Blink{ids[i], 0, 50})
-      // }
-      if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Shock{ids[i], 1, 1, 200, 10})
-      }
-      // if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-      //   engine.ApplyEvent(Burst{ids[i], 1, 100, 10000})
-      // }
-      if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
-        engine.ApplyEvent(Burst{ids[i], 2, 3, 100000})
+        if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
+          engine.ApplyEvent(Nitro{ids[i], 0, 20000})
+        }
+        // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
+        //   engine.ApplyEvent(Blink{ids[i], 0, 50})
+        // }
+        if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
+          engine.ApplyEvent(Shock{ids[i], 1, 1, 200, 10})
+        }
+        // if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
+        //   engine.ApplyEvent(Burst{ids[i], 1, 100, 10000})
+        // }
+        if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
+          engine.ApplyEvent(Burst{ids[i], 2, 3, 100000})
+        }
       }
     }
 

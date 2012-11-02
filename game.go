@@ -1,7 +1,7 @@
 package main
 
 import (
-  "bytes"
+  // "bytes"
   "encoding/gob"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
@@ -15,7 +15,7 @@ import (
   "runningwild/tron/texture"
 )
 
-const node_spacing = 10
+const node_spacing = 30
 
 type Color int
 
@@ -146,7 +146,7 @@ func (p *Player) Rate(distance float64) float64 {
   if distance < 1 {
     distance = 1
   }
-  return 150 / distance
+  return 1500 / (distance * distance)
 }
 
 func (p *Player) Priority(distance float64) float64 {
@@ -312,6 +312,10 @@ type Game struct {
   Game_thinks int
 }
 
+func init() {
+  gob.Register(&Game{})
+}
+
 func (g *Game) GenerateNodes() {
   c := cmwc.MakeCmwc(4224759397, 3)
   c.SeedWithDevRand()
@@ -352,29 +356,67 @@ func (g *Game) Merge(g2 *Game) {
 
 func (g *Game) Copy() interface{} {
   var g2 Game
-  buf := bytes.NewBuffer(nil)
-  enc := gob.NewEncoder(buf)
-  err := enc.Encode(g)
-  if err != nil {
-    panic(err)
+
+  g2.Nodes = make([][]Node, len(g.Nodes))
+  for x := range g2.Nodes {
+    g2.Nodes[x] = make([]Node, len(g.Nodes[x]))
+    for y := range g2.Nodes[x] {
+      g2.Nodes[x][y] = g.Nodes[x][y]
+    }
   }
-  err = gob.NewDecoder(buf).Decode(&g2)
-  if err != nil {
-    panic(err)
+
+  g2.Polys = make([]linear.Poly, len(g.Polys))
+  for i := range g2.Polys {
+    g2.Polys[i] = make(linear.Poly, len(g.Polys[i]))
+    for j := range g2.Polys[i] {
+      g2.Polys[i][j] = g.Polys[i][j]
+    }
   }
+
+  g2.Rng = g.Rng.Copy()
+
+  g2.Dx = g.Dx
+  g2.Dy = g.Dy
+  g2.Friction = g.Friction
+  g2.Next_id = g.Next_id
+  g2.Game_thinks = g.Game_thinks
+
+  g2.Ents = make([]Ent, len(g.Ents))
+  g2.Ents = g2.Ents[0:0]
+  for _, ent := range g.Ents {
+    switch e := ent.(type) {
+    case *Player:
+      p := *e
+      g2.Ents = append(g2.Ents, &p)
+    case *Projectile:
+      p := *e
+      g2.Ents = append(g2.Ents, &p)
+    }
+  }
+
   return &g2
 }
 
 func (g *Game) OverwriteWith(_g2 interface{}) {
-  g2 := (_g2.(*Game))
+  g2 := _g2.(*Game)
   g.Rng.OverwriteWith(g2.Rng)
   g.Dx = g2.Dx
   g.Dy = g2.Dy
   g.Friction = g2.Friction
+  g.Polys = g2.Polys
+  g.Next_id = g2.Next_id
+  g.Game_thinks = g2.Game_thinks
 
   g.Ents = g.Ents[0:0]
   for _, ent := range g2.Ents {
-    g.Ents = append(g.Ents, ent)
+    switch e := ent.(type) {
+    case *Player:
+      p := *e
+      g.Ents = append(g.Ents, &p)
+    case *Projectile:
+      p := *e
+      g.Ents = append(g.Ents, &p)
+    }
   }
 
   if len(g.Nodes) != len(g2.Nodes) {
@@ -386,8 +428,6 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
       g.Nodes[x] = append(g.Nodes[x], g2.Nodes[x][y])
     }
   }
-
-  g.Game_thinks = g2.Game_thinks
 }
 
 func (g *Game) GetEnt(id int) Ent {
@@ -554,6 +594,10 @@ type Turn struct {
   Delta     float64
 }
 
+func init() {
+  gob.Register(Turn{})
+}
+
 func (t Turn) ApplyFirst(g interface{}) {}
 func (t Turn) ApplyFinal(g interface{}) {}
 func (t Turn) Apply(_g interface{}) {
@@ -569,6 +613,10 @@ func (t Turn) Apply(_g interface{}) {
 type Accelerate struct {
   Player_id int
   Delta     float64
+}
+
+func init() {
+  gob.Register(Accelerate{})
 }
 
 func (a Accelerate) ApplyFirst(g interface{}) {}
@@ -587,6 +635,10 @@ type Blink struct {
   Player_id int
   Id        int
   Frames    int
+}
+
+func init() {
+  gob.Register(Blink{})
 }
 
 func (b Blink) ApplyFirst(g interface{}) {}
@@ -613,6 +665,10 @@ type Burst struct {
   Force     int
 }
 
+func init() {
+  gob.Register(Burst{})
+}
+
 func (b Burst) ApplyFirst(g interface{}) {}
 func (b Burst) ApplyFinal(g interface{}) {}
 func (b Burst) Apply(_g interface{}) {
@@ -635,6 +691,10 @@ type Nitro struct {
   Player_id int
   Id        int
   Inc       int
+}
+
+func init() {
+  gob.Register(Nitro{})
 }
 
 func (n Nitro) ApplyFirst(g interface{}) {}
@@ -663,6 +723,10 @@ type Shock struct {
   Vel       int
   Range     int
   Power     int
+}
+
+func init() {
+  gob.Register(Shock{})
 }
 
 func (s Shock) ApplyFirst(g interface{}) {}

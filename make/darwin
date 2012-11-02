@@ -1,4 +1,4 @@
-go build .
+go build --tags host .
 
 rm -rf tron.app
 mkdir -p tron.app/Contents/MacOS
@@ -8,3 +8,13 @@ mv tron tron.app/Contents/MacOS/tron
 cp lib/darwin/* tron.app/Contents/lib/
 cp -r data/* tron.app/Contents/
 
+
+go build .
+
+rm -rf gron.app
+mkdir -p gron.app/Contents/MacOS
+mkdir -p gron.app/Contents/lib
+
+mv tron gron.app/Contents/MacOS/gron
+cp lib/darwin/* gron.app/Contents/lib/
+cp -r data/* gron.app/Contents/
