@@ -1,7 +1,7 @@
 package main
 
 import (
-  // "bytes"
+  "bytes"
   "encoding/gob"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
@@ -289,6 +289,56 @@ type Ent interface {
   Vel() linear.Vec2
   SetVel(vel linear.Vec2)
   Supply(mana Mana) Mana
+}
+
+type nodeGrid [][]Node
+
+func (ng *nodeGrid) GobDecode(data []byte) error {
+  dec := gob.NewDecoder(bytes.NewBuffer(data))
+  var dx, dy uint32
+  err := dec.Decode(&dx)
+  if err != nil {
+    return err
+  }
+  err = dec.Decode(&dy)
+  if err != nil {
+    return err
+  }
+  *ng = make([][]Node, dx)
+  for x := range *ng {
+    (*ng)[x] = make([]Node, dy)
+  }
+  for x := range *ng {
+    for y := range (*ng)[x] {
+      err = dec.Decode(&((*ng)[x][y]))
+      if err != nil {
+        return err
+      }
+    }
+  }
+  return nil
+}
+
+func (ng *nodeGrid) GobEncode() ([]byte, error) {
+  buf := bytes.NewBuffer(nil)
+  enc := gob.NewEncoder(buf)
+  err := enc.Encode(uint32(len(*ng)))
+  if err != nil {
+    return nil, err
+  }
+  err = enc.Encode(uint32(len((*ng)[0])))
+  if err != nil {
+    return nil, err
+  }
+  for x := range *ng {
+    for y := range *ng {
+      err = enc.Encode((*ng)[x][y])
+      if err != nil {
+        return nil, err
+      }
+    }
+  }
+  return buf.Bytes(), nil
 }
 
 type Game struct {
