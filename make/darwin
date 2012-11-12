@@ -6,7 +6,8 @@ mkdir -p tron.app/Contents/lib
 
 mv tron tron.app/Contents/MacOS/tron
 cp lib/darwin/* tron.app/Contents/lib/
-cp -r data/* tron.app/Contents/
+#cp -r data/* tron.app/Contents/
+ls data | awk '{print "scr --src data/" $0 " --dst tron.app/Contents/" $0}' | bash
 
 
 go build .

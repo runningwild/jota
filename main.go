@@ -12,7 +12,6 @@ import (
   // "math"
   "os"
   "path/filepath"
-  "runningwild/linear"
   "runningwild/pnf"
   "runningwild/tron/base"
   "runtime"
@@ -67,6 +66,11 @@ func main() {
 
   var ids []int
   var engine *pnf.Engine
+  var room Room
+  err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
+  if err != nil {
+    panic(err)
+  }
   if IsHost() {
     sys.Think()
     var g Game
@@ -75,25 +79,7 @@ func main() {
     g.Dx = 900
     g.Dy = 600
     g.Friction = 0.97
-    g.Polys = []linear.Poly{
-      linear.Poly{
-        linear.Vec2{600, 300},
-        linear.Vec2{600, 400},
-        linear.Vec2{700, 400},
-        linear.Vec2{700, 300},
-      },
-      linear.Poly{
-        linear.Vec2{200, 300},
-        linear.Vec2{100, 400},
-        linear.Vec2{500, 350},
-      },
-      linear.Poly{
-        linear.Vec2{0, 0},
-        linear.Vec2{float64(g.Dx), 0},
-        linear.Vec2{float64(g.Dx), float64(g.Dy)},
-        linear.Vec2{0, float64(g.Dy)},
-      },
-    }
+    g.Polys = room.Polys
     var p Player
     p.Max_turn = 0.07
     p.Max_acc = 0.2
