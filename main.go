@@ -96,7 +96,7 @@ func main() {
     }
     var p Player
     p.Max_turn = 0.07
-    p.Max_acc = 0.1
+    p.Max_acc = 0.2
     p.My_mass = 750 // who knows
     p.Color.R = 255
     p.Max_rate = 10
@@ -121,18 +121,18 @@ func main() {
     }
     g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
     g.GenerateNodes()
-    engine, err = pnf.NewNetEngine(&g, 17*4, 120, 1194)
+    engine, err = pnf.NewNetEngine(&g, 17, 120, 1194)
     if err != nil {
       panic(err.Error())
     }
   } else {
-    engine, err = pnf.NewNetClientEngine(17*4, 120, 1194)
+    engine, err = pnf.NewNetClientEngine(17, 120, 1194)
     if err != nil {
       panic(err.Error())
     }
   }
 
-  // engine = pnf.NewLocalEngine(&g, 17*4)
+  // engine = pnf.NewLocalEngine(&g, 17)
   anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
   ui.AddChild(anchor)
   anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
@@ -156,8 +156,12 @@ func main() {
         down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
         left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
         right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
-        engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
-        engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
+        if up-down != 0 {
+          engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
+        }
+        if left-right != 0 {
+          engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
+        }
 
         if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
           engine.ApplyEvent(Nitro{ids[i], 0, 20000})

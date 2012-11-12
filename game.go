@@ -15,7 +15,7 @@ import (
   "runningwild/tron/texture"
 )
 
-const node_spacing = 30
+const node_spacing = 10
 
 type Color int
 
@@ -143,10 +143,14 @@ func (p *Player) SetVel(vel linear.Vec2) {
 }
 
 func (p *Player) Rate(distance float64) float64 {
-  if distance < 1 {
-    distance = 1
+  M := 10.0
+  D := 100.0
+  v := distance / D
+  ret := M * (1 - v*v)
+  if ret < 0 {
+    ret = 0
   }
-  return 1500 / (distance * distance)
+  return ret
 }
 
 func (p *Player) Priority(distance float64) float64 {
@@ -255,6 +259,12 @@ func (p *Player) Think(g *Game) {
   }
   for _, i := range dead {
     delete(p.Processes, i)
+  }
+
+  p.Delta.Angle = 0
+  p.Delta.Speed = 0
+  if p.Vx != 0 || p.Vy != 0 {
+    base.Log().Printf("VEL: %3.2f", math.Sqrt(p.Vx*p.Vx+p.Vy*p.Vy))
   }
 }
 
@@ -377,9 +387,9 @@ func (g *Game) GenerateNodes() {
         X:        float64(x * node_spacing),
         Y:        float64(y * node_spacing),
         Color:    Color(c.Int63() % 3),
-        Capacity: 100,
-        Amt:      100,
-        Regen:    0.2,
+        Capacity: 200,
+        Amt:      200,
+        Regen:    0.1,
       }
     }
   }
@@ -502,7 +512,7 @@ func (g *Game) getPriorities() [][]*Node {
   r := make([][]*Node, len(g.Ents))
   for x := range g.Nodes {
     for y := range g.Nodes[x] {
-      var best int
+      var best int = -1
       var best_dist_sq float64 = 1e9
       for j := range g.Ents {
         dist_sq := g.Ents[j].Pos().Sub(linear.MakeVec2(g.Nodes[x][y].X, g.Nodes[x][y].Y)).Mag2()
@@ -510,6 +520,9 @@ func (g *Game) getPriorities() [][]*Node {
           best_dist_sq = dist_sq
           best = j
         }
+      }
+      if best == -1 {
+        continue
       }
       r[best] = append(r[best], &g.Nodes[x][y])
     }
