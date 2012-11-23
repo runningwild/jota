@@ -1,7 +1,7 @@
+// +build !release
+
 // In devel version we want it to be clear that a texture isn't loaded or has
 // failed to load, so we use a bright pink texture in both of those cases.
-
-// +build !release
 package texture
 
 import (

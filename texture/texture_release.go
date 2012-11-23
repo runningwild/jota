@@ -1,8 +1,8 @@
+// +build release
+
 // In release version we don't want to show a bright pink texture when we're
 // waiting to load or have an error, so we use a completely transparent
 // texture instead.
-
-// +build release
 package texture
 
 import (
