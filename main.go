@@ -152,15 +152,6 @@ func main() {
         if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
           engine.ApplyEvent(Nitro{ids[i], 0, 20000})
         }
-        // if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-        //   engine.ApplyEvent(Blink{ids[i], 0, 50})
-        // }
-        if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-          engine.ApplyEvent(Shock{ids[i], 1, 1, 200, 10})
-        }
-        // if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-        //   engine.ApplyEvent(Burst{ids[i], 1, 100, 10000})
-        // }
         if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
           engine.ApplyEvent(Burst{ids[i], 2, 3, 100000})
         }

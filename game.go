@@ -377,7 +377,7 @@ func init() {
 }
 
 func (g *Game) GenerateNodes() {
-  c := cmwc.MakeCmwc(4224759397, 3)
+  c := cmwc.MakeGoodCmwc()
   c.SeedWithDevRand()
   g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
   for x := 0; x < 1+g.Dx/node_spacing; x++ {
@@ -448,9 +448,6 @@ func (g *Game) Copy() interface{} {
     case *Player:
       p := *e
       g2.Ents = append(g2.Ents, &p)
-    case *Projectile:
-      p := *e
-      g2.Ents = append(g2.Ents, &p)
     }
   }
 
@@ -471,9 +468,6 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
   for _, ent := range g2.Ents {
     switch e := ent.(type) {
     case *Player:
-      p := *e
-      g.Ents = append(g.Ents, &p)
-    case *Projectile:
       p := *e
       g.Ents = append(g.Ents, &p)
     }
@@ -636,22 +630,6 @@ type nodeIndex struct {
   x, y int
 }
 
-func (g *Game) allNodesInSquare(x, y, radius float64, indexes *[]nodeIndex) {
-  x /= node_spacing
-  y /= node_spacing
-  radius /= node_spacing
-  minx := clamp(x-radius, 0, float64(len(g.Nodes)))
-  maxx := clamp(x+radius+1, 0, float64(len(g.Nodes)))
-  miny := clamp(y-radius, 0, float64(len(g.Nodes[0])))
-  maxy := clamp(y+radius+1, 0, float64(len(g.Nodes[0])))
-  *indexes = (*indexes)[0:0]
-  for x := int(minx); x < int(maxx); x++ {
-    for y := int(miny); y < int(maxy); y++ {
-      *indexes = append(*indexes, nodeIndex{x, y})
-    }
-  }
-}
-
 type Turn struct {
   Player_id int
   Delta     float64
@@ -778,34 +756,6 @@ func (n Nitro) Apply(_g interface{}) {
   params := map[string]int{"inc": n.Inc}
   process := (&nitroAbility{}).Activate(player, params)
   player.Processes[n.Id] = process
-}
-
-type Shock struct {
-  Player_id int
-  Id        int
-  Vel       int
-  Range     int
-  Power     int
-}
-
-func init() {
-  gob.Register(Shock{})
-}
-
-func (s Shock) ApplyFirst(g interface{}) {}
-func (s Shock) ApplyFinal(g interface{}) {}
-func (s Shock) Apply(_g interface{}) {
-  g := _g.(*Game)
-  player := g.GetEnt(s.Player_id).(*Player)
-  if !player.Alive() || player.Exiled() {
-    return
-  }
-  if _, ok := player.Processes[s.Id]; ok {
-    return
-  }
-  params := map[string]int{"vel": s.Vel, "power": s.Power, "range": s.Range}
-  process := (&shockAbility{}).Activate(player, params)
-  player.Processes[s.Id] = process
 }
 
 type GameWindow struct {
