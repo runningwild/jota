@@ -87,7 +87,8 @@ func main() {
     p.Color.R = 255
     p.Max_rate = 10
     p.Influence = 75
-    p.Dominance = 10
+    p.Health.Max = 100
+    p.Health.Cur = 100
     N := 2
     p.X = float64(g.Dx-N) / 2
     p.Y = float64(g.Dy-N) / 2

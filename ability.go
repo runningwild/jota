@@ -12,11 +12,6 @@ type Ability interface {
 }
 
 type Drain interface {
-  // Request returns the most mana that this Process could use right now.
-  // Some Processes can operate at any amount of mana, and some will need to
-  // get all of their requested mana before they are able to do anything.
-  Request() Mana
-
   // Supplies mana to the Process and returns the unused portion.
   Supply(Mana) Mana
 }
@@ -69,10 +64,6 @@ type blinkProcess struct {
   Remaining Mana
   Killed    bool
   Player_id int
-}
-
-func (p *blinkProcess) Request() Mana {
-  return p.Remaining
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.
@@ -161,13 +152,6 @@ type burstProcess struct {
 
   // Counting how long to cast
   count int
-}
-
-func (p *burstProcess) Request() Mana {
-  if p.Remaining_initial.Magnitude() > 0 {
-    return p.Remaining_initial
-  }
-  return p.Continual
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.
@@ -275,10 +259,6 @@ type nitroProcess struct {
 
   Prev_delta float64
   Supplied   Mana
-}
-
-func (p *nitroProcess) Request() Mana {
-  return p.Continual
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.

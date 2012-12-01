@@ -78,16 +78,15 @@ type Player struct {
   Max_rate  int32
   Influence int32
 
-  // If two players try to drain mana from the same node only the player with
-  // the highest priority will be able to, where the priority is
-  // Priority(D) = Max_rate(D) * Dominance
-  Dominance int32
-
   // If Exile_frames > 0 then the Player is not present in the game right now
   // and is excluded from all combat/mana/rendering/processing/etc...
   // Exile_frames is the number of frames remaining that the player is in
   // exile.
   Exile_frames int32
+
+  Health struct {
+    Max, Cur float64
+  }
 
   // Processes contains all of the processes that this player is casting
   // right now.
@@ -110,6 +109,11 @@ func (p *Player) ApplyForce(f linear.Vec2) {
   dv := f.Scale(1 / p.Mass())
   p.Vx += dv.X
   p.Vy += dv.Y
+}
+
+func (p *Player) ApplyDamage(d Damage) {
+  p.Health.Cur -= d.Amt
+  p.Dead = p.Health.Cur <= 0
 }
 
 func (p *Player) Mass() float64 {
@@ -142,19 +146,14 @@ func (p *Player) SetVel(vel linear.Vec2) {
   p.Y = vel.Y
 }
 
-func (p *Player) Rate(distance float64) float64 {
+func (p *Player) Rate(distance_squared float64) float64 {
   M := 10.0
   D := 100.0
-  v := distance / D
-  ret := M * (1 - v*v)
+  ret := M * (1 - distance_squared/(D*D))
   if ret < 0 {
     ret = 0
   }
   return ret
-}
-
-func (p *Player) Priority(distance float64) float64 {
-  return float64(p.Dominance) * p.Rate(distance)
 }
 
 func (p *Player) Draw() {
@@ -268,20 +267,24 @@ func (p *Player) Think(g *Game) {
   }
 }
 
-func (p *Player) Request() Mana {
-  var request Mana
-  for _, process := range p.Processes {
-    for color, value := range process.Request() {
-      request[color] = request[color] + value
-    }
-  }
-  return request
-}
 func (p *Player) Supply(supply Mana) Mana {
   for _, process := range p.Processes {
     supply = process.Supply(supply)
   }
   return supply
+}
+
+type DamageKind int
+
+const (
+  DamageFire DamageKind = iota
+  DamageAcid
+  DamageCrushing
+)
+
+type Damage struct {
+  Kind DamageKind
+  Amt  float64
 }
 
 type Ent interface {
@@ -290,8 +293,9 @@ type Ent interface {
   Exiled() bool
   Think(game *Game)
   ApplyForce(force linear.Vec2)
+  ApplyDamage(damage Damage)
   Mass() float64
-  Rate(dist float64) float64
+  Rate(dist_sq float64) float64
   SetId(int)
   Id() int
   Pos() linear.Vec2
@@ -507,11 +511,12 @@ func (g *Game) getPriorities() [][]*Node {
   for x := range g.Nodes {
     for y := range g.Nodes[x] {
       var best int = -1
-      var best_dist_sq float64 = 1e9
+      var best_rate float64 = 0.0
       for j := range g.Ents {
         dist_sq := g.Ents[j].Pos().Sub(linear.MakeVec2(g.Nodes[x][y].X, g.Nodes[x][y].Y)).Mag2()
-        if dist_sq < best_dist_sq {
-          best_dist_sq = dist_sq
+        rate := g.Ents[j].Rate(dist_sq)
+        if rate > best_rate {
+          best_rate = rate
           best = j
         }
       }
