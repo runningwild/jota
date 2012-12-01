@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
   "bytes"
@@ -14,6 +14,39 @@ import (
   "runningwild/tron/base"
   "runningwild/tron/texture"
 )
+
+type Ability func(player *Player, params map[string]int) Process
+
+var abilities map[string]Ability
+
+func RegisterAbility(name string, ability Ability) {
+  if abilities == nil {
+    abilities = make(map[string]Ability)
+  }
+  abilities[name] = ability
+}
+
+type Drain interface {
+  // Supplies mana to the Process and returns the unused portion.
+  Supply(Mana) Mana
+}
+
+type Thinker interface {
+  Think(game *Game)
+
+  // Kills a process.  Any Killed process will return true on any future
+  // calls to Complete().
+  Kill(game *Game)
+
+  Draw(game *Game)
+
+  Complete() bool
+}
+
+type Process interface {
+  Drain
+  Thinker
+}
 
 const node_spacing = 10
 
@@ -681,33 +714,6 @@ func (a Accelerate) Apply(_g interface{}) {
   player.Delta.Speed = a.Delta / 2
 }
 
-type Blink struct {
-  Player_id int
-  Id        int
-  Frames    int
-}
-
-func init() {
-  gob.Register(Blink{})
-}
-
-func (b Blink) ApplyFirst(g interface{}) {}
-func (b Blink) ApplyFinal(g interface{}) {}
-func (b Blink) Apply(_g interface{}) {
-  g := _g.(*Game)
-  player := g.GetEnt(b.Player_id).(*Player)
-  if !player.Alive() || player.Exiled() {
-    return
-  }
-  if _, ok := player.Processes[b.Id]; ok {
-    // Already running this process
-    return
-  }
-  params := map[string]int{"frames": b.Frames}
-  process := (&blinkAbility{}).Activate(player, params)
-  player.Processes[b.Id] = process
-}
-
 type Burst struct {
   Player_id int
   Id        int
@@ -733,7 +739,7 @@ func (b Burst) Apply(_g interface{}) {
     return
   }
   params := map[string]int{"frames": b.Frames, "force": b.Force}
-  process := (&burstAbility{}).Activate(player, params)
+  process := abilities["burst"](player, params)
   player.Processes[b.Id] = process
 }
 
@@ -763,7 +769,7 @@ func (n Nitro) Apply(_g interface{}) {
   }
   base.Log().Printf("Added nitro")
   params := map[string]int{"inc": n.Inc}
-  process := (&nitroAbility{}).Activate(player, params)
+  process := abilities["nitro"](player, params)
   player.Processes[n.Id] = process
 }
 

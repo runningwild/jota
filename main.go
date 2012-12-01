@@ -14,6 +14,7 @@ import (
   "path/filepath"
   "runningwild/pnf"
   "runningwild/tron/base"
+  "runningwild/tron/game"
   "runtime"
   "runtime/pprof"
 )
@@ -73,14 +74,14 @@ func main() {
   }
   if IsHost() {
     sys.Think()
-    var g Game
-    g.Rng = cmwc.MakeCmwc(4224759397, 3)
+    var g game.Game
+    g.Rng = cmwc.MakeGoodCmwc()
     g.Rng.SeedWithDevRand()
     g.Dx = 900
     g.Dy = 600
     g.Friction = 0.97
     g.Polys = room.Polys
-    var p Player
+    var p game.Player
     p.Max_turn = 0.07
     p.Max_acc = 0.2
     p.My_mass = 750 // who knows
@@ -97,7 +98,7 @@ func main() {
         p.X += float64(x * 25)
         p.Y += float64(y * 25)
         // p.Mass += float64(x+y) * 150
-        p.Processes = make(map[int]Process)
+        p.Processes = make(map[int]game.Process)
         temp := p
         ids = append(ids, g.AddEnt(&temp))
 
@@ -122,7 +123,7 @@ func main() {
   // engine = pnf.NewLocalEngine(&g, 17)
   anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
   ui.AddChild(anchor)
-  anchor.AddChild(&GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
+  anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
   var v float64
   var profile_output *os.File
   var num_mem_profiles int
@@ -144,17 +145,17 @@ func main() {
         left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
         right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
         if up-down != 0 {
-          engine.ApplyEvent(Accelerate{ids[i], 2 * (up - down)})
+          engine.ApplyEvent(game.Accelerate{ids[i], 2 * (up - down)})
         }
         if left-right != 0 {
-          engine.ApplyEvent(Turn{ids[i], (left - right) / 10})
+          engine.ApplyEvent(game.Turn{ids[i], (left - right) / 10})
         }
 
         if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-          engine.ApplyEvent(Nitro{ids[i], 0, 20000})
+          engine.ApplyEvent(game.Nitro{ids[i], 0, 20000})
         }
         if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
-          engine.ApplyEvent(Burst{ids[i], 2, 3, 100000})
+          engine.ApplyEvent(game.Burst{ids[i], 2, 3, 100000})
         }
       }
     }

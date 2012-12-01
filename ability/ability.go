@@ -4,109 +4,14 @@ import (
   "encoding/gob"
   "fmt"
   "math"
+  "runningwild/tron"
   "runningwild/tron/base"
+  "runningwild/tron/game"
 )
-
-type Ability interface {
-  Activate(player *Player, params map[string]int) Process
-}
-
-type Drain interface {
-  // Supplies mana to the Process and returns the unused portion.
-  Supply(Mana) Mana
-}
-
-type Thinker interface {
-  Think(game *Game)
-
-  // Kills a process.  Any Killed process will return true on any future
-  // calls to Complete().
-  Kill(game *Game)
-
-  Draw(game *Game)
-
-  Complete() bool
-}
-
-type Process interface {
-  Drain
-  Thinker
-}
 
 type noRendering struct{}
 
-func (noRendering) Draw(game *Game) {}
-
-// BLINK
-// Causes the player to disappear for [frames] frames, where a frame is 16ms.
-// Cost 50000 + [frames]^2 green mana.
-func init() {
-  gob.Register(blinkAbility{})
-  gob.Register(&blinkProcess{})
-}
-
-type blinkAbility struct {
-}
-
-func (a *blinkAbility) Activate(player *Player, params map[string]int) Process {
-  if len(params) != 1 {
-    panic(fmt.Sprintf("Blink requires exactly one parameter, not %v", params))
-  }
-  if _, ok := params["frames"]; !ok {
-    panic(fmt.Sprintf("Blink requires [frames] to be specified, not %v", params))
-  }
-  frames := params["frames"]
-  if frames < 0 {
-    panic(fmt.Sprintf("Blink requires [frames] > 0, not %d", frames))
-  }
-  return &blinkProcess{
-    Frames:    int32(frames),
-    Remaining: Mana{0, 50000 + float64(frames*frames), 0},
-  }
-}
-
-type blinkProcess struct {
-  noRendering
-  Frames    int32
-  Remaining Mana
-  Killed    bool
-  Player_id int
-}
-
-// Supplies mana to the process.  Any mana that is unused is returned.
-func (p *blinkProcess) Supply(supply Mana) Mana {
-  for color := range supply {
-    if p.Remaining[color] == 0 {
-      continue
-    }
-    if supply[color] == 0 {
-      continue
-    }
-    if supply[color] > p.Remaining[color] {
-      supply[color] -= p.Remaining[color]
-      p.Remaining[color] = 0
-    } else {
-      p.Remaining[color] -= supply[color]
-      supply[color] = 0
-    }
-  }
-  return supply
-}
-
-func (p *blinkProcess) Think(game *Game) {
-  _player := game.GetEnt(p.Player_id)
-  player := _player.(*Player)
-  if p.Remaining.Magnitude() == 0 {
-    player.Exile_frames += p.Frames
-    p.Frames = 0
-  }
-}
-func (p *blinkProcess) Kill(game *Game) {
-  p.Killed = true
-}
-func (p *blinkProcess) Complete() bool {
-  return p.Killed || p.Frames == 0
-}
+func (noRendering) Draw(game *game.Game) {}
 
 // BURST
 // All nearby players are pushed radially outward from this one.  The force
@@ -116,14 +21,11 @@ func (p *blinkProcess) Complete() bool {
 // Initial cost: [radius] * [force] red mana.
 // Continual cost: [frames] red mana per frame.
 func init() {
-  gob.Register(burstAbility{})
+  game.RegisterAbility("burst", burstAbility)
   gob.Register(&burstProcess{})
 }
 
-type burstAbility struct {
-}
-
-func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
+func burstAbility(player *game.Player, params map[string]int) Process {
   if len(params) != 2 {
     panic(fmt.Sprintf("Burst requires exactly two parameters, not %v", params))
   }
@@ -195,9 +97,9 @@ func (p *burstProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *burstProcess) Think(game *Game) {
+func (p *burstProcess) Think(game *game.Game) {
   _player := game.GetEnt(p.Player_id)
-  player := _player.(*Player)
+  player := _player.(*game.Player)
   if p.Remaining_initial.Magnitude() == 0 {
     if p.count > 0 {
       base.Log().Printf("Frames: %d", p.count)
@@ -218,7 +120,7 @@ func (p *burstProcess) Think(game *Game) {
     }
   }
 }
-func (p *burstProcess) Kill(game *Game) {
+func (p *burstProcess) Kill(game *game.Game) {
   p.Killed = true
 }
 func (p *burstProcess) Complete() bool {
@@ -232,14 +134,11 @@ const nitro_mana_factor = 200
 const nitro_acc_factor = 2500
 
 func init() {
-  gob.Register(nitroAbility{})
+  game.RegisterAbility("nitro", nitroAbility)
   gob.Register(&nitroProcess{})
 }
 
-type nitroAbility struct {
-}
-
-func (a *nitroAbility) Activate(player *Player, params map[string]int) Process {
+func nitroAbility(player *game.Player, params map[string]int) Process {
   if len(params) != 1 {
     panic(fmt.Sprintf("Nitro requires exactly one parameter, not %v", params))
   }
@@ -284,9 +183,9 @@ func (p *nitroProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *nitroProcess) Think(game *Game) {
+func (p *nitroProcess) Think(game *game.Game) {
   _player := game.GetEnt(p.Player_id)
-  player := _player.(*Player)
+  player := _player.(*game.Player)
   player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   // base.Log().Printf("Delta: %.3f", delta)
@@ -294,9 +193,9 @@ func (p *nitroProcess) Think(game *Game) {
   player.Max_acc += delta
   p.Prev_delta = delta
 }
-func (p *nitroProcess) Kill(game *Game) {
+func (p *nitroProcess) Kill(game *game.Game) {
   _player := game.GetEnt(p.Player_id)
-  player := _player.(*Player)
+  player := _player.(*game.Player)
   p.Killed = true
   player.Max_acc -= p.Prev_delta
 }
