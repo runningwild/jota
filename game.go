@@ -156,7 +156,7 @@ func (p *Player) Rate(distance_squared float64) float64 {
   return ret
 }
 
-func (p *Player) Draw() {
+func (p *Player) Draw(game *Game) {
   if p.Exiled() {
     return
   }
@@ -169,6 +169,10 @@ func (p *Player) Draw() {
     t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
   }
   t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
+
+  for _, proc := range p.Processes {
+    proc.Draw(game)
+  }
 }
 
 func (p *Player) Think(g *Game) {
@@ -288,7 +292,7 @@ type Damage struct {
 }
 
 type Ent interface {
-  Draw()
+  Draw(game *Game)
   Alive() bool
   Exiled() bool
   Think(game *Game)
@@ -805,7 +809,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
   gl.Color4d(1, 1, 1, 1)
   for _, ent := range gw.game.Ents {
-    ent.Draw()
+    ent.Draw(gw.game)
   }
   gl.Disable(gl.TEXTURE_2D)
 

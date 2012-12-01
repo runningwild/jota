@@ -17,11 +17,13 @@ type Drain interface {
 }
 
 type Thinker interface {
-  Think(*Game)
+  Think(game *Game)
 
   // Kills a process.  Any Killed process will return true on any future
   // calls to Complete().
-  Kill(*Game)
+  Kill(game *Game)
+
+  Draw(game *Game)
 
   Complete() bool
 }
@@ -30,6 +32,10 @@ type Process interface {
   Drain
   Thinker
 }
+
+type noRendering struct{}
+
+func (noRendering) Draw(game *Game) {}
 
 // BLINK
 // Causes the player to disappear for [frames] frames, where a frame is 16ms.
@@ -60,6 +66,7 @@ func (a *blinkAbility) Activate(player *Player, params map[string]int) Process {
 }
 
 type blinkProcess struct {
+  noRendering
   Frames    int32
   Remaining Mana
   Killed    bool
@@ -143,6 +150,7 @@ func (a *burstAbility) Activate(player *Player, params map[string]int) Process {
 }
 
 type burstProcess struct {
+  noRendering
   Frames            int32
   Force             float64
   Remaining_initial Mana
@@ -252,6 +260,7 @@ func (a *nitroAbility) Activate(player *Player, params map[string]int) Process {
 }
 
 type nitroProcess struct {
+  noRendering
   Inc       int32
   Continual Mana
   Killed    bool
