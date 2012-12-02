@@ -4,7 +4,7 @@ import (
   "encoding/gob"
   "fmt"
   "math"
-  "runningwild/tron/game"
+  "github.com/runningwild/magnus/game"
 )
 
 // BURST

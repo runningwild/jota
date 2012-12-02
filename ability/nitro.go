@@ -4,8 +4,8 @@ import (
   "encoding/gob"
   "fmt"
   "math"
-  "runningwild/tron/game"
-  "runningwild/tron/stats"
+  "github.com/runningwild/magnus/game"
+  "github.com/runningwild/magnus/stats"
 )
 
 // NITRO

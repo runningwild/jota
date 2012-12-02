@@ -1,21 +1,21 @@
 go build --tags host .
 
-rm -rf tron.app
-mkdir -p tron.app/Contents/MacOS
-mkdir -p tron.app/Contents/lib
+rm -rf magnus.app
+mkdir -p magnus.app/Contents/MacOS
+mkdir -p magnus.app/Contents/lib
 
-mv tron tron.app/Contents/MacOS/tron
-cp lib/darwin/* tron.app/Contents/lib/
-cp -r data/* tron.app/Contents/
-#ls data | awk '{print "scr --src data/" $0 " --dst tron.app/Contents/" $0}' | bash
+mv magnus magnus.app/Contents/MacOS/magnus
+cp lib/darwin/* magnus.app/Contents/lib/
+cp -r data/* magnus.app/Contents/
+#ls data | awk '{print "scr --src data/" $0 " --dst magnus.app/Contents/" $0}' | bash
 
 
-go build .
-
-rm -rf gron.app
-mkdir -p gron.app/Contents/MacOS
-mkdir -p gron.app/Contents/lib
-
-mv tron gron.app/Contents/MacOS/gron
-cp lib/darwin/* gron.app/Contents/lib/
-cp -r data/* gron.app/Contents/
+#go build .
+#
+#rm -rf gron.app
+#mkdir -p gron.app/Contents/MacOS
+#mkdir -p gron.app/Contents/lib
+#
+#mv tron gron.app/Contents/MacOS/gron
+#cp lib/darwin/* gron.app/Contents/lib/
+#cp -r data/* gron.app/Contents/

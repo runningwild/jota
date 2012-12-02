@@ -1,9 +1,9 @@
 package ability
 
 import (
-  "runningwild/tron/base"
-  "runningwild/tron/game"
-  "runningwild/tron/stats"
+  "github.com/runningwild/magnus/base"
+  "github.com/runningwild/magnus/game"
+  "github.com/runningwild/magnus/stats"
 )
 
 type noRendering struct{}

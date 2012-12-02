@@ -12,9 +12,9 @@ import (
   "path/filepath"
   "runningwild/linear"
   "runningwild/pnf"
-  "runningwild/tron/base"
-  "runningwild/tron/stats"
-  "runningwild/tron/texture"
+  "github.com/runningwild/magnus/base"
+  "github.com/runningwild/magnus/stats"
+  "github.com/runningwild/magnus/texture"
 )
 
 type Ability func(game *Game, player *Player, params map[string]int) Process

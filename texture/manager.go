@@ -10,7 +10,7 @@ import (
   _ "image/jpeg"
   _ "image/png"
   "os"
-  "runningwild/tron/base"
+  "github.com/runningwild/magnus/base"
   "sync"
   "time"
 )
