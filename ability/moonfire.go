@@ -4,7 +4,7 @@ import (
   "encoding/gob"
   "fmt"
   "math"
-  "runningwild/linear"
+  "github.com/runningwild/linear"
   "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/game"
   "github.com/runningwild/magnus/stats"

@@ -17,7 +17,7 @@ import (
   "github.com/runningwild/magnus/game"
   "os"
   "path/filepath"
-  "runningwild/pnf"
+  "github.com/runningwild/pnf"
   "runtime"
   "runtime/pprof"
 )
@@ -104,7 +104,7 @@ func main() {
     if err != nil {
       panic(err)
     }
-    N := 2
+    N := 5
     p.X = float64(g.Dx-N) / 2
     p.Y = float64(g.Dy-N) / 2
     for x := 0; x < N; x++ {

@@ -1,7 +1,7 @@
 package main
 
 import (
-  "runningwild/linear"
+  "github.com/runningwild/linear"
 )
 
 type Door struct {
