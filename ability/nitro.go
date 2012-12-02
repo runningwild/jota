@@ -5,6 +5,7 @@ import (
   "fmt"
   "math"
   "runningwild/tron/game"
+  "runningwild/tron/stats"
 )
 
 // NITRO
@@ -40,6 +41,7 @@ func nitroAbility(g *game.Game, player *game.Player, params map[string]int) game
 
 type nitroProcess struct {
   noRendering
+  basicPhases
   Inc       int32
   Continual game.Mana
   Killed    bool
@@ -64,21 +66,21 @@ func (p *nitroProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *nitroProcess) Think(g *game.Game) {
-  _player := g.GetEnt(p.Player_id)
-  player := _player.(*game.Player)
-  player.Max_acc -= p.Prev_delta
+  // _player := g.GetEnt(p.Player_id)
+  // player := _player.(*game.Player)
+  // player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   // base.Log().Printf("Delta: %.3f", delta)
   p.Supplied = game.Mana{}
-  player.Max_acc += delta
+  // player.Max_acc += delta
   p.Prev_delta = delta
 }
-func (p *nitroProcess) Kill(g *game.Game) {
-  _player := g.GetEnt(p.Player_id)
-  player := _player.(*game.Player)
-  p.Killed = true
-  player.Max_acc -= p.Prev_delta
+func (*nitroProcess) ModifyBase(base stats.Base) stats.Base {
+  return base
 }
-func (p *nitroProcess) Complete() bool {
-  return p.Killed
+func (*nitroProcess) ModifyDamage(damage stats.Damage) stats.Damage {
+  return damage
+}
+func (*nitroProcess) CauseDamage() stats.Damage {
+  return stats.Damage{}
 }

@@ -13,6 +13,7 @@ import (
   "runningwild/linear"
   "runningwild/pnf"
   "runningwild/tron/base"
+  "runningwild/tron/stats"
   "runningwild/tron/texture"
 )
 
@@ -32,6 +33,23 @@ type Drain interface {
   Supply(Mana) Mana
 }
 
+type Phase int
+
+const (
+  // This phase is for any process that needs a ui before.  A player can only
+  // have one Process in PhaseUi at a time.  If a player tries to use an ability
+  // while a Process is in PhaseUi the process in PhaseUi will be killed.
+  PhaseUi Phase = iota
+
+  // Once a Process hits PhaseRunning it will remain here until it is complete.
+  // A process should not reach this phase until it is done with player
+  // interaction.
+  PhaseRunning
+
+  // Once a Process returns PhaseComplete it will always return PhaseComplete.
+  PhaseComplete
+)
+
 type Thinker interface {
   Think(game *Game)
 
@@ -41,12 +59,13 @@ type Thinker interface {
 
   Draw(game *Game)
 
-  Complete() bool
+  Phase() Phase
 }
 
 type Process interface {
   Drain
   Thinker
+  stats.Condition
 }
 
 const node_spacing = 10
@@ -86,12 +105,11 @@ func (n *Node) Think() {
 }
 
 type Player struct {
-  Dead    bool
-  My_mass float64
-  X, Y    float64
-  Vx, Vy  float64
-  Angle   float64
-  Delta   struct {
+  Stats  stats.Inst
+  X, Y   float64
+  Vx, Vy float64
+  Angle  float64
+  Delta  struct {
     Speed float64
     Angle float64
   }
@@ -102,25 +120,11 @@ type Player struct {
   // Unique Id over all entities ever
   Gid int
 
-  // Max rate for accelerating and turning.
-  Max_turn float64
-  Max_acc  float64
-
-  // Max_rate and Influence determine the rate that a player can drain mana
-  // from a node a distance D away:
-  // Rate(D) = max(0, Max_rate - (D / Influence) ^ 2)
-  Max_rate  int32
-  Influence int32
-
   // If Exile_frames > 0 then the Player is not present in the game right now
   // and is excluded from all combat/mana/rendering/processing/etc...
   // Exile_frames is the number of frames remaining that the player is in
   // exile.
   Exile_frames int32
-
-  Health struct {
-    Max, Cur float64
-  }
 
   // Processes contains all of the processes that this player is casting
   // right now.
@@ -132,7 +136,7 @@ func init() {
 }
 
 func (p *Player) Alive() bool {
-  return !p.Dead
+  return p.Stats.HealthCur() > 0
 }
 
 func (p *Player) Exiled() bool {
@@ -145,13 +149,12 @@ func (p *Player) ApplyForce(f linear.Vec2) {
   p.Vy += dv.Y
 }
 
-func (p *Player) ApplyDamage(d Damage) {
-  p.Health.Cur -= d.Amt
-  p.Dead = p.Health.Cur <= 0
+func (p *Player) ApplyDamage(d stats.Damage) {
+  p.Stats.ApplyDamage(d)
 }
 
 func (p *Player) Mass() float64 {
-  return p.My_mass
+  return p.Stats.Mass()
 }
 
 func (p *Player) Id() int {
@@ -214,17 +217,17 @@ func (p *Player) Think(g *Game) {
     p.Exile_frames--
     return
   }
-  if p.Delta.Speed > p.Max_acc {
-    p.Delta.Speed = p.Max_acc
+  if p.Delta.Speed > p.Stats.MaxAcc() {
+    p.Delta.Speed = p.Stats.MaxAcc()
   }
-  if p.Delta.Speed < -p.Max_acc {
-    p.Delta.Speed = -p.Max_acc
+  if p.Delta.Speed < -p.Stats.MaxAcc() {
+    p.Delta.Speed = -p.Stats.MaxAcc()
   }
-  if p.Delta.Angle < -p.Max_turn {
-    p.Delta.Angle = -p.Max_turn
+  if p.Delta.Angle < -p.Stats.MaxTurn() {
+    p.Delta.Angle = -p.Stats.MaxTurn()
   }
-  if p.Delta.Angle > p.Max_turn {
-    p.Delta.Angle = p.Max_turn
+  if p.Delta.Angle > p.Stats.MaxTurn() {
+    p.Delta.Angle = p.Stats.MaxTurn()
   }
 
   p.Vx += p.Delta.Speed * math.Cos(p.Angle)
@@ -290,7 +293,7 @@ func (p *Player) Think(g *Game) {
   var dead []int
   for i, process := range p.Processes {
     process.Think(g)
-    if process.Complete() {
+    if process.Phase() == PhaseComplete {
       dead = append(dead, i)
     }
   }
@@ -309,26 +312,13 @@ func (p *Player) Supply(supply Mana) Mana {
   return supply
 }
 
-type DamageKind int
-
-const (
-  DamageFire DamageKind = iota
-  DamageAcid
-  DamageCrushing
-)
-
-type Damage struct {
-  Kind DamageKind
-  Amt  float64
-}
-
 type Ent interface {
   Draw(game *Game)
   Alive() bool
   Exiled() bool
   Think(game *Game)
   ApplyForce(force linear.Vec2)
-  ApplyDamage(damage Damage)
+  ApplyDamage(damage stats.Damage)
   Mass() float64
   Rate(dist_sq float64) float64
   SetId(int)

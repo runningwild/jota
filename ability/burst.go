@@ -47,6 +47,8 @@ func burstAbility(g *game.Game, player *game.Player, params map[string]int) game
 
 type burstProcess struct {
   noRendering
+  basicPhases
+  nullCondition
   Frames            int32
   Force             float64
   Remaining_initial game.Mana
@@ -99,6 +101,9 @@ func (p *burstProcess) Think(g *game.Game) {
       p.count = -1
     }
     p.Frames--
+    if p.Frames <= 0 {
+      p.The_phase = game.PhaseComplete
+    }
     for i := range g.Ents {
       other := g.Ents[i]
       if other == player {
@@ -112,10 +117,4 @@ func (p *burstProcess) Think(g *game.Game) {
       other.ApplyForce(other.Pos().Sub(player.Pos()).Norm().Scale(force))
     }
   }
-}
-func (p *burstProcess) Kill(game *game.Game) {
-  p.Killed = true
-}
-func (p *burstProcess) Complete() bool {
-  return p.Killed || p.Frames <= 0
 }

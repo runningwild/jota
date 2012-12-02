@@ -1,6 +1,8 @@
 package main
 
 import (
+  "bytes"
+  "encoding/json"
   "fmt"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
@@ -83,14 +85,25 @@ func main() {
     g.Friction = 0.97
     g.Polys = room.Polys
     var p game.Player
-    p.Max_turn = 0.07
-    p.Max_acc = 0.2
-    p.My_mass = 750 // who knows
     p.Color.R = 255
-    p.Max_rate = 10
-    p.Influence = 75
-    p.Health.Max = 100
-    p.Health.Cur = 100
+    err := json.NewDecoder(bytes.NewBuffer([]byte(`
+      {
+        "Base": {
+          "Max_turn": 0.07,
+          "Max_acc": 0.2,
+          "Mass": 750,
+          "Max_rate": 10,
+          "Influence": 75,
+          "Health": 100
+        },
+        "Dynamic": {
+          "Health": 100
+        }
+      }
+    `))).Decode(&p.Stats)
+    if err != nil {
+      panic(err)
+    }
     N := 2
     p.X = float64(g.Dx-N) / 2
     p.Y = float64(g.Dy-N) / 2

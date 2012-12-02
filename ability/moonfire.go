@@ -7,6 +7,7 @@ import (
   "runningwild/linear"
   "runningwild/tron/base"
   "runningwild/tron/game"
+  "runningwild/tron/stats"
 )
 
 func init() {
@@ -46,6 +47,9 @@ func moonFireAbility(g *game.Game, player *game.Player, params map[string]int) g
 }
 
 type moonFireProcess struct {
+  basicPhases
+  nullCondition
+
   X      float64
   Y      float64
   Radius int32
@@ -88,20 +92,14 @@ func (p *moonFireProcess) Think(g *game.Game) {
   // base.Log().Printf("Supply %2.2f / %2.2f", p.Supplied.Magnitude(), p.Required.Magnitude())
 
   if p.Supplied.Magnitude() >= p.Required.Magnitude() {
-    p.Killed = true
+    p.The_phase = game.PhaseComplete
     // Do it - for realzes
     pos := linear.Vec2{p.X, p.Y}
     for _, target := range g.Ents {
       base.Log().Printf("Check %v within %d of %v", pos, p.Radius, target.Pos())
       if target.Pos().Sub(pos).Mag() <= float64(p.Radius) {
-        target.ApplyDamage(game.Damage{Amt: float64(p.Damage)})
+        target.ApplyDamage(stats.Damage{Amt: float64(p.Damage)})
       }
     }
   }
-}
-func (p *moonFireProcess) Kill(game *game.Game) {
-  p.Killed = true
-}
-func (p *moonFireProcess) Complete() bool {
-  return p.Killed || p.Supplied.Magnitude() >= p.Required.Magnitude()
 }
