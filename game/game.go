@@ -5,6 +5,7 @@ import (
   "encoding/gob"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
+  "github.com/runningwild/glop/gin"
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/util/algorithm"
   "math"
@@ -15,7 +16,7 @@ import (
   "runningwild/tron/texture"
 )
 
-type Ability func(player *Player, params map[string]int) Process
+type Ability func(game *Game, player *Player, params map[string]int) Process
 
 var abilities map[string]Ability
 
@@ -299,9 +300,6 @@ func (p *Player) Think(g *Game) {
 
   p.Delta.Angle = 0
   p.Delta.Speed = 0
-  if p.Vx != 0 || p.Vy != 0 {
-    base.Log().Printf("VEL: %3.2f", math.Sqrt(p.Vx*p.Vx+p.Vy*p.Vy))
-  }
 }
 
 func (p *Player) Supply(supply Mana) Mana {
@@ -409,6 +407,11 @@ type Game struct {
   Next_id int
 
   Ents []Ent
+
+  Mouse struct {
+    // Position of the mouse cursor in game coordinates
+    X, Y float64
+  }
 
   Game_thinks int
 }
@@ -570,6 +573,11 @@ func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
   g.Game_thinks++
+
+  mx, my := gin.In().GetCursor("Mouse").Point()
+  g.Mouse.X = float64(mx)
+  g.Mouse.Y = float64(my)
+
   // Advance players, check for collisions, add segments
   for i := range g.Ents {
     if !g.Ents[i].Alive() {
@@ -730,7 +738,6 @@ func (b Burst) ApplyFinal(g interface{}) {}
 func (b Burst) Apply(_g interface{}) {
   g := _g.(*Game)
   player := g.GetEnt(b.Player_id).(*Player)
-  base.Log().Printf("APPLY: %v\n", player)
   if !player.Alive() || player.Exiled() {
     return
   }
@@ -739,8 +746,33 @@ func (b Burst) Apply(_g interface{}) {
     return
   }
   params := map[string]int{"frames": b.Frames, "force": b.Force}
-  process := abilities["burst"](player, params)
+  process := abilities["burst"](g, player, params)
   player.Processes[b.Id] = process
+}
+
+type MoonFire struct {
+  Player_id int
+  Id        int
+  Damage    int
+  Radius    int
+}
+
+func init() {
+  gob.Register(MoonFire{})
+}
+
+func (mf MoonFire) ApplyFirst(g interface{}) {}
+func (mf MoonFire) ApplyFinal(g interface{}) {}
+func (mf MoonFire) Apply(_g interface{}) {
+  g := _g.(*Game)
+  player := g.GetEnt(mf.Player_id).(*Player)
+  if !player.Alive() || player.Exiled() {
+    return
+  }
+
+  params := map[string]int{"damage": mf.Damage, "radius": mf.Radius}
+  process := abilities["moonfire"](g, player, params)
+  player.Processes[mf.Id] = process
 }
 
 type Nitro struct {
@@ -767,9 +799,8 @@ func (n Nitro) Apply(_g interface{}) {
     base.Log().Printf("Killed nitro")
     return
   }
-  base.Log().Printf("Added nitro")
   params := map[string]int{"inc": n.Inc}
-  process := abilities["nitro"](player, params)
+  process := abilities["nitro"](g, player, params)
   player.Processes[n.Id] = process
 }
 

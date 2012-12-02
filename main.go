@@ -13,6 +13,7 @@ import (
   "os"
   "path/filepath"
   "runningwild/pnf"
+  _ "runningwild/tron/ability"
   "runningwild/tron/base"
   "runningwild/tron/game"
   "runtime"
@@ -153,6 +154,9 @@ func main() {
 
         if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
           engine.ApplyEvent(game.Nitro{ids[i], 0, 20000})
+        }
+        if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
+          engine.ApplyEvent(game.MoonFire{ids[i], 1, 90, 150})
         }
         if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
           engine.ApplyEvent(game.Burst{ids[i], 2, 3, 100000})

@@ -1,4 +1,4 @@
-package main
+package ability
 
 import (
   "runningwild/tron/game"

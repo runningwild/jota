@@ -1,11 +1,9 @@
-package main
+package ability
 
 import (
   "encoding/gob"
   "fmt"
   "math"
-  "runningwild/tron"
-  "runningwild/tron/base"
   "runningwild/tron/game"
 )
 
@@ -20,7 +18,7 @@ func init() {
   gob.Register(&nitroProcess{})
 }
 
-func nitroAbility(player *game.Player, params map[string]int) Process {
+func nitroAbility(g *game.Game, player *game.Player, params map[string]int) game.Process {
   if len(params) != 1 {
     panic(fmt.Sprintf("Nitro requires exactly one parameter, not %v", params))
   }
@@ -36,23 +34,23 @@ func nitroAbility(player *game.Player, params map[string]int) Process {
   return &nitroProcess{
     Player_id: player.Id(),
     Inc:       int32(inc),
-    Continual: Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
+    Continual: game.Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
   }
 }
 
 type nitroProcess struct {
   noRendering
   Inc       int32
-  Continual Mana
+  Continual game.Mana
   Killed    bool
   Player_id int
 
   Prev_delta float64
-  Supplied   Mana
+  Supplied   game.Mana
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.
-func (p *nitroProcess) Supply(supply Mana) Mana {
+func (p *nitroProcess) Supply(supply game.Mana) game.Mana {
   for color := range p.Continual {
     if supply[color] < p.Continual[color] {
       p.Supplied[color] += supply[color]
@@ -65,18 +63,18 @@ func (p *nitroProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *nitroProcess) Think(game *game.Game) {
-  _player := game.GetEnt(p.Player_id)
+func (p *nitroProcess) Think(g *game.Game) {
+  _player := g.GetEnt(p.Player_id)
   player := _player.(*game.Player)
   player.Max_acc -= p.Prev_delta
   delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   // base.Log().Printf("Delta: %.3f", delta)
-  p.Supplied = Mana{}
+  p.Supplied = game.Mana{}
   player.Max_acc += delta
   p.Prev_delta = delta
 }
-func (p *nitroProcess) Kill(game *game.Game) {
-  _player := game.GetEnt(p.Player_id)
+func (p *nitroProcess) Kill(g *game.Game) {
+  _player := g.GetEnt(p.Player_id)
   player := _player.(*game.Player)
   p.Killed = true
   player.Max_acc -= p.Prev_delta

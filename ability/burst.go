@@ -1,11 +1,9 @@
-package main
+package ability
 
 import (
   "encoding/gob"
   "fmt"
   "math"
-  "runningwild/tron"
-  "runningwild/tron/base"
   "runningwild/tron/game"
 )
 
@@ -21,7 +19,7 @@ func init() {
   gob.Register(&burstProcess{})
 }
 
-func burstAbility(player *game.Player, params map[string]int) Process {
+func burstAbility(g *game.Game, player *game.Player, params map[string]int) game.Process {
   if len(params) != 2 {
     panic(fmt.Sprintf("Burst requires exactly two parameters, not %v", params))
   }
@@ -41,8 +39,8 @@ func burstAbility(player *game.Player, params map[string]int) Process {
   return &burstProcess{
     Frames:            int32(frames),
     Force:             float64(force),
-    Remaining_initial: Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
-    Continual:         Mana{float64(force) / 50, 0, 0},
+    Remaining_initial: game.Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
+    Continual:         game.Mana{float64(force) / 50, 0, 0},
     Player_id:         player.Id(),
   }
 }
@@ -51,8 +49,8 @@ type burstProcess struct {
   noRendering
   Frames            int32
   Force             float64
-  Remaining_initial Mana
-  Continual         Mana
+  Remaining_initial game.Mana
+  Continual         game.Mana
   Killed            bool
   Player_id         int
 
@@ -61,7 +59,7 @@ type burstProcess struct {
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.
-func (p *burstProcess) Supply(supply Mana) Mana {
+func (p *burstProcess) Supply(supply game.Mana) game.Mana {
   if p.Remaining_initial.Magnitude() > 0 {
     p.count++
     for color := range supply {
@@ -93,17 +91,16 @@ func (p *burstProcess) Supply(supply Mana) Mana {
   return supply
 }
 
-func (p *burstProcess) Think(game *game.Game) {
-  _player := game.GetEnt(p.Player_id)
+func (p *burstProcess) Think(g *game.Game) {
+  _player := g.GetEnt(p.Player_id)
   player := _player.(*game.Player)
   if p.Remaining_initial.Magnitude() == 0 {
     if p.count > 0 {
-      base.Log().Printf("Frames: %d", p.count)
       p.count = -1
     }
     p.Frames--
-    for i := range game.Ents {
-      other := game.Ents[i]
+    for i := range g.Ents {
+      other := g.Ents[i]
       if other == player {
         continue
       }
