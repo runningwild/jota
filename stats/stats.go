@@ -4,7 +4,6 @@ import (
   "bytes"
   "encoding/gob"
   "encoding/json"
-  "github.com/runningwild/glop/util/algorithm"
 )
 
 type Dynamic struct {
@@ -68,24 +67,29 @@ func (s Inst) HealthCur() float64 {
   return s.inst.Dynamic.Health
 }
 
-func (s Inst) HealthMax() float64 {
-  return s.inst.Base.Health
+func (s Inst) ModifyBase(base Base) Base {
+  for _, condition := range s.inst.Conditions {
+    base = condition.ModifyBase(base)
+  }
+  return base
 }
-
+func (s Inst) HealthMax() float64 {
+  return s.ModifyBase(s.inst.Base).Health
+}
 func (s Inst) Mass() float64 {
-  return s.inst.Base.Mass
+  return s.ModifyBase(s.inst.Base).Mass
 }
 func (s Inst) MaxTurn() float64 {
-  return s.inst.Base.Max_turn
+  return s.ModifyBase(s.inst.Base).Max_turn
 }
 func (s Inst) MaxAcc() float64 {
-  return s.inst.Base.Max_acc
+  return s.ModifyBase(s.inst.Base).Max_acc
 }
 func (s Inst) MaxRate() float64 {
-  return s.inst.Base.Max_rate
+  return s.ModifyBase(s.inst.Base).Max_rate
 }
 func (s Inst) Influence() float64 {
-  return s.inst.Base.Influence
+  return s.ModifyBase(s.inst.Base).Influence
 }
 
 func (s *Inst) SetHealth(health float64) {
@@ -99,16 +103,15 @@ func (s *Inst) ApplyDamage(damage Damage) {
     s.inst.Dynamic.Health -= damage.Amt
   }
 }
+func (s *Inst) ApplyCondition(condition Condition) {
+  s.inst.Conditions = append(s.inst.Conditions, condition)
+}
 func (s *Inst) Think() {
-  // Remove any terminated conditions
-  algorithm.Choose(&s.inst.Conditions, func(cond Condition) bool {
-    return !cond.Terminated()
-  })
-
   // Allow any conditions to apply damage
   for _, condition := range s.inst.Conditions {
     s.ApplyDamage(condition.CauseDamage())
   }
+  s.inst.Conditions = s.inst.Conditions[0:0]
 }
 
 // Encoding routines - only support json and gob right now

@@ -8,13 +8,13 @@ import (
   "github.com/runningwild/glop/gin"
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/util/algorithm"
-  "math"
-  "path/filepath"
   "github.com/runningwild/linear"
-  "github.com/runningwild/pnf"
   "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/stats"
   "github.com/runningwild/magnus/texture"
+  "github.com/runningwild/pnf"
+  "math"
+  "path/filepath"
 )
 
 type Ability func(game *Game, player *Player, params map[string]int) Process
@@ -217,6 +217,25 @@ func (p *Player) Think(g *Game) {
     p.Exile_frames--
     return
   }
+
+  // This will clear out old conditions
+  p.Stats.Think()
+  var dead []int
+  for i, process := range p.Processes {
+    process.Think(g)
+    if process.Phase() == PhaseComplete {
+      dead = append(dead, i)
+    }
+  }
+  for _, i := range dead {
+    delete(p.Processes, i)
+  }
+  // And here we add back in all processes that are still alive.
+  for _, process := range p.Processes {
+    p.Stats.ApplyCondition(process)
+  }
+
+  base.Log().Printf("ACC: %3.2f", p.Stats.MaxAcc())
   if p.Delta.Speed > p.Stats.MaxAcc() {
     p.Delta.Speed = p.Stats.MaxAcc()
   }
@@ -289,17 +308,6 @@ func (p *Player) Think(g *Game) {
   p.Vy = p.Y - py
 
   p.Angle += p.Delta.Angle
-
-  var dead []int
-  for i, process := range p.Processes {
-    process.Think(g)
-    if process.Phase() == PhaseComplete {
-      dead = append(dead, i)
-    }
-  }
-  for _, i := range dead {
-    delete(p.Processes, i)
-  }
 
   p.Delta.Angle = 0
   p.Delta.Speed = 0
@@ -834,11 +842,6 @@ func (gw *GameWindow) Draw(region gui.Region) {
   gl.PushMatrix()
   defer gl.PopMatrix()
   gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
-  gl.Color4d(1, 1, 1, 1)
-  for _, ent := range gw.game.Ents {
-    ent.Draw(gw.game)
-  }
-  gl.Disable(gl.TEXTURE_2D)
 
   gl.Begin(gl.LINES)
   gl.Color4d(1, 1, 1, 1)
@@ -869,5 +872,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
     }
   }
   gl.End()
+
+  gl.Color4d(1, 1, 1, 1)
+  for _, ent := range gw.game.Ents {
+    ent.Draw(gw.game)
+  }
+  gl.Disable(gl.TEXTURE_2D)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

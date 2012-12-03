@@ -3,9 +3,10 @@ package ability
 import (
   "encoding/gob"
   "fmt"
-  "math"
+  "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/game"
   "github.com/runningwild/magnus/stats"
+  "math"
 )
 
 // NITRO
@@ -66,17 +67,13 @@ func (p *nitroProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *nitroProcess) Think(g *game.Game) {
-  // _player := g.GetEnt(p.Player_id)
-  // player := _player.(*game.Player)
-  // player.Max_acc -= p.Prev_delta
-  delta := math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
-  // base.Log().Printf("Delta: %.3f", delta)
+  p.Prev_delta = math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
   p.Supplied = game.Mana{}
-  // player.Max_acc += delta
-  p.Prev_delta = delta
 }
-func (*nitroProcess) ModifyBase(base stats.Base) stats.Base {
-  return base
+func (p *nitroProcess) ModifyBase(b stats.Base) stats.Base {
+  b.Max_acc += p.Prev_delta
+  base.Log().Printf("Delta: %2.2f", p.Prev_delta)
+  return b
 }
 func (*nitroProcess) ModifyDamage(damage stats.Damage) stats.Damage {
   return damage
