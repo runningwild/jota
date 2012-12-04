@@ -59,12 +59,12 @@ type moonFireProcess struct {
   Player_id int
   Required  game.Mana
   Supplied  game.Mana
-  Killed    bool
+  Cooldown  float64
 }
 
 // Supplies mana to the process.  Any mana that is unused is returned.
 func (p *moonFireProcess) Supply(supply game.Mana) game.Mana {
-  if p.BasicPhases.The_phase == game.PhaseUi {
+  if p.BasicPhases.The_phase == game.PhaseUi || p.Cooldown > 0 {
     return supply
   }
   for color := range p.Required {
@@ -81,6 +81,14 @@ func (p *moonFireProcess) Supply(supply game.Mana) game.Mana {
 
 func (p *moonFireProcess) Draw(g *game.Game) {
   base.EnableShader("circle")
+  var prog float32
+  if p.Cooldown == 0 {
+    prog = float32(p.Supplied.Magnitude() / p.Required.Magnitude())
+  } else {
+    prog = 1.0 + float32(p.Cooldown)
+  }
+  base.SetUniformF("circle", "progress", prog)
+
   gl.Color4ub(255, 255, 255, 255)
   texture.Render(
     float64(p.X)-float64(p.Radius),
@@ -91,6 +99,24 @@ func (p *moonFireProcess) Draw(g *game.Game) {
 }
 
 func (p *moonFireProcess) Think(g *game.Game) {
+  if p.Cooldown > 0 {
+    p.Cooldown += 0.01
+    if p.Cooldown >= 1.0 {
+      p.BasicPhases.The_phase = game.PhaseComplete
+    }
+    return
+  } else {
+    _player := g.GetEnt(p.Player_id)
+    player := _player.(*game.Player)
+    dx := player.Pos().X - p.X
+    dy := player.Pos().Y - p.Y
+    dist := math.Sqrt(dx*dx + dy*dy)
+    p.Required = game.Mana{
+      0,
+      0,
+      float64(p.Radius) * float64(p.Damage) * dist / 5,
+    }
+  }
   if p.BasicPhases.The_phase == game.PhaseUi {
     if gin.In().GetKey(gin.MouseLButton).FramePressCount() > 0 {
       p.BasicPhases.The_phase = game.PhaseRunning
@@ -101,20 +127,9 @@ func (p *moonFireProcess) Think(g *game.Game) {
       return
     }
   }
-  _player := g.GetEnt(p.Player_id)
-  player := _player.(*game.Player)
-  dx := player.Pos().X - p.X
-  dy := player.Pos().Y - p.Y
-  dist := math.Sqrt(dx*dx + dy*dy)
-  p.Required = game.Mana{
-    0,
-    0,
-    float64(p.Radius) * float64(p.Damage) * dist / 50,
-  }
-  // base.Log().Printf("Supply %2.2f / %2.2f", p.Supplied.Magnitude(), p.Required.Magnitude())
 
   if p.Supplied.Magnitude() >= p.Required.Magnitude() {
-    p.The_phase = game.PhaseComplete
+    p.Cooldown += 0.01
     // Do it - for realzes
     pos := linear.Vec2{p.X, p.Y}
     for _, target := range g.Ents {
