@@ -3,7 +3,6 @@ package ability
 import (
   "encoding/gob"
   "fmt"
-  "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/game"
   "github.com/runningwild/magnus/stats"
   "math"
@@ -41,8 +40,8 @@ func nitroAbility(g *game.Game, player *game.Player, params map[string]int) game
 }
 
 type nitroProcess struct {
-  noRendering
-  basicPhases
+  NoRendering
+  BasicPhases
   Inc       int32
   Continual game.Mana
   Killed    bool
@@ -72,7 +71,6 @@ func (p *nitroProcess) Think(g *game.Game) {
 }
 func (p *nitroProcess) ModifyBase(b stats.Base) stats.Base {
   b.Max_acc += p.Prev_delta
-  base.Log().Printf("Delta: %2.2f", p.Prev_delta)
   return b
 }
 func (*nitroProcess) ModifyDamage(damage stats.Damage) stats.Damage {

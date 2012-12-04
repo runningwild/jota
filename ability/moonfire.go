@@ -3,11 +3,14 @@ package ability
 import (
   "encoding/gob"
   "fmt"
-  "math"
+  gl "github.com/chsc/gogl/gl21"
+  "github.com/runningwild/glop/gin"
   "github.com/runningwild/linear"
   "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/game"
   "github.com/runningwild/magnus/stats"
+  "github.com/runningwild/magnus/texture"
+  "math"
 )
 
 func init() {
@@ -39,16 +42,14 @@ func moonFireAbility(g *game.Game, player *game.Player, params map[string]int) g
   }
   return &moonFireProcess{
     Player_id: player.Id(),
-    X:         g.Mouse.X,
-    Y:         g.Mouse.Y,
     Radius:    int32(radius),
     Damage:    int32(damage),
   }
 }
 
 type moonFireProcess struct {
-  basicPhases
-  nullCondition
+  BasicPhases
+  NullCondition
 
   X      float64
   Y      float64
@@ -63,6 +64,9 @@ type moonFireProcess struct {
 
 // Supplies mana to the process.  Any mana that is unused is returned.
 func (p *moonFireProcess) Supply(supply game.Mana) game.Mana {
+  if p.BasicPhases.The_phase == game.PhaseUi {
+    return supply
+  }
   for color := range p.Required {
     if supply[color] < p.Required[color] {
       p.Supplied[color] += supply[color]
@@ -75,10 +79,28 @@ func (p *moonFireProcess) Supply(supply game.Mana) game.Mana {
   return supply
 }
 
-func (p *moonFireProcess) Draw(game *game.Game) {
+func (p *moonFireProcess) Draw(g *game.Game) {
+  base.EnableShader("circle")
+  gl.Color4ub(255, 255, 255, 255)
+  texture.Render(
+    float64(p.X)-float64(p.Radius),
+    float64(p.Y)-float64(p.Radius),
+    2*float64(p.Radius),
+    2*float64(p.Radius))
+  base.EnableShader("")
 }
 
 func (p *moonFireProcess) Think(g *game.Game) {
+  if p.BasicPhases.The_phase == game.PhaseUi {
+    if gin.In().GetKey(gin.MouseLButton).FramePressCount() > 0 {
+      p.BasicPhases.The_phase = game.PhaseRunning
+    } else {
+      x, y := gin.In().GetCursor("Mouse").Point()
+      p.X = float64(x - g.Region().Point.X)
+      p.Y = float64(y - g.Region().Point.Y)
+      return
+    }
+  }
   _player := g.GetEnt(p.Player_id)
   player := _player.(*game.Player)
   dx := player.Pos().X - p.X
@@ -87,7 +109,7 @@ func (p *moonFireProcess) Think(g *game.Game) {
   p.Required = game.Mana{
     0,
     0,
-    float64(p.Radius) * float64(p.Damage) * dist / 100,
+    float64(p.Radius) * float64(p.Damage) * dist / 50,
   }
   // base.Log().Printf("Supply %2.2f / %2.2f", p.Supplied.Magnitude(), p.Required.Magnitude())
 
@@ -96,7 +118,6 @@ func (p *moonFireProcess) Think(g *game.Game) {
     // Do it - for realzes
     pos := linear.Vec2{p.X, p.Y}
     for _, target := range g.Ents {
-      base.Log().Printf("Check %v within %d of %v", pos, p.Radius, target.Pos())
       if target.Pos().Sub(pos).Mag() <= float64(p.Radius) {
         target.ApplyDamage(stats.Damage{Amt: float64(p.Damage)})
       }

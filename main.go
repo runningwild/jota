@@ -15,9 +15,9 @@ import (
   _ "github.com/runningwild/magnus/ability"
   "github.com/runningwild/magnus/base"
   "github.com/runningwild/magnus/game"
+  "github.com/runningwild/pnf"
   "os"
   "path/filepath"
-  "github.com/runningwild/pnf"
   "runtime"
   "runtime/pprof"
 )
@@ -62,6 +62,7 @@ func main() {
       panic(err)
     }
   })
+  base.InitShaders()
   runtime.GOMAXPROCS(2)
   ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
   if err != nil {
@@ -169,7 +170,7 @@ func main() {
           engine.ApplyEvent(game.Nitro{ids[i], 0, 20000})
         }
         if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-          engine.ApplyEvent(game.MoonFire{ids[i], 1, 90, 150})
+          engine.ApplyEvent(game.MoonFire{ids[i], 1, 50, 50})
         }
         if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
           engine.ApplyEvent(game.Burst{ids[i], 2, 3, 100000})

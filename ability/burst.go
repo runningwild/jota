@@ -46,9 +46,9 @@ func burstAbility(g *game.Game, player *game.Player, params map[string]int) game
 }
 
 type burstProcess struct {
-  noRendering
-  basicPhases
-  nullCondition
+  NoRendering
+  BasicPhases
+  NullCondition
   Frames            int32
   Force             float64
   Remaining_initial game.Mana

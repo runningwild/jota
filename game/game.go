@@ -5,7 +5,6 @@ import (
   "encoding/gob"
   gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/cmwc"
-  "github.com/runningwild/glop/gin"
   "github.com/runningwild/glop/gui"
   "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/linear"
@@ -57,14 +56,22 @@ type Thinker interface {
   // calls to Complete().
   Kill(game *Game)
 
-  Draw(game *Game)
-
   Phase() Phase
+}
+
+type Drawer interface {
+  Draw(game *Game)
+}
+
+// TODO: Might want to be able to respond to events directly for Ui stuff
+type Responder interface {
 }
 
 type Process interface {
   Drain
   Thinker
+  Drawer
+  Responder
   stats.Condition
 }
 
@@ -235,7 +242,6 @@ func (p *Player) Think(g *Game) {
     p.Stats.ApplyCondition(process)
   }
 
-  base.Log().Printf("ACC: %3.2f", p.Stats.MaxAcc())
   if p.Delta.Speed > p.Stats.MaxAcc() {
     p.Delta.Speed = p.Stats.MaxAcc()
   }
@@ -321,7 +327,7 @@ func (p *Player) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-  Draw(game *Game)
+  Drawer
   Alive() bool
   Exiled() bool
   Think(game *Game)
@@ -406,12 +412,9 @@ type Game struct {
 
   Ents []Ent
 
-  Mouse struct {
-    // Position of the mouse cursor in game coordinates
-    X, Y float64
-  }
-
   Game_thinks int
+
+  region gui.Region
 }
 
 func init() {
@@ -571,10 +574,6 @@ func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
   g.Game_thinks++
-
-  mx, my := gin.In().GetCursor("Mouse").Point()
-  g.Mouse.X = float64(mx)
-  g.Mouse.Y = float64(my)
 
   // Advance players, check for collisions, add segments
   for i := range g.Ents {
@@ -837,8 +836,17 @@ func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
   return false
 }
+
+var latest_region gui.Region
+
+// Returns the most recent region used when rendering the game.
+func (g *Game) Region() gui.Region {
+  return latest_region
+}
+
 func (gw *GameWindow) Draw(region gui.Region) {
   gw.region = region
+  latest_region = region
   gl.PushMatrix()
   defer gl.PopMatrix()
   gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
