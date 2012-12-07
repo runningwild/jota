@@ -2,7 +2,9 @@ package ability
 
 import (
 	"encoding/gob"
-	"fmt"
+	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/magnus/texture"
+	// "fmt"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/pnf"
@@ -51,10 +53,12 @@ func (e addBurstEvent) Apply(_g interface{}) {
 	base.Log().Printf("A")
 	player := g.GetEnt(e.Player_id).(*game.Player)
 	base.Log().Printf("A")
+	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
 	player.Processes[100] = &burstProcess{
 		Frames:            int32(e.Frames),
 		Force:             float64(e.Force),
-		Remaining_initial: game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0},
+		Initial:           initial,
+		Remaining_initial: initial,
 		Continual:         game.Mana{float64(e.Force) / 50, 0, 0},
 		Player_id:         e.Player_id,
 	}
@@ -71,38 +75,12 @@ func init() {
 	gob.Register(&burstProcess{})
 }
 
-func burstAbility(g *game.Game, player *game.Player, params map[string]int) game.Process {
-	if len(params) != 2 {
-		panic(fmt.Sprintf("Burst requires exactly two parameters, not %v", params))
-	}
-	for _, req := range []string{"frames", "force"} {
-		if _, ok := params[req]; !ok {
-			panic(fmt.Sprintf("Burst requires [%s] to be specified, not %v", req, params))
-		}
-	}
-	frames := params["frames"]
-	force := params["force"]
-	if frames < 0 {
-		panic(fmt.Sprintf("Burst requires [frames] > 0, not %d", frames))
-	}
-	if force < 0 {
-		panic(fmt.Sprintf("Burst requires [force] > 0, not %d", force))
-	}
-	return &burstProcess{
-		Frames:            int32(frames),
-		Force:             float64(force),
-		Remaining_initial: game.Mana{math.Pow(float64(force)*float64(frames), 2) / 1.0e7, 0, 0},
-		Continual:         game.Mana{float64(force) / 50, 0, 0},
-		Player_id:         player.Id(),
-	}
-}
-
 type burstProcess struct {
-	NoRendering
 	BasicPhases
 	NullCondition
 	Frames            int32
 	Force             float64
+	Initial           game.Mana
 	Remaining_initial game.Mana
 	Continual         game.Mana
 	Killed            bool
@@ -170,4 +148,19 @@ func (p *burstProcess) Think(g *game.Game) {
 			other.ApplyForce(other.Pos().Sub(player.Pos()).Norm().Scale(force))
 		}
 	}
+}
+
+func (p *burstProcess) Draw(player_id int, g *game.Game) {
+	player := g.GetEnt(player_id).(*game.Player)
+	base.EnableShader("circle")
+	prog := p.Remaining_initial.Magnitude() / p.Initial.Magnitude()
+	base.SetUniformF("circle", "progress", 1-float32(prog))
+	gl.Color4ub(255, 255, 255, 255)
+	radius := 40.0
+	texture.Render(
+		player.X-radius,
+		player.Y-radius,
+		2*radius,
+		2*radius)
+	base.EnableShader("")
 }

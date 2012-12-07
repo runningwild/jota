@@ -86,10 +86,6 @@ type Thinker interface {
 	Phase() Phase
 }
 
-type Drawer interface {
-	Draw(game *Game)
-}
-
 // TODO: Might want to be able to respond to events directly for Ui stuff
 type Responder interface {
 }
@@ -97,9 +93,9 @@ type Responder interface {
 type Process interface {
 	Drain
 	Thinker
-	Drawer
 	Responder
 	stats.Condition
+	Draw(player_id int, game *Game)
 }
 
 const node_spacing = 10
@@ -249,7 +245,7 @@ func (p *Player) Draw(game *Game) {
 	t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
 
 	for _, proc := range p.Processes {
-		proc.Draw(game)
+		proc.Draw(p.Id(), game)
 	}
 }
 
@@ -361,7 +357,7 @@ func (p *Player) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-	Drawer
+	Draw(g *Game)
 	Alive() bool
 	Exiled() bool
 	Think(game *Game)
@@ -979,5 +975,9 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		ent.Draw(gw.game)
 	}
 	gl.Disable(gl.TEXTURE_2D)
+
+	if gw.game.active_ability != nil {
+		gw.game.active_ability.Draw(gw.game.local_player.Id(), gw.game)
+	}
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

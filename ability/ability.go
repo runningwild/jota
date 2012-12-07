@@ -23,10 +23,6 @@ type nonRendering struct{}
 
 func (nonRendering) Draw(player_id int, game *game.Game) {}
 
-type NoRendering struct{}
-
-func (NoRendering) Draw(game *game.Game) {}
-
 type BasicPhases struct {
 	The_phase game.Phase
 }
