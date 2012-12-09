@@ -155,6 +155,7 @@ func main() {
 			sys.SwapBuffers()
 		})
 		render.Purge()
+		game.LocalThink()
 
 		if IsHost() {
 			for i := 0; i <= 1; i++ {

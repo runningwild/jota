@@ -17,7 +17,7 @@ func (nonResponder) Respond(player_id int, group gin.EventGroup) bool { return f
 
 type nonThinker struct{}
 
-func (nonThinker) Think(player_id int) ([]pnf.Event, bool) { return nil, false }
+func (nonThinker) Think(player_id int, game *game.Game) ([]pnf.Event, bool) { return nil, false }
 
 type nonRendering struct{}
 

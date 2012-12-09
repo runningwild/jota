@@ -37,7 +37,7 @@ type Ability interface {
 	// Returns any number of events to apply, as well as a bool that is true iff
 	// this Ability should be deactivated.  Typically this will include an event
 	// that will add a Process to this player.
-	Think(player_id int) ([]pnf.Event, bool)
+	Think(player_id int, game *Game) ([]pnf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
 	Draw(player_id int, game *Game)
@@ -77,6 +77,7 @@ const (
 )
 
 type Thinker interface {
+	PreThink(game *Game)
 	Think(game *Game)
 
 	// Kills a process.  Any Killed process will return true on any future
@@ -159,13 +160,6 @@ type Player struct {
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
-
-	// The following fields are not exported - they do not need to be present on
-	// other machines.
-
-	// All of the abilities that this player can activate.  These are only present
-	// for the local player.
-	abilities []Ability
 }
 
 func init() {
@@ -246,6 +240,12 @@ func (p *Player) Draw(game *Game) {
 
 	for _, proc := range p.Processes {
 		proc.Draw(p.Id(), game)
+	}
+}
+
+func (p *Player) PreThink(g *Game) {
+	for _, proc := range p.Processes {
+		proc.PreThink(g)
 	}
 }
 
@@ -360,6 +360,7 @@ type Ent interface {
 	Draw(g *Game)
 	Alive() bool
 	Exiled() bool
+	PreThink(game *Game)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 	ApplyDamage(damage stats.Damage)
@@ -443,6 +444,14 @@ type Game struct {
 	Ents []Ent
 
 	Game_thinks int
+}
+
+type localData struct {
+	game *Game
+
+	// All of the abilities that this player can activate.  These are only present
+	// for the local player.
+	abilities []Ability
 
 	region gui.Region
 
@@ -455,6 +464,8 @@ type Game struct {
 	// The local player's active ability, if any
 	active_ability Ability
 }
+
+var local localData
 
 func init() {
 	gob.Register(&Game{})
@@ -471,42 +482,68 @@ func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
 func (grw *gameResponderWrapper) Think(int64) {}
 
 func (g *Game) SetEngine(engine *pnf.Engine) {
-	if g.engine != nil {
+	if local.engine != nil {
 		panic("Engine has already been set.")
 	}
-	g.engine = engine
+	local.engine = engine
 	gin.In().RegisterEventListener(&gameResponderWrapper{g})
 }
 
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	if found, event := group.FindEvent('1'); found && event.Type == gin.Press {
 		g.ActivateAbility(0)
+		return
+	}
+	if found, event := group.FindEvent('2'); found && event.Type == gin.Press {
+		g.ActivateAbility(1)
+		return
+	}
+	if local.active_ability != nil {
+		if local.active_ability.Respond(local.local_player.Id(), group) {
+			return
+		}
 	}
 }
 
 func (g *Game) SetLocalPlayer(local_player *Player) {
-	if g.local_player != nil {
+	if local.local_player != nil {
 		panic("Local player has already been set.")
 	}
-	g.local_player = local_player
-	ability := ability_makers["burst"](map[string]int{
-		"frames": 10,
-		"force":  100000,
-	})
-	g.local_player.abilities = append(g.local_player.abilities, ability)
+	local.local_player = local_player
+	local.abilities = append(
+		local.abilities,
+		ability_makers["burst"](map[string]int{
+			"frames": 2,
+			"force":  200000,
+		}))
+	local.abilities = append(
+		local.abilities,
+		ability_makers["pull"](map[string]int{
+			"frames": 10,
+			"force":  100000,
+		}))
+	local.game = g
 }
 
-// NEXT: Need to find a simple way for the game to apply events to the engine
-// running it.
 func (g *Game) ActivateAbility(n int) {
-	events, active := g.local_player.abilities[n].Activate(g.local_player.Id())
+	active_ability := local.active_ability
+	local.active_ability = nil
+	if active_ability != nil {
+		events := active_ability.Deactivate(local.local_player.Id())
+		for _, event := range events {
+			local.engine.ApplyEvent(event)
+		}
+		if active_ability == local.abilities[n] {
+			return
+		}
+	}
+	events, active := local.abilities[n].Activate(local.local_player.Id())
 	for _, event := range events {
-		base.Log().Printf("Apply event %v to engine %v", event, g.engine)
-		g.engine.ApplyEvent(event)
+		local.engine.ApplyEvent(event)
 	}
 	if active {
-		base.Log().Printf("Acive")
-		g.active_ability = g.local_player.abilities[n]
+		local.active_ability = local.abilities[n]
+		base.Log().Printf("Setting active ability to %v", local.active_ability)
 	}
 }
 
@@ -664,6 +701,13 @@ func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
 	g.Game_thinks++
 
+	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
+
+	for i := range g.Ents {
+		g.Ents[i].PreThink(g)
+	}
+	g.nodeAndSupplyThink()
+
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
 		if !g.Ents[i].Alive() {
@@ -675,7 +719,6 @@ func (g *Game) Think() {
 		pos.Y = clamp(pos.Y, 0, float64(g.Dy))
 		g.Ents[i].SetPos(pos)
 	}
-	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
 	moved := make(map[int]bool)
 	for i := range g.Ents {
 		for j := range g.Ents {
@@ -684,6 +727,9 @@ func (g *Game) Think() {
 			}
 			dist := g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Mag()
 			if dist > 25 {
+				continue
+			}
+			if dist < 0.01 {
 				continue
 			}
 			if dist <= 0.5 {
@@ -695,6 +741,9 @@ func (g *Game) Think() {
 		}
 	}
 
+}
+
+func (g *Game) nodeAndSupplyThink() {
 	priorities := g.getPriorities()
 	indexes := make([]int, len(g.Ents))
 	for i := range indexes {
@@ -748,6 +797,22 @@ func (g *Game) Think() {
 	for x := range g.Nodes {
 		for y := range g.Nodes[x] {
 			g.Nodes[x][y].Think()
+		}
+	}
+}
+
+func LocalThink() {
+	if local.active_ability != nil {
+		events, die := local.active_ability.Think(local.local_player.Id(), local.game)
+		if die {
+			more_events := local.active_ability.Deactivate(local.local_player.Id())
+			local.active_ability = nil
+			for _, event := range more_events {
+				events = append(events, event)
+			}
+		}
+		for _, event := range events {
+			local.engine.ApplyEvent(event)
 		}
 	}
 }
@@ -976,8 +1041,8 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.Disable(gl.TEXTURE_2D)
 
-	if gw.game.active_ability != nil {
-		gw.game.active_ability.Draw(gw.game.local_player.Id(), gw.game)
+	if local.active_ability != nil {
+		local.active_ability.Draw(local.local_player.Id(), gw.game)
 	}
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

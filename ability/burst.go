@@ -13,7 +13,8 @@ import (
 
 func makeBurst(params map[string]int) game.Ability {
 	var b burst
-
+	b.force = params["force"]
+	b.frames = params["frames"]
 	return &b
 }
 
@@ -33,8 +34,8 @@ type burst struct {
 func (b *burst) Activate(player_id int) ([]pnf.Event, bool) {
 	event := addBurstEvent{
 		Player_id: player_id,
-		Frames:    3,      // b.frames,
-		Force:     100000, //b.force,
+		Frames:    b.frames,
+		Force:     b.force,
 	}
 	return []pnf.Event{event}, false
 }
@@ -48,13 +49,10 @@ type addBurstEvent struct {
 func (e addBurstEvent) ApplyFirst(g interface{}) {}
 func (e addBurstEvent) ApplyFinal(g interface{}) {}
 func (e addBurstEvent) Apply(_g interface{}) {
-	base.Log().Printf("A")
 	g := _g.(*game.Game)
-	base.Log().Printf("A")
 	player := g.GetEnt(e.Player_id).(*game.Player)
-	base.Log().Printf("A")
 	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
-	player.Processes[100] = &burstProcess{
+	player.Processes[10] = &burstProcess{
 		Frames:            int32(e.Frames),
 		Force:             float64(e.Force),
 		Initial:           initial,
@@ -123,10 +121,12 @@ func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 	return supply
 }
 
+func (p *burstProcess) PreThink(g *game.Game) {
+}
+
 func (p *burstProcess) Think(g *game.Game) {
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
-	base.Log().Printf("Player %v, supplied %v", player, p.Remaining_initial)
 	if p.Remaining_initial.Magnitude() == 0 {
 		if p.count > 0 {
 			p.count = -1
