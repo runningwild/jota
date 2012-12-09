@@ -960,6 +960,9 @@ type GameWindow struct {
 	game      *Game
 	prev_game *Game
 	region    gui.Region
+
+	node_texture      gl.Uint
+	node_texture_data []byte
 }
 
 func (gw *GameWindow) String() string {
@@ -1005,6 +1008,72 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	defer gl.PopMatrix()
 	gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
 
+	// Nodes
+	if gw.node_texture_data == nil {
+		gw.node_texture_data = make([]byte, len(gw.game.Nodes)*len(gw.game.Nodes[0])*4)
+		gl.GenTextures(1, &gw.node_texture)
+		gl.BindTexture(gl.TEXTURE_2D, gw.node_texture)
+		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGBA,
+			gl.Sizei(len(gw.game.Nodes)),
+			gl.Sizei(len(gw.game.Nodes[0])),
+			0,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			gl.Pointer(&gw.node_texture_data[0]))
+		for x := range gw.game.Nodes {
+			for y, node := range gw.game.Nodes[x] {
+				pos := 4 * (y*len(gw.game.Nodes) + x)
+				switch node.Color {
+				case ColorRed:
+					gw.node_texture_data[pos+0] = 200
+					gw.node_texture_data[pos+1] = 0
+					gw.node_texture_data[pos+2] = 0
+				case ColorGreen:
+					gw.node_texture_data[pos+0] = 0
+					gw.node_texture_data[pos+1] = 200
+					gw.node_texture_data[pos+2] = 0
+				case ColorBlue:
+					gw.node_texture_data[pos+0] = 0
+					gw.node_texture_data[pos+1] = 0
+					gw.node_texture_data[pos+2] = 200
+				}
+			}
+		}
+	} else {
+		gl.Enable(gl.TEXTURE_2D)
+		gl.BindTexture(gl.TEXTURE_2D, gw.node_texture)
+	}
+	for x := range gw.game.Nodes {
+		for y, node := range gw.game.Nodes[x] {
+			pos := 4 * (y*len(gw.game.Nodes) + x)
+			alpha := gl.Double(node.Amt / node.Capacity)
+			gw.node_texture_data[pos+3] = byte(alpha * 200)
+		}
+	}
+	gl.TexSubImage2D(
+		gl.TEXTURE_2D,
+		0,
+		0,
+		0,
+		gl.Sizei(len(gw.game.Nodes)),
+		gl.Sizei(len(gw.game.Nodes[0])),
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Pointer(&gw.node_texture_data[0]))
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	texture.Render(0, float64(gw.game.Dy), float64(gw.game.Dx), -float64(gw.game.Dy))
+
+	gl.Disable(gl.TEXTURE_2D)
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
 	for _, poly := range gw.game.Polys {
@@ -1016,24 +1085,37 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.End()
 
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	gl.Begin(gl.POINTS)
-	for x := range gw.game.Nodes {
-		for _, node := range gw.game.Nodes[x] {
-			alpha := gl.Double(node.Amt / node.Capacity)
-			switch node.Color {
-			case ColorRed:
-				gl.Color4d(1, 0.1, 0.1, alpha)
-			case ColorGreen:
-				gl.Color4d(0, 1, 0, alpha)
-			case ColorBlue:
-				gl.Color4d(0.5, 0.5, 1, alpha)
-			}
-			gl.Vertex2d(gl.Double(node.X), gl.Double(node.Y))
-		}
-	}
-	gl.End()
+	// gl.Begin(gl.QUADS)
+	// gl.TexCoord2i(0, 0)
+	// gl.Vertex2i(0, 0)
+	// gl.TexCoord2i(0, 1)
+	// gl.Vertex2i(0, gl.Int(gw.game.Dy))
+	// gl.TexCoord2i(1, 1)
+	// gl.Vertex2i(gl.Int(gw.game.Dx), gl.Int(gw.game.Dy))
+	// gl.TexCoord2i(1, 0)
+	// gl.Vertex2i(gl.Int(gw.game.Dx), 0)
+	// gl.End()
+
+	// texture.Render(100, 100, 200, 200)
+
+	// gl.Enable(gl.BLEND)
+	// gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	// gl.Begin(gl.POINTS)
+	// for x := range gw.game.Nodes {
+	// 	for _, node := range gw.game.Nodes[x] {
+	// 		alpha := gl.Double(node.Amt / node.Capacity)
+	// 		switch node.Color {
+	// 		case ColorRed:
+	// 			gl.Color4d(1, 0.1, 0.1, alpha)
+	// 		case ColorGreen:
+	// 			gl.Color4d(0, 1, 0, alpha)
+	// 		case ColorBlue:
+	// 			gl.Color4d(0.5, 0.5, 1, alpha)
+	// 		}
+	// 		gl.Vertex2d(gl.Double(node.X), gl.Double(node.Y))
+	// 	}
+	// }
+	// gl.End()
 
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range gw.game.Ents {
