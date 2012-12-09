@@ -551,13 +551,41 @@ func (g *Game) GenerateNodes() {
 	c := cmwc.MakeGoodCmwc()
 	c.SeedWithDevRand()
 	g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
+	var primary_nodes []Node
+	for i := 0; i < 9; i++ {
+		x := int(c.Int63() % int64(g.Dx))
+		y := int(c.Int63() % int64(g.Dy))
+		color := int(c.Int63() % 3)
+		primary_nodes = append(primary_nodes, Node{
+			X:     float64(x),
+			Y:     float64(y),
+			Color: Color(color),
+		})
+	}
 	for x := 0; x < 1+g.Dx/node_spacing; x++ {
 		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
 		for y := 0; y < 1+g.Dy/node_spacing; y++ {
+			var amt [3]int
+			total := 0
+			for i := range primary_nodes {
+				dx := float64(x*node_spacing) - primary_nodes[i].X
+				dy := float64(y*node_spacing) - primary_nodes[i].Y
+				dist := math.Sqrt(dx*dx + dy*dy)
+				amt[primary_nodes[i].Color] += int(10000 / dist)
+				total += int(10000 / dist)
+			}
+			hit := int(c.Int63() % int64(total))
+			var color Color = 0
+			if hit > amt[0] {
+				color = 1
+				if hit > amt[0]+amt[1] {
+					color = 2
+				}
+			}
 			g.Nodes[x][y] = Node{
 				X:        float64(x * node_spacing),
 				Y:        float64(y * node_spacing),
-				Color:    Color(c.Int63() % 3),
+				Color:    color,
 				Capacity: 200,
 				Amt:      200,
 				Regen:    0.1,
