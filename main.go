@@ -12,10 +12,10 @@ import (
 	"github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
 	// "math"
+	"github.com/runningwild/cgf"
 	_ "github.com/runningwild/magnus/ability"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/pnf"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	var ids []int
-	var engine *pnf.Engine
+	var engine *cgf.Engine
 	var room Room
 	err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
 	if err != nil {
@@ -126,19 +126,14 @@ func main() {
 		g.SetLocalPlayer(g.Ents[0].(*game.Player))
 		g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
 		g.GenerateNodes()
-		engine, err = pnf.NewNetEngine(&g, 17, 120, 1194)
+		engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
 		g.SetEngine(engine)
 		if err != nil {
 			panic(err.Error())
 		}
 	} else {
-		engine, err = pnf.NewNetClientEngine(17, 120, 1194)
-		if err != nil {
-			panic(err.Error())
-		}
 	}
 
-	// engine = pnf.NewLocalEngine(&g, 17)
 	anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
 	ui.AddChild(anchor)
 	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})

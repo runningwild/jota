@@ -1,15 +1,15 @@
 package ability
 
 import (
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
-	"github.com/runningwild/pnf"
 )
 
 type neverActive struct{}
 
-func (neverActive) Deactivate(player_id int) []pnf.Event { return nil }
+func (neverActive) Deactivate(player_id int) []cgf.Event { return nil }
 
 type nonResponder struct{}
 
@@ -17,7 +17,7 @@ func (nonResponder) Respond(player_id int, group gin.EventGroup) bool { return f
 
 type nonThinker struct{}
 
-func (nonThinker) Think(player_id int, game *game.Game) ([]pnf.Event, bool) { return nil, false }
+func (nonThinker) Think(player_id int, game *game.Game) ([]cgf.Event, bool) { return nil, false }
 
 type nonRendering struct{}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
@@ -12,7 +13,6 @@ import (
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	"github.com/runningwild/pnf"
 	"math"
 	"path/filepath"
 )
@@ -25,10 +25,10 @@ type Ability interface {
 	// Called when a player selects this Ability.  Returns any number of events to
 	// apply, as well as a bool that is true iff this Ability should become the
 	// active Ability.
-	Activate(player_id int) ([]pnf.Event, bool)
+	Activate(player_id int) ([]cgf.Event, bool)
 
 	// Called when this Ability is deselected.
-	Deactivate(player_id int) []pnf.Event
+	Deactivate(player_id int) []cgf.Event
 
 	// The active Ability will receive all of the events from the player.  It
 	// should return true iff it consumes the event.
@@ -37,7 +37,7 @@ type Ability interface {
 	// Returns any number of events to apply, as well as a bool that is true iff
 	// this Ability should be deactivated.  Typically this will include an event
 	// that will add a Process to this player.
-	Think(player_id int, game *Game) ([]pnf.Event, bool)
+	Think(player_id int, game *Game) ([]cgf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
 	Draw(player_id int, game *Game)
@@ -456,7 +456,7 @@ type localData struct {
 	region gui.Region
 
 	// The engine running this game, so that the game can apply events to itself.
-	engine *pnf.Engine
+	engine *cgf.Engine
 
 	// The index of the player that is being controlled by localhost
 	local_player *Player
@@ -481,7 +481,7 @@ func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
 
 func (grw *gameResponderWrapper) Think(int64) {}
 
-func (g *Game) SetEngine(engine *pnf.Engine) {
+func (g *Game) SetEngine(engine *cgf.Engine) {
 	if local.engine != nil {
 		panic("Engine has already been set.")
 	}
@@ -1001,7 +1001,7 @@ func (a Accelerate) Apply(_g interface{}) {
 // }
 
 type GameWindow struct {
-	Engine    *pnf.Engine
+	Engine    *cgf.Engine
 	game      *Game
 	prev_game *Game
 	region    gui.Region
@@ -1027,10 +1027,10 @@ func (gw *GameWindow) Rendered() gui.Region {
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 	if gw.game == nil {
-		gw.game = gw.Engine.GetState().Copy().(*Game)
-		gw.prev_game = gw.Engine.GetState().Copy().(*Game)
+		gw.game = gw.Engine.CurrentState().Copy().(*Game)
+		gw.prev_game = gw.Engine.CurrentState().Copy().(*Game)
 	} else {
-		gw.game.OverwriteWith(gw.Engine.GetState().(*Game))
+		gw.game.OverwriteWith(gw.Engine.CurrentState().(*Game))
 		gw.game.Merge(gw.prev_game)
 		gw.prev_game.OverwriteWith(gw.game)
 	}

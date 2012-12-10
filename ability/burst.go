@@ -5,9 +5,9 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/magnus/texture"
 	// "fmt"
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/pnf"
 	"math"
 )
 
@@ -31,13 +31,13 @@ type burst struct {
 	force, frames int
 }
 
-func (b *burst) Activate(player_id int) ([]pnf.Event, bool) {
+func (b *burst) Activate(player_id int) ([]cgf.Event, bool) {
 	event := addBurstEvent{
 		Player_id: player_id,
 		Frames:    b.frames,
 		Force:     b.force,
 	}
-	return []pnf.Event{event}, false
+	return []cgf.Event{event}, false
 }
 
 type addBurstEvent struct {

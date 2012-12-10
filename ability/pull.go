@@ -3,12 +3,11 @@ package ability
 import (
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/pnf"
-	// "math"
 )
 
 var pull_id int
@@ -17,7 +16,7 @@ func makePull(params map[string]int) game.Ability {
 	var b pull
 	b.id = pull_id
 	b.force = 250
-	b.angle = 1.0
+	b.angle = 0.15
 	pull_id++
 	return &b
 }
@@ -36,15 +35,15 @@ type pull struct {
 	angle float64
 }
 
-func (p *pull) Activate(player_id int) ([]pnf.Event, bool) {
+func (p *pull) Activate(player_id int) ([]cgf.Event, bool) {
 	return nil, true
 }
 
-func (p *pull) Deactivate(player_id int) []pnf.Event {
+func (p *pull) Deactivate(player_id int) []cgf.Event {
 	return nil
 }
 
-func (p *pull) Think(player_id int, g *game.Game) ([]pnf.Event, bool) {
+func (p *pull) Think(player_id int, g *game.Game) ([]cgf.Event, bool) {
 	if gin.In().GetKey(gin.Escape).FramePressCount() > 0 {
 		return nil, true
 	}
@@ -61,7 +60,7 @@ func (p *pull) Think(player_id int, g *game.Game) ([]pnf.Event, bool) {
 	p.x = v2.X
 	p.y = v2.Y
 
-	ret := []pnf.Event{
+	ret := []cgf.Event{
 		removePullEvent{
 			Player_id: player_id,
 			Id:        p.id,
