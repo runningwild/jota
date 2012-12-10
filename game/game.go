@@ -565,6 +565,23 @@ func (g *Game) GenerateNodes() {
 	for x := 0; x < 1+g.Dx/node_spacing; x++ {
 		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
 		for y := 0; y < 1+g.Dy/node_spacing; y++ {
+			good := true
+			for i := 1; i < len(g.Polys); i++ {
+				p := g.Polys[i]
+				right_on_all := true
+				for j := range p {
+					seg := p.Seg(j)
+					if seg.Left(linear.Vec2{float64(x * node_spacing), float64(y * node_spacing)}) {
+						right_on_all = false
+					}
+				}
+				if right_on_all {
+					good = false
+				}
+			}
+			if !good {
+				continue
+			}
 			var amt [3]int
 			total := 0
 			for i := range primary_nodes {
