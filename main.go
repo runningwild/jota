@@ -105,11 +105,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		N := 5
-		p.X = float64(g.Dx-N) / 2
-		p.Y = float64(g.Dy-N) / 2
-		for x := 0; x < N; x++ {
-			for y := 0; y < N; y++ {
+		Nx := 2
+		Ny := 1
+		p.X = float64(g.Dx-Nx)/2 - 200
+		p.Y = float64(g.Dy-Ny)/2 - 200
+		for x := 0; x < Nx; x++ {
+			for y := 0; y < Ny; y++ {
 				p.X += float64(x * 25)
 				p.Y += float64(y * 25)
 				p.Gid++
@@ -123,8 +124,12 @@ func main() {
 				p.Y -= float64(y * 25)
 			}
 		}
+		g.Ents[0].(*game.Player).X = 500
+		g.Ents[0].(*game.Player).Y = 300
+		g.Ents[1].(*game.Player).X = 550
+		g.Ents[1].(*game.Player).Y = 300
 		g.SetLocalPlayer(g.Ents[0].(*game.Player))
-		g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
+		// g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
 		g.GenerateNodes()
 		engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
 		g.SetEngine(engine)

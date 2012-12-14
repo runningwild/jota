@@ -6,7 +6,6 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 )
 
@@ -67,7 +66,6 @@ func (p *pull) Think(player_id int, g *game.Game) ([]cgf.Event, bool) {
 		},
 	}
 	if gin.In().GetKey(gin.MouseLButton).FramePressAmt() > 0 {
-		base.Log().Printf("Add event")
 		ret = append(ret, addPullEvent{
 			Player_id: player_id,
 			Id:        p.id,
@@ -109,7 +107,6 @@ type addPullEvent struct {
 func (e addPullEvent) ApplyFirst(g interface{}) {}
 func (e addPullEvent) ApplyFinal(g interface{}) {}
 func (e addPullEvent) Apply(_g interface{}) {
-	base.Log().Printf("Add pull process")
 	g := _g.(*game.Game)
 	player := g.GetEnt(e.Player_id).(*game.Player)
 	player.Processes[100+e.Id] = &pullProcess{
@@ -170,8 +167,6 @@ func (p *pullProcess) PreThink(g *game.Game) {
 	player := _player.(*game.Player)
 	player_pos := linear.Vec2{player.X, player.Y}
 	max_dist_sq := player_pos.Sub(linear.Vec2{p.X, p.Y}).Mag2()
-	base.Log().Printf("p: %v", p)
-	base.Log().Printf("pos: %v", player_pos)
 	for _, _target := range g.Ents {
 		target, ok := _target.(*game.Player)
 		if !ok || target == player {
@@ -202,7 +197,6 @@ func (p *pullProcess) PreThink(g *game.Game) {
 	for _, target := range p.targets {
 		target_pos := linear.Vec2{target.X, target.Y}
 		dist_sq := player_pos.Sub(target_pos).Mag2()
-		base.Log().Printf("Dist: %v\n", dist_sq)
 		p.required += p.Force * dist_sq / 100000
 	}
 
@@ -211,8 +205,6 @@ func (p *pullProcess) PreThink(g *game.Game) {
 		p.com_pos.Y += target.Y * target.Mass()
 		p.com_mass += target.Mass()
 	}
-	base.Log().Printf("Required: %v\n", p.required)
-	base.Log().Printf("Pcommass %v", p.com_mass)
 	p.com_pos = p.com_pos.Scale(1 / p.com_mass)
 }
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
@@ -229,20 +221,18 @@ func (p *pullProcess) Think(g *game.Game) {
 	if len(p.targets) == 0 {
 		return
 	}
-	base.Log().Printf("%d %v\n", len(p.targets), p.required)
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
 	player_pos := linear.Vec2{player.X, player.Y}
 	force := p.Force * p.supplied / p.required
 	ray := player_pos.Sub(p.com_pos)
-	player.ApplyForce(ray.Norm().Scale(-force * float64(len(p.targets))))
+	player.ApplyForce(ray.Norm().Scale(force * float64(len(p.targets))))
 
 	for _, target := range p.targets {
 		ray := player_pos.Sub(linear.Vec2{target.X, target.Y})
 		ray = ray.Norm()
-		target.ApplyForce(ray.Scale(force))
+		target.ApplyForce(ray.Scale(-force))
 	}
-	base.Log().Printf("Required: %v\n", p.required)
 }
 
 func (p *pullProcess) Draw(player_id int, g *game.Game) {

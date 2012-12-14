@@ -549,13 +549,15 @@ func (g *Game) ActivateAbility(n int) {
 
 func (g *Game) GenerateNodes() {
 	c := cmwc.MakeGoodCmwc()
-	c.SeedWithDevRand()
+	c.Seed(123)
+	// c.SeedWithDevRand()
 	g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
 	var primary_nodes []Node
 	for i := 0; i < 9; i++ {
 		x := int(c.Int63() % int64(g.Dx))
 		y := int(c.Int63() % int64(g.Dy))
 		color := int(c.Int63() % 3)
+		color = 2
 		primary_nodes = append(primary_nodes, Node{
 			X:     float64(x),
 			Y:     float64(y),
@@ -744,6 +746,7 @@ func (g *Game) getPriorities() [][]*Node {
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
+	base.Log().Printf("P0V: %0.2f", g.Ents[0].Vel())
 	g.Game_thinks++
 
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
