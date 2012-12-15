@@ -10,6 +10,6 @@ type Door struct {
 }
 
 type Room struct {
-  Polys []linear.Poly
+  Walls []linear.Poly
   Doors []Door
 }

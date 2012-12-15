@@ -84,7 +84,7 @@ func main() {
 		g.Dx = 900
 		g.Dy = 600
 		g.Friction = 0.97
-		g.Polys = room.Polys
+		g.Walls = room.Walls
 		var p game.Player
 		p.Color.R = 255
 		err := json.NewDecoder(bytes.NewBuffer([]byte(`

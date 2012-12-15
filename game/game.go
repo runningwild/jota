@@ -297,7 +297,7 @@ func (p *Player) Think(g *Game) {
 	py := p.Y
 	p.X += p.Vx
 	p.Y += p.Vy
-	for _, poly := range g.Polys {
+	for _, poly := range g.Walls {
 		for i := range poly {
 			// First check against the leading vertex
 			{
@@ -429,7 +429,7 @@ type Game struct {
 	// All of the nodes on the map
 	Nodes [][]Node
 
-	Polys []linear.Poly
+	Walls []linear.Poly
 
 	Rng *cmwc.Cmwc
 
@@ -566,8 +566,8 @@ func (g *Game) GenerateNodes() {
 		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
 		for y := 0; y < 1+g.Dy/node_spacing; y++ {
 			good := true
-			for i := 1; i < len(g.Polys); i++ {
-				p := g.Polys[i]
+			for i := 1; i < len(g.Walls); i++ {
+				p := g.Walls[i]
 				right_on_all := true
 				for j := range p {
 					seg := p.Seg(j)
@@ -641,11 +641,11 @@ func (g *Game) Copy() interface{} {
 		}
 	}
 
-	g2.Polys = make([]linear.Poly, len(g.Polys))
-	for i := range g2.Polys {
-		g2.Polys[i] = make(linear.Poly, len(g.Polys[i]))
-		for j := range g2.Polys[i] {
-			g2.Polys[i][j] = g.Polys[i][j]
+	g2.Walls = make([]linear.Poly, len(g.Walls))
+	for i := range g2.Walls {
+		g2.Walls[i] = make(linear.Poly, len(g.Walls[i]))
+		for j := range g2.Walls[i] {
+			g2.Walls[i][j] = g.Walls[i][j]
 		}
 	}
 
@@ -676,7 +676,7 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g.Dx = g2.Dx
 	g.Dy = g2.Dy
 	g.Friction = g2.Friction
-	g.Polys = g2.Polys
+	g.Walls = g2.Walls
 	g.Next_id = g2.Next_id
 	g.Game_thinks = g2.Game_thinks
 
@@ -1122,7 +1122,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
-	for _, poly := range gw.game.Polys {
+	for _, poly := range gw.game.Walls {
 		for i := range poly {
 			seg := poly.Seg(i)
 			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
