@@ -7,6 +7,7 @@ import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/game"
+	"math"
 )
 
 var pull_id int
@@ -15,7 +16,7 @@ func makePull(params map[string]int) game.Ability {
 	var b pull
 	b.id = pull_id
 	b.force = 250
-	b.angle = 0.15
+	b.angle = 0.25
 	pull_id++
 	return &b
 }
@@ -154,15 +155,11 @@ type pullProcess struct {
 	required float64
 	supplied float64
 	targets  []*game.Player
-	com_mass float64
-	com_pos  linear.Vec2
 }
 
 func (p *pullProcess) PreThink(g *game.Game) {
-	p.required = 0
+	p.required = p.Force
 	p.supplied = 0
-	p.com_mass = 0
-	p.com_pos = linear.Vec2{}
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
 	player_pos := linear.Vec2{player.X, player.Y}
@@ -174,8 +171,7 @@ func (p *pullProcess) PreThink(g *game.Game) {
 		}
 		target_pos := linear.Vec2{target.X, target.Y}
 		ray := target_pos.Sub(player_pos)
-		dist_sq := ray.Mag2()
-		if dist_sq > max_dist_sq {
+		if ray.Mag2() > max_dist_sq {
 			continue
 		}
 		target_angle := ray.Angle()
@@ -189,23 +185,6 @@ func (p *pullProcess) PreThink(g *game.Game) {
 		}
 		p.targets = append(p.targets, target)
 	}
-
-	if len(p.targets) == 0 {
-		return
-	}
-
-	for _, target := range p.targets {
-		target_pos := linear.Vec2{target.X, target.Y}
-		dist_sq := player_pos.Sub(target_pos).Mag2()
-		p.required += p.Force * dist_sq / 100000
-	}
-
-	for _, target := range p.targets {
-		p.com_pos.X += target.X * target.Mass()
-		p.com_pos.Y += target.Y * target.Mass()
-		p.com_mass += target.Mass()
-	}
-	p.com_pos = p.com_pos.Scale(1 / p.com_mass)
 }
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required-p.supplied {
@@ -221,17 +200,21 @@ func (p *pullProcess) Think(g *game.Game) {
 	if len(p.targets) == 0 {
 		return
 	}
+
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
-	player_pos := linear.Vec2{player.X, player.Y}
-	force := p.Force * p.supplied / p.required
-	ray := player_pos.Sub(p.com_pos)
-	player.ApplyForce(ray.Norm().Scale(force * float64(len(p.targets))))
 
+	base_force := p.Force * p.supplied / p.required
 	for _, target := range p.targets {
-		ray := player_pos.Sub(linear.Vec2{target.X, target.Y})
+		if target == player {
+			continue
+		}
+		ray := player.Pos().Sub(target.Pos())
+		dist := ray.Mag()
 		ray = ray.Norm()
+		force := base_force / math.Pow(dist, p.Angle/(2*math.Pi))
 		target.ApplyForce(ray.Scale(-force))
+		player.ApplyForce(ray.Scale(force))
 	}
 }
 

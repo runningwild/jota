@@ -549,15 +549,13 @@ func (g *Game) ActivateAbility(n int) {
 
 func (g *Game) GenerateNodes() {
 	c := cmwc.MakeGoodCmwc()
-	c.Seed(123)
-	// c.SeedWithDevRand()
+	c.SeedWithDevRand()
 	g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
 	var primary_nodes []Node
 	for i := 0; i < 9; i++ {
 		x := int(c.Int63() % int64(g.Dx))
 		y := int(c.Int63() % int64(g.Dy))
 		color := int(c.Int63() % 3)
-		color = 2
 		primary_nodes = append(primary_nodes, Node{
 			X:     float64(x),
 			Y:     float64(y),
