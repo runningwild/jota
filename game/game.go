@@ -297,7 +297,7 @@ func (p *Player) Think(g *Game) {
 	py := p.Y
 	p.X += p.Vx
 	p.Y += p.Vy
-	for _, poly := range g.Walls {
+	for _, poly := range g.Room.Walls {
 		for i := range poly {
 			// First check against the leading vertex
 			{
@@ -429,7 +429,7 @@ type Game struct {
 	// All of the nodes on the map
 	Nodes [][]Node
 
-	Walls []linear.Poly
+	Room Room
 
 	Rng *cmwc.Cmwc
 
@@ -566,8 +566,8 @@ func (g *Game) GenerateNodes() {
 		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
 		for y := 0; y < 1+g.Dy/node_spacing; y++ {
 			good := true
-			for i := 1; i < len(g.Walls); i++ {
-				p := g.Walls[i]
+			for i := 1; i < len(g.Room.Walls); i++ {
+				p := g.Room.Walls[i]
 				right_on_all := true
 				for j := range p {
 					seg := p.Seg(j)
@@ -641,13 +641,7 @@ func (g *Game) Copy() interface{} {
 		}
 	}
 
-	g2.Walls = make([]linear.Poly, len(g.Walls))
-	for i := range g2.Walls {
-		g2.Walls[i] = make(linear.Poly, len(g.Walls[i]))
-		for j := range g2.Walls[i] {
-			g2.Walls[i][j] = g.Walls[i][j]
-		}
-	}
+	g2.Room = g.Room
 
 	g2.Rng = g.Rng.Copy()
 
@@ -676,7 +670,7 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g.Dx = g2.Dx
 	g.Dy = g2.Dy
 	g.Friction = g2.Friction
-	g.Walls = g2.Walls
+	g.Room.Walls = g2.Room.Walls
 	g.Next_id = g2.Next_id
 	g.Game_thinks = g2.Game_thinks
 
@@ -744,7 +738,6 @@ func (g *Game) getPriorities() [][]*Node {
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
-	base.Log().Printf("P0V: %0.2f", g.Ents[0].Vel())
 	g.Game_thinks++
 
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
@@ -1122,7 +1115,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
-	for _, poly := range gw.game.Walls {
+	for _, poly := range gw.game.Room.Walls {
 		for i := range poly {
 			seg := poly.Seg(i)
 			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
@@ -1131,37 +1124,14 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.End()
 
-	// gl.Begin(gl.QUADS)
-	// gl.TexCoord2i(0, 0)
-	// gl.Vertex2i(0, 0)
-	// gl.TexCoord2i(0, 1)
-	// gl.Vertex2i(0, gl.Int(gw.game.Dy))
-	// gl.TexCoord2i(1, 1)
-	// gl.Vertex2i(gl.Int(gw.game.Dx), gl.Int(gw.game.Dy))
-	// gl.TexCoord2i(1, 0)
-	// gl.Vertex2i(gl.Int(gw.game.Dx), 0)
-	// gl.End()
-
-	// texture.Render(100, 100, 200, 200)
-
-	// gl.Enable(gl.BLEND)
-	// gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	// gl.Begin(gl.POINTS)
-	// for x := range gw.game.Nodes {
-	// 	for _, node := range gw.game.Nodes[x] {
-	// 		alpha := gl.Double(node.Amt / node.Capacity)
-	// 		switch node.Color {
-	// 		case ColorRed:
-	// 			gl.Color4d(1, 0.1, 0.1, alpha)
-	// 		case ColorGreen:
-	// 			gl.Color4d(0, 1, 0, alpha)
-	// 		case ColorBlue:
-	// 			gl.Color4d(0.5, 0.5, 1, alpha)
-	// 		}
-	// 		gl.Vertex2d(gl.Double(node.X), gl.Double(node.Y))
-	// 	}
-	// }
-	// gl.End()
+	gl.Begin(gl.TRIANGLE_FAN)
+	gl.Color4d(1, 0, 0, 1)
+	for _, poly := range gw.game.Room.Lava {
+		for _, v := range poly {
+			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		}
+	}
+	gl.End()
 
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range gw.game.Ents {

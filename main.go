@@ -71,7 +71,7 @@ func main() {
 
 	var ids []int
 	var engine *cgf.Engine
-	var room Room
+	var room game.Room
 	err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
 	if err != nil {
 		panic(err)
@@ -84,7 +84,7 @@ func main() {
 		g.Dx = 900
 		g.Dy = 600
 		g.Friction = 0.97
-		g.Walls = room.Walls
+		g.Room = room
 		var p game.Player
 		p.Color.R = 255
 		err := json.NewDecoder(bytes.NewBuffer([]byte(`
