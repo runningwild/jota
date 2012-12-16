@@ -40,7 +40,13 @@ func (p *pull) Activate(player_id int) ([]cgf.Event, bool) {
 }
 
 func (p *pull) Deactivate(player_id int) []cgf.Event {
-	return nil
+	ret := []cgf.Event{
+		removePullEvent{
+			Player_id: player_id,
+			Id:        p.id,
+		},
+	}
+	return ret
 }
 
 func (p *pull) Think(player_id int, g *game.Game) ([]cgf.Event, bool) {
@@ -151,40 +157,13 @@ type pullProcess struct {
 	Angle     float64
 	Force     float64
 
-	Gathered game.Mana
 	required float64
 	supplied float64
-	targets  []*game.Player
 }
 
 func (p *pullProcess) PreThink(g *game.Game) {
 	p.required = p.Force
 	p.supplied = 0
-	_player := g.GetEnt(p.Player_id)
-	player := _player.(*game.Player)
-	player_pos := linear.Vec2{player.X, player.Y}
-	max_dist_sq := player_pos.Sub(linear.Vec2{p.X, p.Y}).Mag2()
-	for _, _target := range g.Ents {
-		target, ok := _target.(*game.Player)
-		if !ok || target == player {
-			continue
-		}
-		target_pos := linear.Vec2{target.X, target.Y}
-		ray := target_pos.Sub(player_pos)
-		if ray.Mag2() > max_dist_sq {
-			continue
-		}
-		target_angle := ray.Angle()
-		process_angle := linear.Vec2{p.X, p.Y}.Sub(player_pos).Angle()
-		angle := target_angle - process_angle
-		if angle < 0 {
-			angle = -angle
-		}
-		if angle > p.Angle {
-			continue
-		}
-		p.targets = append(p.targets, target)
-	}
 }
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required-p.supplied {
@@ -197,19 +176,32 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	return supply
 }
 func (p *pullProcess) Think(g *game.Game) {
-	if len(p.targets) == 0 {
-		return
-	}
-
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
+	source_pos := linear.Vec2{p.X, p.Y}
+	max_dist_sq := player.Pos().Sub(source_pos).Mag2()
 
 	base_force := p.Force * p.supplied / p.required
-	for _, target := range p.targets {
-		if target == player {
+	for _, _target := range g.Ents {
+		target, ok := _target.(*game.Player)
+		if !ok || target == player {
 			continue
 		}
-		ray := player.Pos().Sub(target.Pos())
+		target_pos := linear.Vec2{target.X, target.Y}
+		ray := target_pos.Sub(player.Pos())
+		if ray.Mag2() > max_dist_sq {
+			continue
+		}
+		target_angle := ray.Angle()
+		process_angle := source_pos.Sub(player.Pos()).Angle()
+		angle := target_angle - process_angle
+		if angle < 0 {
+			angle = -angle
+		}
+		if angle > p.Angle {
+			continue
+		}
+		ray = player.Pos().Sub(target.Pos())
 		dist := ray.Mag()
 		ray = ray.Norm()
 		force := base_force / math.Pow(dist, p.Angle/(2*math.Pi))
