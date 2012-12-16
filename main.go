@@ -84,6 +84,7 @@ func main() {
 		g.Dx = 900
 		g.Dy = 600
 		g.Friction = 0.97
+		g.Friction_lava = 0.85
 		g.Room = room
 		var p game.Player
 		p.Color.R = 255
@@ -95,10 +96,10 @@ func main() {
           "Mass": 750,
           "Max_rate": 10,
           "Influence": 75,
-          "Health": 100
+          "Health": 1000
         },
         "Dynamic": {
-          "Health": 100
+          "Health": 1000
         }
       }
     `))).Decode(&p.Stats)

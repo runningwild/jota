@@ -285,11 +285,25 @@ func (p *Player) Think(g *Game) {
 		p.Delta.Angle = p.Stats.MaxTurn()
 	}
 
+	in_lava := false
+	for _, lava := range g.Room.Lava {
+		if vecInsideConvexPoly(p.Pos(), lava) {
+			in_lava = true
+		}
+	}
+	if in_lava {
+		p.Stats.ApplyDamage(stats.Damage{stats.DamageFire, 5})
+	}
+
 	p.Vx += p.Delta.Speed * math.Cos(p.Angle)
 	p.Vy += p.Delta.Speed * math.Sin(p.Angle)
 	mangle := math.Atan2(p.Vy, p.Vx)
-	p.Vx *= math.Pow(g.Friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
-	p.Vy *= math.Pow(g.Friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
+	friction := g.Friction
+	if in_lava {
+		friction = g.Friction_lava
+	}
+	p.Vx *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
+	p.Vy *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
 
 	move := linear.MakeSeg2(p.X, p.Y, p.X+p.Vx, p.Y+p.Vy)
 	size := 12.0
@@ -347,6 +361,7 @@ func (p *Player) Think(g *Game) {
 
 	p.Delta.Angle = 0
 	p.Delta.Speed = 0
+
 }
 
 func (p *Player) Supply(supply Mana) Mana {
@@ -436,7 +451,8 @@ type Game struct {
 	// Dimensions of the board
 	Dx, Dy int
 
-	Friction float64
+	Friction      float64
+	Friction_lava float64
 
 	// Last Id assigned to an entity
 	Next_id int
@@ -547,6 +563,16 @@ func (g *Game) ActivateAbility(n int) {
 	}
 }
 
+func vecInsideConvexPoly(v linear.Vec2, p linear.Poly) bool {
+	for i := range p {
+		seg := p.Seg(i)
+		if seg.Left(v) {
+			return false
+		}
+	}
+	return true
+}
+
 func (g *Game) GenerateNodes() {
 	c := cmwc.MakeGoodCmwc()
 	c.SeedWithDevRand()
@@ -562,20 +588,20 @@ func (g *Game) GenerateNodes() {
 			Color: Color(color),
 		})
 	}
+	var all_polys []linear.Poly
+	for _, p := range g.Room.Walls {
+		all_polys = append(all_polys, p)
+	}
+	for _, p := range g.Room.Lava {
+		all_polys = append(all_polys, p)
+	}
 	for x := 0; x < 1+g.Dx/node_spacing; x++ {
 		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
 		for y := 0; y < 1+g.Dy/node_spacing; y++ {
 			good := true
-			for i := 1; i < len(g.Room.Walls); i++ {
-				p := g.Room.Walls[i]
-				right_on_all := true
-				for j := range p {
-					seg := p.Seg(j)
-					if seg.Left(linear.Vec2{float64(x * node_spacing), float64(y * node_spacing)}) {
-						right_on_all = false
-					}
-				}
-				if right_on_all {
+			for i := 1; good && i < len(all_polys); i++ {
+				v := linear.Vec2{float64(x * node_spacing), float64(y * node_spacing)}
+				if vecInsideConvexPoly(v, all_polys[i]) {
 					good = false
 				}
 			}
