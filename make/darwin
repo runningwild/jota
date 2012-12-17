@@ -10,12 +10,12 @@ cp -r data/* magnus.app/Contents/
 #ls data | awk '{print "scr --src data/" $0 " --dst magnus.app/Contents/" $0}' | bash
 
 
-#go build .
-#
-#rm -rf gron.app
-#mkdir -p gron.app/Contents/MacOS
-#mkdir -p gron.app/Contents/lib
-#
-#mv tron gron.app/Contents/MacOS/gron
-#cp lib/darwin/* gron.app/Contents/lib/
-#cp -r data/* gron.app/Contents/
+go build .
+
+rm -rf bagnus.app
+mkdir -p bagnus.app/Contents/MacOS
+mkdir -p bagnus.app/Contents/lib
+
+mv magnus bagnus.app/Contents/MacOS/bagnus
+cp lib/darwin/* bagnus.app/Contents/lib/
+cp -r data/* bagnus.app/Contents/

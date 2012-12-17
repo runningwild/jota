@@ -674,6 +674,7 @@ func (g *Game) Copy() interface{} {
 	g2.Dx = g.Dx
 	g2.Dy = g.Dy
 	g2.Friction = g.Friction
+	g2.Friction_lava = g.Friction_lava
 	g2.Next_id = g.Next_id
 	g2.Game_thinks = g.Game_thinks
 
@@ -1046,6 +1047,7 @@ func (gw *GameWindow) Rendered() gui.Region {
 	return gw.region
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
+	base.Log().Printf("Thinking")
 	if gw.game == nil {
 		gw.game = gw.Engine.CurrentState().Copy().(*Game)
 		gw.prev_game = gw.Engine.CurrentState().Copy().(*Game)
