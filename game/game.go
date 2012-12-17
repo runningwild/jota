@@ -1047,12 +1047,11 @@ func (gw *GameWindow) Rendered() gui.Region {
   return gw.region
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
-  base.Log().Printf("Thinking")
   if gw.game == nil {
-    gw.game = gw.Engine.CurrentState().Copy().(*Game)
-    gw.prev_game = gw.Engine.CurrentState().Copy().(*Game)
+    gw.game = gw.Engine.CopyState().(*Game)
+    gw.prev_game = gw.game.Copy().(*Game)
   } else {
-    gw.game.OverwriteWith(gw.Engine.CurrentState().(*Game))
+    gw.Engine.UpdateState(gw.game)
     gw.game.Merge(gw.prev_game)
     gw.prev_game.OverwriteWith(gw.game)
   }

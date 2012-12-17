@@ -133,17 +133,17 @@ func main() {
     // g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
     g.GenerateNodes()
     // engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
-    engine, err = cgf.NewHostEngine(&g, 17, "127.0.0.1", 1231, base.Log())
+    engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
     if err != nil {
       panic(err.Error())
     }
     g.SetEngine(engine)
   } else {
-    engine, err = cgf.NewClientEngine(17, "127.0.0.1", 1231, base.Log())
+    engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
     if err != nil {
       panic(err.Error())
     }
-    engine.CurrentState().(*game.Game).SetEngine(engine)
+    engine.CopyState().(*game.Game).SetEngine(engine)
   }
 
   anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
