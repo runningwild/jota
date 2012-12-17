@@ -111,8 +111,10 @@ type addPullEvent struct {
   Force     float64
 }
 
-func (e addPullEvent) ApplyFirst(g interface{}) {}
-func (e addPullEvent) ApplyFinal(g interface{}) {}
+func init() {
+  gob.Register(addPullEvent{})
+}
+
 func (e addPullEvent) Apply(_g interface{}) {
   g := _g.(*game.Game)
   player := g.GetEnt(e.Player_id).(*game.Player)
@@ -132,8 +134,10 @@ type removePullEvent struct {
   Id        int
 }
 
-func (e removePullEvent) ApplyFirst(g interface{}) {}
-func (e removePullEvent) ApplyFinal(g interface{}) {}
+func init() {
+  gob.Register(removePullEvent{})
+}
+
 func (e removePullEvent) Apply(_g interface{}) {
   g := _g.(*game.Game)
   player := g.GetEnt(e.Player_id).(*game.Player)

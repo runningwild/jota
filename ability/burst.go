@@ -46,8 +46,10 @@ type addBurstEvent struct {
   Force     int
 }
 
-func (e addBurstEvent) ApplyFirst(g interface{}) {}
-func (e addBurstEvent) ApplyFinal(g interface{}) {}
+func init() {
+  gob.Register(addBurstEvent{})
+}
+
 func (e addBurstEvent) Apply(_g interface{}) {
   g := _g.(*game.Game)
   player := g.GetEnt(e.Player_id).(*game.Player)
