@@ -87,11 +87,11 @@ func (p *pull) Think(player_id int, g *game.Game) ([]cgf.Event, bool) {
 
 func (p *pull) Draw(player_id int, g *game.Game) {
   player := g.GetEnt(player_id).(*game.Player)
-  var v1, v2 linear.Vec2
-  v1.X = player.X
-  v1.Y = player.Y
+  v1 := player.Pos()
+  var v2 linear.Vec2
   v2.X = p.x
   v2.Y = p.y
+  v2 = v2.Sub(v1).Norm().Scale(1000).Add(v1)
   v3 := v2.RotateAround(v1, p.angle)
   v4 := v2.RotateAround(v1, -p.angle)
   gl.Begin(gl.LINES)
@@ -183,7 +183,6 @@ func (p *pullProcess) Think(g *game.Game) {
   _player := g.GetEnt(p.Player_id)
   player := _player.(*game.Player)
   source_pos := linear.Vec2{p.X, p.Y}
-  max_dist_sq := player.Pos().Sub(source_pos).Mag2()
 
   base_force := p.Force * p.supplied / p.required
   for _, _target := range g.Ents {
@@ -193,9 +192,6 @@ func (p *pullProcess) Think(g *game.Game) {
     }
     target_pos := linear.Vec2{target.X, target.Y}
     ray := target_pos.Sub(player.Pos())
-    if ray.Mag2() > max_dist_sq {
-      continue
-    }
     target_angle := ray.Angle()
     process_angle := source_pos.Sub(player.Pos()).Angle()
     angle := target_angle - process_angle
