@@ -153,6 +153,7 @@ func main() {
   var profile_output *os.File
   var num_mem_profiles int
   ui.AddChild(base.MakeConsole())
+
   for key_map["quit"].FramePressCount() == 0 {
     sys.Think()
     render.Queue(func() {

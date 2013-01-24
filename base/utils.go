@@ -2,7 +2,6 @@ package base
 
 import (
   "bytes"
-  "code.google.com/p/freetype-go/freetype/truetype"
   "encoding/base64"
   "encoding/gob"
   "encoding/json"
@@ -70,101 +69,31 @@ func CloseLog() {
   log_out.Close()
 }
 
-var font_dict map[int]*gui.Dictionary
+var font_dict map[string]*gui.Dictionary
 var dictionary_mutex sync.Mutex
 
-func loadFont() (*truetype.Font, error) {
-  f, err := os.Open(filepath.Join(datadir, "fonts", "tomnr.ttf"))
-  if err != nil {
-    return nil, err
-  }
-  data, err := ioutil.ReadAll(f)
-  f.Close()
-  if err != nil {
-    return nil, err
-  }
-  font, err := truetype.Parse(data)
-  if err != nil {
-    return nil, err
-  }
-  return font, nil
-}
-
-func setupFontDictionaries(sizes ...int) {
+func GetDictionary(font string) *gui.Dictionary {
   dictionary_mutex.Lock()
   defer dictionary_mutex.Unlock()
   if font_dict == nil {
-    font_dict = make(map[int]*gui.Dictionary)
+    font_dict = make(map[string]*gui.Dictionary)
   }
-
-  font, err := loadFont()
-  if err != nil {
-    Error().Fatalf("Failed to load font: %v", err)
-  }
-  // render.Init()
-
-  for _, size := range sizes {
-    d, err := loadDictionaryFromFile(size)
-    if err == nil {
-      font_dict[size] = d
-    } else {
-      d = gui.MakeDictionary(font, size)
-      font_dict[size] = d
-      err = saveDictionaryToFile(d, size)
-      if err != nil {
-        Warn().Printf("Unable to save dictionary (%d) to file: %v\n", size, err)
-      }
+  if _, ok := font_dict[font]; !ok {
+    path := filepath.Join(datadir, "fonts", font+".gob")
+    f, err := os.Open(path)
+    if err != nil {
+      Error().Printf("Unable to open file '%s': %v\n", path, err)
+      return nil
     }
-  }
-}
-
-func loadDictionaryFromFile(size int) (*gui.Dictionary, error) {
-  name := fmt.Sprintf("dict_%d.gob", size)
-  f, err := os.Open(filepath.Join(datadir, "fonts", name))
-  var d *gui.Dictionary
-  if err == nil {
-    d, err = gui.LoadDictionary(f)
-    f.Close()
-  }
-  return d, err
-}
-
-func saveDictionaryToFile(d *gui.Dictionary, size int) error {
-  name := fmt.Sprintf("dict_%d.gob", size)
-  f, err := os.Create(filepath.Join(datadir, "fonts", name))
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-  return d.Store(f)
-}
-
-func GetDictionary(size int) *gui.Dictionary {
-  dictionary_mutex.Lock()
-  defer dictionary_mutex.Unlock()
-  if font_dict == nil {
-    font_dict = make(map[int]*gui.Dictionary)
-  }
-  if _, ok := font_dict[size]; !ok {
-    d, err := loadDictionaryFromFile(size)
-    if err == nil {
-      font_dict[size] = d
-    } else {
-      Warn().Printf("Unable to load dictionary (%d) from file: %v", size, err)
-      font, err := loadFont()
-      if err != nil {
-        Error().Fatalf("Unable to load font: %v", err)
-      }
-      d = gui.MakeDictionary(font, size)
-      err = saveDictionaryToFile(d, size)
-      if err != nil {
-        Warn().Printf("Unable to save dictionary (%d) to file: %v", size, err)
-      }
-      font_dict[size] = d
+    defer f.Close()
+    dict, err := gui.LoadDictionary(f)
+    if err != nil {
+      Error().Printf("Unable to load dictionary from '%s': %v\n", path, err)
+      return nil
     }
+    font_dict[font] = dict
   }
-
-  return font_dict[size]
+  return font_dict[font]
 }
 
 // A Path is a string that is intended to store a path.  When it is encoded

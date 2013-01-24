@@ -9,8 +9,9 @@ import (
   "unicode"
 )
 
-const maxLines = 25
+const maxLines = 50
 const maxLineLength = 150
+const lineHeight = 25
 
 // A simple gui element that will display the last several lines of text from
 // a log file (TODO: and also allow you to enter some basic commands).
@@ -34,7 +35,7 @@ func MakeConsole() *Console {
   c.BasicZone.Ey = true
   c.BasicZone.Request_dims = gui.Dims{1000, 1000}
   c.input = bufio.NewReader(log_console)
-  c.dict = GetDictionary(12)
+  c.dict = GetDictionary("skia")
   return &c
 }
 
@@ -108,7 +109,7 @@ func (c *Console) DrawFocused(region gui.Region) {
   }
   gl.End()
   gl.Color4d(1, 1, 1, 1)
-  y := float64(region.Y) + float64(len(c.lines))*c.dict.MaxHeight()
+  y := float64(region.Y) + float64(len(c.lines))*lineHeight
   do_color := func(line string) {
     if strings.HasPrefix(line, "LOG") {
       gl.Color4d(1, 1, 1, 1)
@@ -123,20 +124,20 @@ func (c *Console) DrawFocused(region gui.Region) {
   if c.start > c.end {
     for i := c.start; i < len(c.lines); i++ {
       do_color(c.lines[i])
-      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, c.dict.MaxHeight(), gui.Left)
-      y -= c.dict.MaxHeight()
+      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, lineHeight, gui.Left)
+      y -= lineHeight
     }
     for i := 0; i < c.end; i++ {
       do_color(c.lines[i])
-      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, c.dict.MaxHeight(), gui.Left)
-      y -= c.dict.MaxHeight()
+      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, lineHeight, gui.Left)
+      y -= lineHeight
     }
   } else {
     for i := c.start; i < c.end && i < len(c.lines); i++ {
       do_color(c.lines[i])
-      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, c.dict.MaxHeight(), gui.Left)
-      y -= c.dict.MaxHeight()
+      c.dict.RenderString(c.lines[i], c.xscroll, y, 0, lineHeight, gui.Left)
+      y -= lineHeight
     }
   }
-  c.dict.RenderString(string(c.cmd), c.xscroll, y, 0, c.dict.MaxHeight(), gui.Left)
+  c.dict.RenderString(string(c.cmd), c.xscroll, y, 0, lineHeight, gui.Left)
 }
