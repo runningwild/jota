@@ -1,8 +1,4 @@
 {
-  "cpu profile"  : "alt+p",
-  "mem profile"  : "alt+m",
-  "console"      : "os+c",
-
   "1up"    : "up",
   "1down"  : "down",
   "1left"  : "left",
@@ -17,7 +13,5 @@
   "0right" : "d",
   "0-1" : "1",
   "0-2" : "2",
-  "0-3" : "3",
-
-  "quit"         : "os+q"
+  "0-3" : "3"
 }

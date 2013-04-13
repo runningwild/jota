@@ -1,91 +1,168 @@
 package ability
 
-// import (
-// 	"encoding/gob"
-// 	"fmt"
-// 	"github.com/runningwild/magnus/game"
-// 	"github.com/runningwild/magnus/stats"
-// 	"math"
-// )
+import (
+	"encoding/gob"
+	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/magnus/texture"
+	// "fmt"
+	"github.com/runningwild/cgf"
+	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/game"
+	"math"
+)
 
-// type AbilityMaker func(params map[string]int) Ability
+func makeNitro(params map[string]int) game.Ability {
+	var n nitro
+	n.force = params["force"]
+	n.frames = params["frames"]
+	return &n
+}
 
-// func makeNitro(params map[string]int) game.Ability {
-// 	var n nitro
+func init() {
+	game.RegisterAbility("nitro", makeNitro)
+}
 
-// 	return &n
-// }
+type nitro struct {
+	neverActive
+	nonResponder
+	nonThinker
+	nonRendering
 
-// type nitro struct{}
+	force, frames int
+}
 
-// // NITRO
-// // Increases Max_acc by up to [inc]/nitro_acc_factor.
-// // Continual cost: up to [inc]*[inc]/nitro_mana_factor red mana per frame.
-// const nitro_mana_factor = 200
-// const nitro_acc_factor = 2500
+func (b *nitro) Activate(player_id int) ([]cgf.Event, bool) {
+	event := addNitroEvent{
+		Player_id: player_id,
+		Frames:    b.frames,
+		Force:     b.force,
+	}
+	return []cgf.Event{event}, false
+}
 
-// func init() {
-// 	game.RegisterAbility("nitro", nitroAbility)
-// 	gob.Register(&nitroProcess{})
-// }
+type addNitroEvent struct {
+	Player_id int
+	Frames    int
+	Force     int
+}
 
-// func nitroAbility(g *game.Game, player *game.Player, params map[string]int) game.Process {
-// 	if len(params) != 1 {
-// 		panic(fmt.Sprintf("Nitro requires exactly one parameter, not %v", params))
-// 	}
-// 	for _, req := range []string{"inc"} {
-// 		if _, ok := params[req]; !ok {
-// 			panic(fmt.Sprintf("Nitro requires [%s] to be specified, not %v", req, params))
-// 		}
-// 	}
-// 	inc := params["inc"]
-// 	if inc <= 0 {
-// 		panic(fmt.Sprintf("Nitro requires [inc] > 0, not %d", inc))
-// 	}
-// 	return &nitroProcess{
-// 		Player_id: player.Id(),
-// 		Inc:       int32(inc),
-// 		Continual: game.Mana{float64(inc) * float64(inc) / nitro_mana_factor, 0, 0},
-// 	}
-// }
+func init() {
+	gob.Register(addNitroEvent{})
+}
 
-// type nitroProcess struct {
-// 	NoRendering
-// 	BasicPhases
-// 	Inc       int32
-// 	Continual game.Mana
-// 	Killed    bool
-// 	Player_id int
+func (e addNitroEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player := g.GetEnt(e.Player_id).(*game.Player)
+	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
+	player.Processes[10] = &nitroProcess{
+		Frames:            int32(e.Frames),
+		Force:             float64(e.Force),
+		Initial:           initial,
+		Remaining_initial: initial,
+		Continual:         game.Mana{float64(e.Force) / 50, 0, 0},
+		Player_id:         e.Player_id,
+	}
+}
 
-// 	Prev_delta float64
-// 	Supplied   game.Mana
-// }
+// BURST
+// All nearby players are pushed radially outward from this one.  The force
+// applied to each player is max(0, [max]*(1 - (x / [radius])^2)).  This fore
+// is applied constantly for [frames] frames, or until the continual cost
+// cannot be paid.
+// Initial cost: [radius] * [force] red mana.
+// Continual cost: [frames] red mana per frame.
+func init() {
+	gob.Register(&nitroProcess{})
+}
 
-// // Supplies mana to the process.  Any mana that is unused is returned.
-// func (p *nitroProcess) Supply(supply game.Mana) game.Mana {
-// 	for color := range p.Continual {
-// 		if supply[color] < p.Continual[color] {
-// 			p.Supplied[color] += supply[color]
-// 			supply[color] = 0
-// 		} else {
-// 			p.Supplied[color] += p.Continual[color]
-// 			supply[color] -= p.Continual[color]
-// 		}
-// 	}
-// 	return supply
-// }
+type nitroProcess struct {
+	BasicPhases
+	NullCondition
+	Frames            int32
+	Force             float64
+	Initial           game.Mana
+	Remaining_initial game.Mana
+	Continual         game.Mana
+	Killed            bool
+	Player_id         int
 
-// func (p *nitroProcess) Think(g *game.Game) {
-// 	p.Prev_delta = math.Sqrt(p.Supplied.Magnitude()*nitro_mana_factor) / nitro_acc_factor
-// 	p.Supplied = game.Mana{}
-// }
-// func (p *nitroProcess) ModifyBase(b stats.Base) stats.Base {
-// 	b.Max_acc += p.Prev_delta
-// 	return b
-// }
-// func (*nitroProcess) ModifyDamage(damage stats.Damage) stats.Damage {
-// 	return damage
-// }
-// func (*nitroProcess) CauseDamage() stats.Damage {
-// 	return stats.Damage{}
-// }
+	// Counting how long to cast
+	count int
+}
+
+// Supplies mana to the process.  Any mana that is unused is returned.
+func (p *nitroProcess) Supply(supply game.Mana) game.Mana {
+	if p.Remaining_initial.Magnitude() > 0 {
+		p.count++
+		for color := range supply {
+			if p.Remaining_initial[color] == 0 {
+				continue
+			}
+			if supply[color] == 0 {
+				continue
+			}
+			if supply[color] > p.Remaining_initial[color] {
+				supply[color] -= p.Remaining_initial[color]
+				p.Remaining_initial[color] = 0
+			} else {
+				p.Remaining_initial[color] -= supply[color]
+				supply[color] = 0
+			}
+		}
+	} else {
+		for color := range p.Continual {
+			if supply[color] < p.Continual[color] {
+				p.Frames = 0
+				return supply
+			}
+		}
+		for color := range p.Continual {
+			supply[color] -= p.Continual[color]
+		}
+	}
+	return supply
+}
+
+func (p *nitroProcess) PreThink(g *game.Game) {
+}
+
+func (p *nitroProcess) Think(g *game.Game) {
+	_player := g.GetEnt(p.Player_id)
+	player := _player.(*game.Player)
+	if p.Remaining_initial.Magnitude() == 0 {
+		if p.count > 0 {
+			p.count = -1
+		}
+		p.Frames--
+		if p.Frames <= 0 {
+			p.The_phase = game.PhaseComplete
+		}
+		for i := range g.Ents {
+			other := g.Ents[i]
+			if other == player {
+				continue
+			}
+			dist := other.Pos().Sub(player.Pos()).Mag()
+			if dist < 1 {
+				dist = 1
+			}
+			force := p.Force / dist
+			other.ApplyForce(other.Pos().Sub(player.Pos()).Norm().Scale(force))
+		}
+	}
+}
+
+func (p *nitroProcess) Draw(player_id int, g *game.Game) {
+	player := g.GetEnt(player_id).(*game.Player)
+	base.EnableShader("circle")
+	prog := p.Remaining_initial.Magnitude() / p.Initial.Magnitude()
+	base.SetUniformF("circle", "progress", 1-float32(prog))
+	gl.Color4ub(255, 255, 255, 255)
+	radius := 40.0
+	texture.Render(
+		player.X-radius,
+		player.Y-radius,
+		2*radius,
+		2*radius)
+	base.EnableShader("")
+}
