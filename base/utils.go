@@ -2,7 +2,6 @@ package base
 
 import (
 	"bytes"
-	"code.google.com/p/freetype-go/freetype/truetype"
 	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
@@ -73,21 +72,16 @@ func CloseLog() {
 var font_dict map[string]*gui.Dictionary
 var dictionary_mutex sync.Mutex
 
-func loadFont() (*truetype.Font, error) {
-	f, err := os.Open(filepath.Join(datadir, "fonts", "tomnr.ttf"))
+func LoadAllDictionaries() {
+	filenames, err := filepath.Glob(filepath.Join(GetDataDir(), "fonts", "*.gob"))
 	if err != nil {
-		return nil, err
+		Log().Fatalf("Unable to open font dirs: %v", err)
 	}
-	data, err := ioutil.ReadAll(f)
-	f.Close()
-	if err != nil {
-		return nil, err
+	for _, filename := range filenames {
+		font := filepath.Base(filename)
+		font = font[0 : len(font)-4]
+		GetDictionary(font)
 	}
-	font, err := truetype.Parse(data)
-	if err != nil {
-		return nil, err
-	}
-	return font, nil
 }
 
 func GetDictionary(font string) *gui.Dictionary {

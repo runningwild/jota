@@ -90,6 +90,11 @@ type burstProcess struct {
 	count int
 }
 
+func (p *burstProcess) Copy() game.Process {
+	p2 := *p
+	return &p2
+}
+
 // Supplies mana to the process.  Any mana that is unused is returned.
 func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 	if p.Remaining_initial.Magnitude() > 0 {

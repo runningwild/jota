@@ -98,6 +98,7 @@ type Process interface {
 	Responder
 	stats.Condition
 	Draw(player_id int, game *Game)
+	Copy() Process
 }
 
 const mana_brightness = 150
@@ -167,6 +168,18 @@ type Player struct {
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
+}
+
+func (p *Player) Copy() Ent {
+	p2 := *p
+	p2.Processes = make(map[int]Process)
+	for k, v := range p.Processes {
+		p2.Processes[k] = v.Copy()
+		if v == nil {
+			panic("ASDF")
+		}
+	}
+	return &p2
 }
 
 func init() {
@@ -400,6 +413,7 @@ type Ent interface {
 	Vel() linear.Vec2
 	SetVel(vel linear.Vec2)
 	Supply(mana Mana) Mana
+	Copy() Ent
 }
 
 type nodeGrid [][]Node
@@ -741,8 +755,8 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	for _, ent := range g2.Ents {
 		switch e := ent.(type) {
 		case *Player:
-			p := *e
-			g.Ents = append(g.Ents, &p)
+			p := e.Copy()
+			g.Ents = append(g.Ents, p)
 		}
 	}
 
