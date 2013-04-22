@@ -2,10 +2,12 @@ package ability
 
 import (
 	"encoding/gob"
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
-	// "github.com/runningwild/glop/gin"
+	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -57,66 +59,9 @@ func (p *pull) Deactivate(player_id int) []cgf.Event {
 	return ret
 }
 
-func (p *pull) Think(player_id int, g *game.Game) ([]cgf.Event, bool) {
-	return nil, true
-	// if gin.In().GetKey(gin.AnyEscape).FramePressCount() > 0 {
-	// 	return nil, true
-	// }
-
-	// player := g.GetEnt(player_id).(*game.Player)
-	// // mx, my := gin.In().GetCursor("Mouse").Point()
-	// mx, my := 1, 2
-	// rx := g.Region().Point.X
-	// ry := g.Region().Point.Y
-	// var v1, v2 linear.Vec2
-	// v1.X = player.X
-	// v1.Y = player.Y
-	// v2.X = float64(mx - rx)
-	// v2.Y = float64(my - ry)
-	// p.x = v2.X
-	// p.y = v2.Y
-
-	// ret := []cgf.Event{
-	// 	removePullEvent{
-	// 		Player_id: player_id,
-	// 		Id:        p.id,
-	// 	},
-	// }
-	// if gin.In().GetKey(gin.AnyMouseLButton).FramePressAmt() > 0 {
-	// 	ret = append(ret, addPullEvent{
-	// 		Player_id: player_id,
-	// 		Id:        p.id,
-	// 		X:         p.x,
-	// 		Y:         p.y,
-	// 		Angle:     p.angle,
-	// 		Force:     p.force,
-	// 	})
-	// }
-	// return ret, false
-}
-
-func (p *pull) Draw(player_id int, g *game.Game) {
-	player := g.GetEnt(player_id).(*game.Player)
-	v1 := player.Pos()
-	var v2 linear.Vec2
-	// v2.X = p.x
-	// v2.Y = p.y
-	v2 = v2.Sub(v1).Norm().Scale(1000).Add(v1)
-	v3 := v2.RotateAround(v1, p.angle)
-	v4 := v2.RotateAround(v1, -p.angle)
-	gl.Begin(gl.LINES)
-	vs := []linear.Vec2{v3, v4, linear.Vec2{player.X, player.Y}}
-	for i := range vs {
-		gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
-		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
-	}
-	gl.End()
-}
-
 type addPullEvent struct {
 	Player_id int
 	Id        int
-	X, Y      float64
 	Angle     float64
 	Force     float64
 }
@@ -132,8 +77,6 @@ func (e addPullEvent) Apply(_g interface{}) {
 		BasicPhases: BasicPhases{game.PhaseRunning},
 		Id:          e.Id,
 		Player_id:   e.Player_id,
-		X:           e.X,
-		Y:           e.Y,
 		Angle:       e.Angle,
 		Force:       e.Force,
 	}
@@ -167,17 +110,23 @@ type pullProcess struct {
 	NullCondition
 	Id        int
 	Player_id int
-	X, Y      float64
 	Angle     float64
 	Force     float64
 
 	required float64
 	supplied float64
+	val      float64
+}
+
+func (p *pullProcess) Copy() game.Process {
+	p2 := *p
+	return &p2
 }
 
 func (p *pullProcess) PreThink(g *game.Game) {
 	p.required = p.Force
 	p.supplied = 0
+	p.val = 0.0
 }
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required-p.supplied {
@@ -192,8 +141,8 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 func (p *pullProcess) Think(g *game.Game) {
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
-	source_pos := linear.Vec2{p.X, p.Y}
 
+	p.supplied = 100
 	base_force := p.Force * p.supplied / p.required
 	for _, _target := range g.Ents {
 		target, ok := _target.(*game.Player)
@@ -202,23 +151,45 @@ func (p *pullProcess) Think(g *game.Game) {
 		}
 		target_pos := linear.Vec2{target.X, target.Y}
 		ray := target_pos.Sub(player.Pos())
-		target_angle := ray.Angle()
-		process_angle := source_pos.Sub(player.Pos()).Angle()
-		angle := target_angle - process_angle
-		if angle < 0 {
-			angle = -angle
+		target_angle := ray.Angle() - player.Angle
+		for target_angle < 0 {
+			target_angle += math.Pi * 2
 		}
-		if angle > p.Angle {
+		for target_angle > math.Pi*2 {
+			target_angle -= math.Pi * 2
+		}
+		p.val = target_angle
+		if target_angle > p.Angle/2 && target_angle < math.Pi*2-p.Angle/2 {
 			continue
 		}
 		ray = player.Pos().Sub(target.Pos())
-		dist := ray.Mag()
+		// dist := ray.Mag()
 		ray = ray.Norm()
-		force := base_force / math.Pow(dist, p.Angle/(2*math.Pi))
+		force := base_force // / math.Pow(dist, p.Angle/(2*math.Pi))
 		target.ApplyForce(ray.Scale(-force))
 		player.ApplyForce(ray.Scale(force))
 	}
+	p.val = -100
 }
 
 func (p *pullProcess) Draw(player_id int, g *game.Game) {
+	gl.Color4d(1, 1, 1, 1)
+	gl.Disable(gl.TEXTURE_2D)
+	player := g.GetEnt(player_id).(*game.Player)
+	v1 := player.Pos()
+	v2 := v1.Add(linear.Vec2{1000, 0})
+	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)
+	v4 := v2.RotateAround(v1, player.Angle+p.Angle/2)
+	gl.Begin(gl.LINES)
+	vs := []linear.Vec2{v3, v4, linear.Vec2{player.X, player.Y}}
+	for i := range vs {
+		gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
+		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
+	}
+	gl.End()
+	s := fmt.Sprintf("%.2f", p.val)
+	base.Log().Printf("'%s'", s)
+	if true {
+		base.GetDictionary("luxisr").RenderString(s, 10, 10, 0, 50, gin.Left)
+	}
 }

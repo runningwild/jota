@@ -25,6 +25,18 @@ type nonRendering struct{}
 
 func (nonRendering) Draw(player_id int, game *game.Game) {}
 
+type deactivateOnKeyUp struct{}
+
+func (deactivateOnKeyUp) DeactivateOnKeyUp() bool {
+	return true
+}
+
+type stayActiveOnKeyUp struct{}
+
+func (stayActiveOnKeyUp) DeactivateOnKeyUp() bool {
+	return true
+}
+
 type BasicPhases struct {
 	The_phase game.Phase
 }

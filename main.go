@@ -31,6 +31,18 @@ var (
 )
 
 func init() {
+  {
+    f, err := os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.err")
+    if err != nil {
+      panic("shoot")
+    }
+    os.Stderr = f
+    f, err = os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.out")
+    if err != nil {
+      panic("shoot")
+    }
+    os.Stdout = f
+  }
   runtime.LockOSThread()
   sys = system.Make(gos.GetSystemInterface())
 
@@ -181,6 +193,7 @@ func main() {
         down = down_axis.FramePressAmt()
         left = left_axis.FramePressAmt()
         right = right_axis.FramePressAmt()
+        fmt.Printf("Up: %v\n", up)
         if up < 0.1 {
           up = 0
         }
