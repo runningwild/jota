@@ -3,5 +3,5 @@
 package main
 
 func IsHost() bool {
-  return false
+	return false
 }
