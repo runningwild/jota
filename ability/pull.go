@@ -115,7 +115,6 @@ type pullProcess struct {
 
 	required float64
 	supplied float64
-	val      float64
 }
 
 func (p *pullProcess) Copy() game.Process {
@@ -126,7 +125,6 @@ func (p *pullProcess) Copy() game.Process {
 func (p *pullProcess) PreThink(g *game.Game) {
 	p.required = p.Force
 	p.supplied = 0
-	p.val = 0.0
 }
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required-p.supplied {
@@ -142,7 +140,6 @@ func (p *pullProcess) Think(g *game.Game) {
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
 
-	p.supplied = 100
 	base_force := p.Force * p.supplied / p.required
 	for _, _target := range g.Ents {
 		target, ok := _target.(*game.Player)
@@ -158,7 +155,6 @@ func (p *pullProcess) Think(g *game.Game) {
 		for target_angle > math.Pi*2 {
 			target_angle -= math.Pi * 2
 		}
-		p.val = target_angle
 		if target_angle > p.Angle/2 && target_angle < math.Pi*2-p.Angle/2 {
 			continue
 		}
@@ -169,7 +165,6 @@ func (p *pullProcess) Think(g *game.Game) {
 		target.ApplyForce(ray.Scale(-force))
 		player.ApplyForce(ray.Scale(force))
 	}
-	p.val = -100
 }
 
 func (p *pullProcess) Draw(player_id int, g *game.Game) {
@@ -187,7 +182,7 @@ func (p *pullProcess) Draw(player_id int, g *game.Game) {
 		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
 	}
 	gl.End()
-	s := fmt.Sprintf("%.2f", p.val)
+	s := fmt.Sprintf("%.2f", p.supplied)
 	base.Log().Printf("'%s'", s)
 	if true {
 		base.GetDictionary("luxisr").RenderString(s, 10, 10, 0, 50, gin.Left)

@@ -130,6 +130,16 @@ type Node struct {
 	MaxAmount []float64
 }
 
+func (n *Node) Copy() Node {
+	var n2 Node
+	n2 = *n
+	n2.Amount = make([]float64, len(n.Amount))
+	copy(n2.Amount, n.Amount)
+	n2.MaxAmount = make([]float64, len(n.MaxAmount))
+	copy(n2.MaxAmount, n.MaxAmount)
+	return n2
+}
+
 func init() {
 	gob.Register(&Node{})
 }
@@ -713,7 +723,7 @@ func (g *Game) Copy() interface{} {
 	for x := range g2.Nodes {
 		g2.Nodes[x] = make([]Node, len(g.Nodes[x]))
 		for y := range g2.Nodes[x] {
-			g2.Nodes[x][y] = g.Nodes[x][y]
+			g2.Nodes[x][y] = g.Nodes[x][y].Copy()
 		}
 	}
 
@@ -766,7 +776,7 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	for x := range g.Nodes {
 		g.Nodes[x] = g.Nodes[x][0:0]
 		for y := range g2.Nodes[x] {
-			g.Nodes[x] = append(g.Nodes[x], g2.Nodes[x][y])
+			g.Nodes[x] = append(g.Nodes[x], g2.Nodes[x][y].Copy())
 		}
 	}
 }
@@ -921,53 +931,50 @@ func (g *Game) nodeAndSupplyThink2() {
 }
 
 func (g *Game) nodeAndSupplyThink() {
-	g.nodeAndSupplyThink2()
-	/*priorities := g.getPriorities()
-	  indexes := make([]int, len(g.Ents))
-	  for i := range indexes {
-	    indexes[i] = i
-	  }
-	  for i := range indexes {
-	    swap := int(g.Rng.Uint32()%uint32(len(g.Ents)-i)) + i
-	    indexes[i], indexes[swap] = indexes[swap], indexes[i]
-	  }
-	  for _, p := range indexes {
-	    player := g.Ents[p]
-	    nodes := priorities[p]
+	// g.nodeAndSupplyThink2()
+	priorities := g.getPriorities()
+	indexes := make([]int, len(g.Ents))
+	for i := range indexes {
+		indexes[i] = i
+	}
+	for i := range indexes {
+		swap := int(g.Rng.Uint32()%uint32(len(g.Ents)-i)) + i
+		indexes[i], indexes[swap] = indexes[swap], indexes[i]
+	}
+	for _, p := range indexes {
+		player := g.Ents[p]
+		nodes := priorities[p]
 
-	    for i := range nodes {
-	      swap := int(g.Rng.Uint32()%uint32(len(nodes)-i)) + i
-	      nodes[i], nodes[swap] = nodes[swap], nodes[i]
-	    }
+		for i := range nodes {
+			swap := int(g.Rng.Uint32()%uint32(len(nodes)-i)) + i
+			nodes[i], nodes[swap] = nodes[swap], nodes[i]
+		}
 
-	    var supply Mana
-	    for _, node := range nodes {
-	      drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
-	      for i := 0; i < len(node.Amount); i++ {
-	        supply[i] += math.Min(node.Amount[i], drain)
-	      }
-	      if len(node.Amount) != 3 {
-	        fmt.Println("What teh crapz?", node)
-	      }
-	    }
+		var supply Mana
+		for _, node := range nodes {
+			drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
+			for i := 0; i < len(node.Amount); i++ {
+				supply[i] += math.Min(node.Amount[i], drain)
+			}
+			if len(node.Amount) != 3 {
+				base.Log().Printf("What teh crapz?: %v", node)
+			}
+		}
 
-	    var used Mana
-	    for color, amt := range supply {
-	      used[color] = amt
-	    }
-	    supply = player.Supply(supply)
-	    for color, amt := range supply {
-	      used[color] -= amt
-	    }
-	    for _, node := range nodes {
-	      drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
-	      for i := 0; i < len(node.Amount); i++ {
-	        drain = math.Min(math.Min(node.Amount[i], used[i]), drain)
-	        node.Amount[i] -= drain
-	        used[i] -= drain
-	      }
-	    }
-	  }*/
+		var used Mana
+		for color, amt := range supply {
+			used[color] = amt
+		}
+		supply = player.Supply(supply)
+		for color, amt := range supply {
+			used[color] -= amt
+		}
+		for _, node := range nodes {
+			for i := 0; i < len(node.Amount); i++ {
+				node.Amount[i] -= used[i]
+			}
+		}
+	}
 
 	for x := range g.Nodes {
 		for y := range g.Nodes[x] {
