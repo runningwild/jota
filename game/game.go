@@ -894,16 +894,6 @@ func (g *Game) nodeAndSupplyThink() {
 	}
 }
 
-func axisControl(v float64) float64 {
-	floor := 0.1
-	if v < floor {
-		return 0.0
-	}
-	v = (v - floor) / (1.0 - floor)
-	v *= v
-	return v
-}
-
 func clamp(v, low, high float64) float64 {
 	if v < low {
 		return low
