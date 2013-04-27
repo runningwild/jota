@@ -498,23 +498,30 @@ type Game struct {
 	Game_thinks int
 }
 
+type localPlayer struct {
+	// This player's id
+	id int
+
+	// The device controlling this player.
+	device_index gin.DeviceIndex
+
+	// All of the abilities that this player can activate.
+	abilities []Ability
+
+	// This player's active ability, if any.
+	active_ability Ability
+}
+
 type localData struct {
 	game *Game
-
-	// All of the abilities that this player can activate.  These are only present
-	// for the local player.
-	abilities []Ability
 
 	region gui.Region
 
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
-	// The index of the player that is being controlled by localhost
-	local_player *Player
-
-	// The local player's active ability, if any
-	active_ability Ability
+	// All of the players controlled by humans on localhost.
+	players []*localPlayer
 }
 
 var local localData
@@ -542,63 +549,72 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 }
 
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
-	k0 := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-	k1 := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
-	if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
-		g.ActivateAbility(0)
-		return
-	}
-	if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
-		g.ActivateAbility(1)
-		return
-	}
-	if local.active_ability != nil {
-		if local.active_ability.Respond(local.local_player.Id(), group) {
+	base.Log().Printf("Id: %v\n", group.Events[0].Key.Id())
+	for _, player := range local.players {
+		k0 := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, player.device_index)
+		k1 := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, player.device_index)
+		base.Log().Printf("key: %v\n", k0.Id())
+		base.Log().Printf("key: %v\n", k1.Id())
+		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
+			panic("ADFS")
+			g.ActivateAbility(player, 0)
 			return
+		}
+		if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
+			g.ActivateAbility(player, 1)
+			return
+		}
+		if player.active_ability != nil {
+			if player.active_ability.Respond(player.id, group) {
+				return
+			}
 		}
 	}
 }
 
-func (g *Game) SetLocalPlayer(local_player *Player) {
-	if local.local_player != nil {
-		panic("Local player has already been set.")
-	}
-	local.local_player = local_player
-	local.abilities = append(
-		local.abilities,
+func (g *Game) SetLocalData() {
+	local.game = g
+}
+
+func (g *Game) SetLocalPlayer(player *Player, index gin.DeviceIndex) {
+	var lp localPlayer
+	lp.id = player.Id()
+	lp.device_index = index
+	lp.abilities = append(
+		lp.abilities,
 		ability_makers["burst"](map[string]int{
 			"frames": 2,
 			"force":  200000,
 		}))
-	local.abilities = append(
-		local.abilities,
+	lp.abilities = append(
+		lp.abilities,
 		ability_makers["pull"](map[string]int{
 			"frames": 10,
 			"force":  250,
 			"angle":  30,
 		}))
-	local.game = g
+	local.players = append(local.players, &lp)
 }
 
-func (g *Game) ActivateAbility(n int) {
-	active_ability := local.active_ability
-	local.active_ability = nil
+func (g *Game) ActivateAbility(player *localPlayer, n int) {
+	active_ability := player.active_ability
+	player.active_ability = nil
 	if active_ability != nil {
-		events := active_ability.Deactivate(local.local_player.Id())
+		events := active_ability.Deactivate(player.id)
 		for _, event := range events {
 			local.engine.ApplyEvent(event)
 		}
-		if active_ability == local.abilities[n] {
+		if active_ability == player.abilities[n] {
 			return
 		}
 	}
-	events, active := local.abilities[n].Activate(local.local_player.Id())
+	events, active := player.abilities[n].Activate(player.id)
 	for _, event := range events {
 		local.engine.ApplyEvent(event)
 	}
 	if active {
-		local.active_ability = local.abilities[n]
-		base.Log().Printf("Setting active ability to %v", local.active_ability)
+		player.active_ability = player.abilities[n]
+		base.Log().Printf("Setting active ability to %v", player.active_ability)
 	}
 }
 
@@ -983,18 +999,44 @@ func (g *Game) nodeAndSupplyThink() {
 	}
 }
 
+func axisControl(v float64) float64 {
+	floor := 0.1
+	if v < floor {
+		return 0.0
+	}
+	v = (v - floor) / (1.0 - floor)
+	v *= v
+	return v
+}
+
 func LocalThink() {
-	if local.active_ability != nil {
-		events, die := local.active_ability.Think(local.local_player.Id(), local.game)
-		if die {
-			more_events := local.active_ability.Deactivate(local.local_player.Id())
-			local.active_ability = nil
-			for _, event := range more_events {
-				events = append(events, event)
+	for _, player := range local.players {
+		if player.active_ability != nil {
+			events, die := player.active_ability.Think(player.id, local.game)
+			for _, event := range events {
+				local.engine.ApplyEvent(event)
+			}
+			if die {
+				more_events := player.active_ability.Deactivate(player.id)
+				player.active_ability = nil
+				for _, event := range more_events {
+					local.engine.ApplyEvent(event)
+				}
 			}
 		}
-		for _, event := range events {
-			local.engine.ApplyEvent(event)
+		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.device_index)
+		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.device_index)
+		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.device_index)
+		left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, player.device_index)
+		up := axisControl(up_axis.FramePressAmt())
+		down := axisControl(down_axis.FramePressAmt())
+		left := axisControl(left_axis.FramePressAmt())
+		right := axisControl(right_axis.FramePressAmt())
+		if up-down != 0 {
+			local.engine.ApplyEvent(Accelerate{player.id, 2 * (up - down)})
+		}
+		if left-right != 0 {
+			local.engine.ApplyEvent(Turn{player.id, (left - right)})
 		}
 	}
 }
@@ -1268,8 +1310,10 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.Disable(gl.TEXTURE_2D)
 
-	if local.active_ability != nil {
-		local.active_ability.Draw(local.local_player.Id(), gw.game)
+	for _, player := range local.players {
+		if player.active_ability != nil {
+			player.active_ability.Draw(player.id, gw.game)
+		}
 	}
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

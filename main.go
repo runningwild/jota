@@ -11,6 +11,7 @@ import (
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
+	"time"
 	// "math"
 	"github.com/runningwild/cgf"
 	_ "github.com/runningwild/magnus/ability"
@@ -59,16 +60,6 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-func axisControl(v float64) float64 {
-	floor := 0.1
-	if v < floor {
-		return 0.0
-	}
-	v = (v - floor) / (1.0 - floor)
-	v *= v
-	return v
-}
-
 func main() {
 	fmt.Printf("%v\n", key_map)
 	sys.Startup()
@@ -91,6 +82,11 @@ func main() {
 	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
 	if err != nil {
 		panic(err)
+	}
+	sys.Think()
+	for len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
+		time.Sleep(time.Millisecond * 100)
+		sys.Think()
 	}
 
 	var ids []int
@@ -153,7 +149,19 @@ func main() {
 		g.Ents[0].(*game.Player).Y = 300
 		g.Ents[1].(*game.Player).X = 550
 		g.Ents[1].(*game.Player).Y = 300
-		g.SetLocalPlayer(g.Ents[0].(*game.Player))
+		g.SetLocalData()
+		d := sys.GetActiveDevices()
+		base.Log().Printf("%v\n", d)
+		n := 0
+		base.Log().Printf("%v\n", d[gin.DeviceTypeController])
+		for _, index := range d[gin.DeviceTypeController] {
+			// panic("ASD")
+			g.SetLocalPlayer(g.Ents[n].(*game.Player), index)
+			n++
+			if n > 2 {
+				break
+			}
+		}
 		// g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
 		g.GenerateNodes()
 		// engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
@@ -193,24 +201,24 @@ func main() {
 
 		if IsHost() {
 			for i := 0; i <= 0; i++ {
-				down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-				up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-				right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
-				left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
-				up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
-				down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
-				left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
-				right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
-				up = axisControl(up_axis.FramePressAmt())
-				down = axisControl(down_axis.FramePressAmt())
-				left = axisControl(left_axis.FramePressAmt())
-				right = axisControl(right_axis.FramePressAmt())
-				if up-down != 0 {
-					engine.ApplyEvent(game.Accelerate{ids[i], 2 * (up - down)})
-				}
-				if left-right != 0 {
-					engine.ApplyEvent(game.Turn{ids[i], (left - right)})
-				}
+				// down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+				// up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+				// right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
+				// left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
+				// up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
+				// down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
+				// left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
+				// right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
+				// up = axisControl(up_axis.FramePressAmt())
+				// down = axisControl(down_axis.FramePressAmt())
+				// left = axisControl(left_axis.FramePressAmt())
+				// right = axisControl(right_axis.FramePressAmt())
+				// if up-down != 0 {
+				// 	engine.ApplyEvent(game.Accelerate{ids[i], 2 * (up - down)})
+				// }
+				// if left-right != 0 {
+				// 	engine.ApplyEvent(game.Turn{ids[i], (left - right)})
+				// }
 
 				// if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
 				// 	engine.ApplyEvent(game.Pull{ids[i], 0, 20000})
