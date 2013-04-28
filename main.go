@@ -32,18 +32,6 @@ var (
 )
 
 func init() {
-	{
-		f, err := os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.err")
-		if err != nil {
-			panic("shoot")
-		}
-		os.Stderr = f
-		f, err = os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.out")
-		if err != nil {
-			panic("shoot")
-		}
-		os.Stdout = f
-	}
 	runtime.LockOSThread()
 	sys = system.Make(gos.GetSystemInterface())
 
