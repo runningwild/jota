@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	// "runtime/pprof"
+	"runtime/pprof"
 )
 
 var (
@@ -170,8 +170,8 @@ func main() {
 	ui.AddChild(anchor)
 	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
 	var v float64
-	// var profile_output *os.File
-	// var num_mem_profiles int
+	var profile_output *os.File
+	var num_mem_profiles int
 	// ui.AddChild(base.MakeConsole())
 
 	base.LoadAllDictionaries()
@@ -221,36 +221,38 @@ func main() {
 			}
 		}
 
-		// if key_map["cpu profile"].FramePressCount() > 0 {
-		// 	if profile_output == nil {
-		// 		profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))
-		// 		if err == nil {
-		// 			err = pprof.StartCPUProfile(profile_output)
-		// 			if err != nil {
-		// 				fmt.Printf("Unable to start CPU profile: %v\n", err)
-		// 				profile_output.Close()
-		// 				profile_output = nil
-		// 			}
-		// 			fmt.Printf("profout: %v\n", profile_output)
-		// 		} else {
-		// 			fmt.Printf("Unable to start CPU profile: %v\n", err)
-		// 		}
-		// 	} else {
-		// 		pprof.StopCPUProfile()
-		// 		profile_output.Close()
-		// 		profile_output = nil
-		// 	}
-		// }
+		// TODO: Replace the 'P' key with an appropriate keybind
+		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {
+			if profile_output == nil {
+				profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))
+				if err == nil {
+					err = pprof.StartCPUProfile(profile_output)
+					if err != nil {
+						fmt.Printf("Unable to start CPU profile: %v\n", err)
+						profile_output.Close()
+						profile_output = nil
+					}
+					fmt.Printf("profout: %v\n", profile_output)
+				} else {
+					fmt.Printf("Unable to start CPU profile: %v\n", err)
+				}
+			} else {
+				pprof.StopCPUProfile()
+				profile_output.Close()
+				profile_output = nil
+			}
+		}
 
-		// if key_map["mem profile"].FramePressCount() > 0 {
-		// 	f, err := os.Create(filepath.Join(datadir, fmt.Sprintf("mem.%d.prof", num_mem_profiles)))
-		// 	if err != nil {
-		// 		base.Error().Printf("Unable to write mem profile: %v", err)
-		// 	}
-		// 	pprof.WriteHeapProfile(f)
-		// 	f.Close()
-		// 	num_mem_profiles++
-		// }
+		// TODO: Replace the 'M' key with an appropriate keybind
+		if gin.In().GetKey(gin.AnyKeyM).FramePressCount() > 0 {
+			f, err := os.Create(filepath.Join(datadir, fmt.Sprintf("mem.%d.prof", num_mem_profiles)))
+			if err != nil {
+				base.Error().Printf("Unable to write mem profile: %v", err)
+			}
+			pprof.WriteHeapProfile(f)
+			f.Close()
+			num_mem_profiles++
+		}
 
 		v += 0.01
 	}
