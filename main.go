@@ -72,7 +72,7 @@ func main() {
 		panic(err)
 	}
 	sys.Think()
-	for len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
+	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
 		sys.Think()
 	}

@@ -1168,5 +1168,6 @@ func (gw *GameWindow) Draw(region gui.Region) {
 			player.active_ability.Draw(player.id, gw.game)
 		}
 	}
+        base.GetDictionary("luxisr").RenderString("monkeys!!!", 10, 10, 0, float64(gw.game.Game_thinks), gin.Left)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}
