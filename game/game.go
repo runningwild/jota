@@ -1134,7 +1134,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	base.EnableShader("nodes")
+	base.SetUniformI("nodes", "width", len(gw.game.Nodes))
+	base.SetUniformI("nodes", "height", len(gw.game.Nodes[0]))
 	texture.Render(0, float64(gw.game.Dy), float64(gw.game.Dx), -float64(gw.game.Dy))
+	base.EnableShader("")
 
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Begin(gl.LINES)
