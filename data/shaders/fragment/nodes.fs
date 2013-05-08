@@ -3,6 +3,34 @@ uniform int height;
 uniform sampler2D sampler;
 //varying vec3 pos;
 
+float gridAttenuation1d(float f) {
+  f = mod(f, 1.0);
+  float band = 0.1;
+  float blur = 0.09;
+  if (f < 0.5) {
+    f = smoothstep(band + blur, band - blur, f);
+  } else {
+    f = smoothstep(1.0 - band - blur, 1.0 - band + blur, f);
+  }
+  return f;
+}
+
+float gridAttenuation(vec2 pos) {
+  float attx = gridAttenuation1d(pos.x * float(width));
+  float atty = gridAttenuation1d(pos.y * float(height));
+  return 1.0 - (1.0 - attx) * (1.0 - atty);
+}
+
+vec4 alphaTransform(vec4 color) {
+  float m = max(color.r, max(color.g, color.b));
+  if (m == 0.0) {
+    return vec4(0.0, 0.0, 0.0, 0.0);
+  }
+  color = color / m;
+  color.a = m;
+  return color;
+}
+
 void main(void) {
   vec2 pull = vec2(0.3, -0.5);
   vec2 tpos = gl_TexCoord[0].xy;
@@ -10,23 +38,11 @@ void main(void) {
   float d = 10.0 * length(diff);
   float d2 = d * d;
   tpos = tpos + diff / (d2 + 1.0);
-  float fx = mod(tpos.x * float(width), 1.0);
-  float fy = mod(tpos.y * float(height), 1.0);
-  float band = 0.1;
-  float blur = 0.09;
-  float attx;
-  float atty;
-  if (fx < 0.5) {
-    attx = smoothstep(band + blur, band - blur, fx);
-  } else {
-    attx = smoothstep(1.0 - band - blur, 1.0 - band + blur, fx);
-  }
-  if (fy < 0.5) {
-    atty = smoothstep(band + blur, band - blur, fy);
-  } else {
-    atty = smoothstep(1.0 - band - blur, 1.0 - band + blur, fy);
-  }
   vec4 color = texture2D(sampler, tpos);
-  gl_FragColor = color * (1.0 - (1.0 - attx) * (1.0 - atty));
+  vec4 grid_color = color * gridAttenuation(tpos);
+  grid_color = alphaTransform(grid_color);
+  vec4 grey = vec4(1.0, 1.0, 1.0, 0.1) * gridAttenuation(tpos + vec2(0.5, 0.5));
+  gl_FragColor = grid_color + grey * (1.0 - pow(grid_color.a, 0.1));
+  //gl_FragColor = grid_color;
 }
 
