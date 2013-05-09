@@ -150,6 +150,9 @@ func main() {
 				break
 			}
 		}
+		if len(d[gin.DeviceTypeController]) == 0 {
+			g.SetLocalPlayer(g.Ents[0].(*game.Player), 0)
+		}
 		// g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
 		g.GenerateNodes()
 		// engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
