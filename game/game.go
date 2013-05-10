@@ -2,7 +2,7 @@ package game
 
 import (
 	"encoding/gob"
-	"fmt"
+	//"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
