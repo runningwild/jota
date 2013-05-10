@@ -4,9 +4,9 @@ package game
 
 import (
 	"fmt"
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/linear"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/texture"
 	"math/rand"
@@ -20,33 +20,33 @@ func (m Mana) Magnitude() float64 {
 }
 
 type ManaSourceOptions struct {
-	NumSeeds int
+	NumSeeds    int
 	NumNodeRows int
 	NumNodeCols int
 
-	BoardLeft float64
-	BoardTop float64
-	BoardRight float64
+	BoardLeft   float64
+	BoardTop    float64
+	BoardRight  float64
 	BoardBottom float64
 
 	MaxDrainDistance float64
-	MaxDrainRate float64
+	MaxDrainRate     float64
 
-	RegenPerFrame float64
-	NodeMagnitude float64
+	RegenPerFrame     float64
+	NodeMagnitude     float64
 	MinNodeBrightness int
 	MaxNodeBrightness int
 }
 
 type node struct {
-	X, Y float64
+	X, Y          float64
 	RegenPerFrame float64
-	Mana Mana
-	MaxMana Mana
+	Mana          Mana
+	MaxMana       Mana
 }
 
 type nodeSeed struct {
-	x, y float64
+	x, y  float64
 	color int
 }
 
@@ -56,7 +56,7 @@ func (dst *node) OverwriteWith(src *node) {
 
 type ManaSource struct {
 	options ManaSourceOptions
-	nodes [][]node
+	nodes   [][]node
 }
 
 func normalizeWeights(desiredSum float64, weights []float64) {
@@ -81,10 +81,10 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 	r := rand.New(c)
 
 	seeds := make([]nodeSeed, options.NumSeeds)
-	for i := range(seeds) {
+	for i := range seeds {
 		seed := &seeds[i]
-		seed.x = options.BoardLeft + r.Float64() * (options.BoardRight - options.BoardLeft)
-		seed.y = options.BoardTop + r.Float64() * (options.BoardBottom - options.BoardTop)
+		seed.x = options.BoardLeft + r.Float64()*(options.BoardRight-options.BoardLeft)
+		seed.y = options.BoardTop + r.Float64()*(options.BoardBottom-options.BoardTop)
 		seed.color = r.Intn(3)
 	}
 
@@ -100,10 +100,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 	for col := 0; col < options.NumNodeCols; col++ {
 		ms.nodes[col] = make([]node, options.NumNodeRows)
 		for row := 0; row < options.NumNodeRows; row++ {
-			x := options.BoardLeft + float64(col) / float64(options.NumNodeCols - 1) * (
-				options.BoardRight - options.BoardLeft)
-			y := options.BoardTop + float64(row) / float64(options.NumNodeRows - 1) * (
-				options.BoardBottom - options.BoardTop)
+			x := options.BoardLeft + float64(col)/float64(options.NumNodeCols-1)*(options.BoardRight-options.BoardLeft)
+			y := options.BoardTop + float64(row)/float64(options.NumNodeRows-1)*(options.BoardBottom-options.BoardTop)
 
 			// all_obstacles[0] corresponds to the outer walls. We do not want to drop mana nodes for
 			// being inside there.
@@ -112,9 +110,9 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				if vecInsideConvexPoly(linear.Vec2{x, y}, allObstacles[i]) {
 					insideObstacle = true
 				}
-		  }
-			if (insideObstacle) {
-			  continue
+			}
+			if insideObstacle {
+				continue
 			}
 
 			maxWeightByColor := [3]float64{0.0, 0.0, 0.0}
@@ -122,7 +120,7 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				c := seed.color
 				dx := x - seed.x
 				dy := y - seed.y
-				distSquared := dx * dx + dy * dy
+				distSquared := dx*dx + dy*dy
 				weight := 1 / (distSquared + 1.0)
 				if weight > maxWeightByColor[c] {
 					maxWeightByColor[c] = weight
@@ -134,11 +132,11 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 			copy(weightsCopy[:], maxWeightByColor[:])
 
 			ms.nodes[col][row] = node{
-				X: x,
-				Y: y,
+				X:             x,
+				Y:             y,
 				RegenPerFrame: options.RegenPerFrame,
-				Mana: maxWeightByColor,
-				MaxMana: weightsCopy,
+				Mana:          maxWeightByColor,
+				MaxMana:       weightsCopy,
 			}
 		}
 	}
@@ -173,7 +171,7 @@ func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
 	if distSquared > maxDistSquared {
 		return 0.0
 	}
-	distRatio := 1.0 - distSquared / maxDistSquared
+	distRatio := 1.0 - distSquared/maxDistSquared
 	return distRatio * distRatio * ms.options.MaxDrainRate
 }
 
@@ -239,7 +237,8 @@ func (ms *ManaSource) Think(players []Ent) {
 
 func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	if gw.nodeTextureData == nil {
-		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows * ms.options.NumNodeCols * 3)
+		gl.Enable(gl.TEXTURE_2D)
+		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
 		gl.GenTextures(1, &gw.nodeTextureId)
 		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
@@ -257,24 +256,44 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
 			gl.Pointer(&gw.nodeTextureData[0]))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.GenTextures(1, &gw.nodeWarpingTexture)
+		gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
+		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+		gw.nodeWarpingData = make([]byte, 4*10)
+		gl.TexImage1D(
+			gl.TEXTURE_1D,
+			0,
+			gl.RGBA,
+			gl.Sizei(len(gw.nodeWarpingData)/4),
+			0,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			gl.Pointer(&gw.nodeWarpingData[0]))
 	}
 
 	// This used to be in an else block and I think maybe causes crashed by not
 	// being in one, but why?
 	for x := range ms.nodes {
 		for y, node := range ms.nodes[x] {
-			pos := 3 * (y * ms.options.NumNodeCols + x)
+			pos := 3 * (y*ms.options.NumNodeCols + x)
 			for c := 0; c < 3; c++ {
 				color_frac := node.Mana[c] * 1.0 / ms.options.NodeMagnitude
 				color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-				gw.nodeTextureData[pos + c] = byte(
-					color_frac * color_range + float64(ms.options.MinNodeBrightness))
+				gw.nodeTextureData[pos+c] = byte(
+					color_frac*color_range + float64(ms.options.MinNodeBrightness))
 			}
 		}
 	}
+	gl.Enable(gl.TEXTURE_1D)
 	gl.Enable(gl.TEXTURE_2D)
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
-
 	gl.TexSubImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -286,9 +305,33 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeTextureData[0]))
 
+	gl.ActiveTexture(gl.TEXTURE1)
+	for i, ent := range gw.game.Ents {
+		p := ent.Pos()
+		gw.nodeWarpingData[3*i+0] = byte(p.X / float64(gw.game.Dx) * 255)
+		gw.nodeWarpingData[3*i+1] = -byte(p.Y / float64(gw.game.Dy) * 255)
+		gw.nodeWarpingData[3*i+2] = 255
+	}
+	gl.TexImage1D(
+		gl.TEXTURE_1D,
+		0,
+		gl.RGBA,
+		gl.Sizei(len(gw.nodeWarpingData)/4),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Pointer(&gw.nodeWarpingData[0]))
+
 	base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", len(ms.nodes))
 	base.SetUniformI("nodes", "height", len(ms.nodes[0]))
+	base.SetUniformI("nodes", "drains", 1)
+	base.SetUniformI("nodes", "tex0", 0)
+	base.SetUniformI("nodes", "tex1", 1)
+	gl.ActiveTexture(gl.TEXTURE1)
+	gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 	texture.Render(0, dy, dx, -dy)
 	base.EnableShader("")
 	gl.Disable(gl.TEXTURE_2D)

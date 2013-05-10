@@ -396,20 +396,20 @@ type Game struct {
 
 func (g *Game) Init() {
 	msOptions := ManaSourceOptions{
-		NumSeeds: 10,
+		NumSeeds:    10,
 		NumNodeRows: 60,
 		NumNodeCols: 90,
 
-		BoardLeft: 0,
-		BoardTop: 0,
-		BoardRight: float64(g.Dx),
+		BoardLeft:   0,
+		BoardTop:    0,
+		BoardRight:  float64(g.Dx),
 		BoardBottom: float64(g.Dy),
 
 		MaxDrainDistance: 100.0,
-		MaxDrainRate: 10.0,
+		MaxDrainRate:     10.0,
 
-		RegenPerFrame: 0.005,
-		NodeMagnitude: 200,
+		RegenPerFrame:     0.005,
+		NodeMagnitude:     200,
 		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
 	}
@@ -735,8 +735,10 @@ type GameWindow struct {
 	prev_game *Game
 	region    gui.Region
 
-	nodeTextureId   gl.Uint
-	nodeTextureData []byte
+	nodeTextureId      gl.Uint
+	nodeTextureData    []byte
+	nodeWarpingTexture gl.Uint
+	nodeWarpingData    []byte
 }
 
 func (gw *GameWindow) String() string {
