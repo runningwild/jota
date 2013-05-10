@@ -108,13 +108,6 @@ const (
 	ColorBlue
 )
 
-// One value for each color
-type Mana [3]float64
-
-func (m Mana) Magnitude() float64 {
-	return m[0] + m[1] + m[2]
-}
-
 func init() {
 }
 
@@ -207,16 +200,6 @@ func (p *Player) SetPos(pos linear.Vec2) {
 func (p *Player) SetVel(vel linear.Vec2) {
 	p.X = vel.X
 	p.Y = vel.Y
-}
-
-func (p *Player) Rate(distance_squared float64) float64 {
-	M := 10.0
-	D := 100.0
-	ret := M * (1 - distance_squared/(D*D))
-	if ret < 0 {
-		ret = 0
-	}
-	return ret
 }
 
 func (p *Player) Draw(game *Game) {
@@ -380,7 +363,6 @@ type Ent interface {
 	ApplyForce(force linear.Vec2)
 	ApplyDamage(damage stats.Damage)
 	Mass() float64
-	Rate(dist_sq float64) float64
 	SetId(int)
 	Id() int
 	Pos() linear.Vec2
@@ -423,9 +405,12 @@ func (g *Game) Init() {
 		BoardRight: float64(g.Dx),
 		BoardBottom: float64(g.Dy),
 
-		RegenPerFrame: 0.003,
-		NodeAmount: 200,
-		MinNodeBrightness: 0,
+		MaxDrainDistance: 100.0,
+		MaxDrainRate: 10.0,
+
+		RegenPerFrame: 0.005,
+		NodeMagnitude: 200,
+		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
 	}
 	g.manaSource.Init(&msOptions, g.Room.Walls, g.Room.Lava)
@@ -528,7 +513,7 @@ func (g *Game) Copy() interface{} {
 
 func (g *Game) OverwriteWith(_g2 interface{}) {
 	g2 := _g2.(*Game)
-	g2.manaSource.OverwriteWith(&g.manaSource)
+	g.manaSource.OverwriteWith(&g2.manaSource)
 	g.Rng.OverwriteWith(g2.Rng)
 	g.Dx = g2.Dx
 	g.Dy = g2.Dy
@@ -573,7 +558,8 @@ func (g *Game) Think() {
 	for i := range g.Ents {
 		g.Ents[i].PreThink(g)
 	}
-	g.manaSource.Think()
+
+	g.manaSource.Think(g.Ents)
 
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
@@ -795,6 +781,9 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
 	gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	gw.game.manaSource.Draw(gw, float64(gw.game.Dx), float64(gw.game.Dy))
 

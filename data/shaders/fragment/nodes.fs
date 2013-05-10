@@ -42,7 +42,7 @@ void main(void) {
   vec4 grid_color = color * gridAttenuation(tpos);
   grid_color = alphaTransform(grid_color);
   vec4 grey = vec4(1.0, 1.0, 1.0, 0.1) * gridAttenuation(tpos + vec2(0.5, 0.5));
-  gl_FragColor = grid_color + grey * (1.0 - pow(grid_color.a, 0.1));
-  //gl_FragColor = grid_color;
+  //gl_FragColor = grid_color + grey * (1.0 - pow(grid_color.a, 0.1));
+  gl_FragColor = grid_color;
 }
 

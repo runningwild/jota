@@ -1,5 +1,4 @@
-// TODO: add Width, Height functions
-//       gobEncode
+// TODO: gobEncode
 
 package game
 
@@ -13,6 +12,13 @@ import (
 	"math/rand"
 )
 
+// One value for each color
+type Mana [3]float64
+
+func (m Mana) Magnitude() float64 {
+	return m[0] + m[1] + m[2]
+}
+
 type ManaSourceOptions struct {
 	NumSeeds int
 	NumNodeRows int
@@ -23,8 +29,11 @@ type ManaSourceOptions struct {
 	BoardRight float64
 	BoardBottom float64
 
+	MaxDrainDistance float64
+	MaxDrainRate float64
+
 	RegenPerFrame float64
-	NodeAmount float64
+	NodeMagnitude float64
 	MinNodeBrightness int
 	MaxNodeBrightness int
 }
@@ -32,8 +41,8 @@ type ManaSourceOptions struct {
 type node struct {
 	X, Y float64
 	RegenPerFrame float64
-	Amount []float64
-	MaxAmount []float64
+	Mana Mana
+	MaxMana Mana
 }
 
 type nodeSeed struct {
@@ -43,8 +52,6 @@ type nodeSeed struct {
 
 func (dst *node) OverwriteWith(src *node) {
 	*dst = *src
-	copy(dst.Amount, src.Amount)
-	copy(dst.MaxAmount, src.MaxAmount)
 }
 
 type ManaSource struct {
@@ -110,28 +117,28 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 			  continue
 			}
 
-			maxWeightByColor := []float64{0.0, 0.0, 0.0}
+			maxWeightByColor := [3]float64{0.0, 0.0, 0.0}
 			for _, seed := range seeds {
 				c := seed.color
 				dx := x - seed.x
 				dy := y - seed.y
-				dist_sq := dx * dx + dy * dy
-				weight := 1 / (dist_sq + 1.0)
+				distSquared := dx * dx + dy * dy
+				weight := 1 / (distSquared + 1.0)
 				if weight > maxWeightByColor[c] {
 					maxWeightByColor[c] = weight
 				}
 			}
 
-			normalizeWeights(options.NodeAmount, maxWeightByColor)
-			weightsCopy := make([]float64, len(maxWeightByColor))
-			copy(weightsCopy, maxWeightByColor)
+			normalizeWeights(options.NodeMagnitude, maxWeightByColor[:])
+			var weightsCopy [3]float64
+			copy(weightsCopy[:], maxWeightByColor[:])
 
 			ms.nodes[col][row] = node{
 				X: x,
 				Y: y,
 				RegenPerFrame: options.RegenPerFrame,
-				Amount: maxWeightByColor,
-				MaxAmount: weightsCopy,
+				Mana: maxWeightByColor,
+				MaxMana: weightsCopy,
 			}
 		}
 	}
@@ -144,10 +151,7 @@ func (src *ManaSource) Copy() ManaSource {
 	for x := range src.nodes {
 		dst.nodes[x] = make([]node, len(src.nodes[x]))
 		for y, srcN := range src.nodes[x] {
-			dstN := &dst.nodes[x][y]
-			dstN.Amount = make([]float64, len(srcN.Amount))
-			dstN.MaxAmount = make([]float64, len(srcN.MaxAmount))
-			dstN.OverwriteWith(&srcN)
+			dst.nodes[x][y] = srcN
 		}
 	}
 	dst.options = src.options
@@ -158,20 +162,75 @@ func (src *ManaSource) Copy() ManaSource {
 func (dst *ManaSource) OverwriteWith(src *ManaSource) {
 	for x := range src.nodes {
 		for y, srcN := range src.nodes[x] {
-			dstN := &src.nodes[x][y]
-			dstN.OverwriteWith(&srcN)
+			dst.nodes[x][y] = srcN
 		}
 	}
 	dst.options = src.options
 }
 
-func (ms *ManaSource) Think() {
-	for _, nodeList := range ms.nodes {
-		for _, node := range nodeList {
-			for c := range node.Amount {
-				node.Amount[c] += node.MaxAmount[c] * node.RegenPerFrame
-				if node.Amount[c] > node.MaxAmount[c] {
-					node.Amount[c] = node.MaxAmount[c]
+func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
+	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
+	if distSquared > maxDistSquared {
+		return 0.0
+	}
+	distRatio := 1.0 - distSquared / maxDistSquared
+	return distRatio * distRatio * ms.options.MaxDrainRate
+}
+
+func (ms *ManaSource) Think(players []Ent) {
+	// Regenerate mana
+	for x := range ms.nodes {
+		for y := range ms.nodes[x] {
+			node := &ms.nodes[x][y]
+			for c := range node.Mana {
+				maxRecovery := node.MaxMana[c] * node.RegenPerFrame
+				scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
+				node.Mana[c] += scale * maxRecovery
+			}
+		}
+	}
+
+	// Drain mana.
+	for _, player := range players {
+		// Find the rectangle that this player can drain from.
+		minX := -1
+		maxX := -1
+		minY := -1
+		maxY := -1
+		for x := range ms.nodes {
+			dx := ms.nodes[x][0].X - player.Pos().X
+			if dx >= -ms.options.MaxDrainDistance && minX == -1 {
+				minX = x
+			}
+			if dx <= ms.options.MaxDrainDistance {
+				maxX = x
+			} else {
+				break
+			}
+		}
+		for y := range ms.nodes[0] {
+			dy := ms.nodes[0][y].Y - player.Pos().Y
+			if dy >= -ms.options.MaxDrainDistance && minY == -1 {
+				minY = y
+			}
+			if dy <= ms.options.MaxDrainDistance {
+				maxY = y
+			} else {
+				break
+			}
+		}
+
+		// Do the draining.
+		for x := minX; x <= maxX; x++ {
+			for y := minY; y <= maxY; y++ {
+				node := &ms.nodes[x][y]
+				maxDrainRate := ms.getMaxDrainRate(player.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2())
+				for c := range node.Mana {
+					amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
+					node.Mana[c] -= maxDrainRate * amountScale
+					if node.Mana[c] < 0 {
+						node.Mana[c] = 0
+					}
 				}
 			}
 		}
@@ -179,9 +238,8 @@ func (ms *ManaSource) Think() {
 }
 
 func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
-	// Nodes
 	if gw.nodeTextureData == nil {
-		gw.nodeTextureData = make([]byte, len(ms.nodes) * len(ms.nodes[0]) * 4)
+		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows * ms.options.NumNodeCols * 3)
 		gl.GenTextures(1, &gw.nodeTextureId)
 		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
@@ -192,45 +250,42 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.TexImage2D(
 			gl.TEXTURE_2D,
 			0,
-			gl.RGBA,
-			gl.Sizei(len(ms.nodes)),
-			gl.Sizei(len(ms.nodes[0])),
+			gl.RGB,
+			gl.Sizei(ms.options.NumNodeCols),
+			gl.Sizei(ms.options.NumNodeRows),
 			0,
-			gl.RGBA,
+			gl.RGB,
 			gl.UNSIGNED_BYTE,
 			gl.Pointer(&gw.nodeTextureData[0]))
-	} else {
-		// TODO: Switch to RGB? Move outside of else?
-		for x := range ms.nodes {
-			for y, node := range ms.nodes[x] {
-				pos := 4 * (y * len(ms.nodes) + x)
-				for c := 0; c < 3; c++ {
-					if len(node.Amount) > c {
-						color_frac := node.Amount[c] * 1.0 / ms.options.NodeAmount
-						color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-						gw.nodeTextureData[pos + c] = byte(
-							color_frac * color_range + float64(ms.options.MinNodeBrightness))
-					}
-					gw.nodeTextureData[pos + 3] = 255
-				}
+	}
+
+	// This used to be in an else block and I think maybe causes crashed by not
+	// being in one, but why?
+	for x := range ms.nodes {
+		for y, node := range ms.nodes[x] {
+			pos := 3 * (y * ms.options.NumNodeCols + x)
+			for c := 0; c < 3; c++ {
+				color_frac := node.Mana[c] * 1.0 / ms.options.NodeMagnitude
+				color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
+				gw.nodeTextureData[pos + c] = byte(
+					color_frac * color_range + float64(ms.options.MinNodeBrightness))
 			}
 		}
-		gl.Enable(gl.TEXTURE_2D)
-		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 	}
+	gl.Enable(gl.TEXTURE_2D)
+	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
+
 	gl.TexSubImage2D(
 		gl.TEXTURE_2D,
 		0,
 		0,
 		0,
-		gl.Sizei(len(ms.nodes)),
-		gl.Sizei(len(ms.nodes[0])),
-		gl.RGBA,
+		gl.Sizei(ms.options.NumNodeCols),
+		gl.Sizei(ms.options.NumNodeRows),
+		gl.RGB,
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeTextureData[0]))
 
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", len(ms.nodes))
 	base.SetUniformI("nodes", "height", len(ms.nodes[0]))
