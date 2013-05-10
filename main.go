@@ -154,7 +154,7 @@ func main() {
 			g.SetLocalPlayer(g.Ents[0].(*game.Player), 0)
 		}
 		// g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
-		g.GenerateNodes()
+		g.Init()
 		// engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
 		engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
 		if err != nil {

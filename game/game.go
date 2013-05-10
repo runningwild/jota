@@ -1,9 +1,8 @@
 package game
 
 import (
-	"bytes"
 	"encoding/gob"
-	//"fmt"
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
@@ -101,12 +100,6 @@ type Process interface {
 	Copy() Process
 }
 
-const mana_brightness = 150
-const mana_cap = 200
-const mana_regen = 0.003
-
-const node_spacing = 10
-
 type Color int
 
 const (
@@ -122,35 +115,7 @@ func (m Mana) Magnitude() float64 {
 	return m[0] + m[1] + m[2]
 }
 
-type Node struct {
-	X, Y      float64
-	Color     Color // TODO: Delete (used only for seeds)
-	Regen     float64
-	Amount    []float64
-	MaxAmount []float64
-}
-
-func (n *Node) Copy() Node {
-	var n2 Node
-	n2 = *n
-	n2.Amount = make([]float64, len(n.Amount))
-	copy(n2.Amount, n.Amount)
-	n2.MaxAmount = make([]float64, len(n.MaxAmount))
-	copy(n2.MaxAmount, n.MaxAmount)
-	return n2
-}
-
 func init() {
-	gob.Register(&Node{})
-}
-
-func (n *Node) Think() {
-	for i := range n.Amount {
-		n.Amount[i] += n.MaxAmount[i] * n.Regen
-		if n.Amount[i] > n.MaxAmount[i] {
-			n.Amount[i] = n.MaxAmount[i]
-		}
-	}
 }
 
 type Player struct {
@@ -426,59 +391,8 @@ type Ent interface {
 	Copy() Ent
 }
 
-type nodeGrid [][]Node
-
-func (ng *nodeGrid) GobDecode(data []byte) error {
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	var dx, dy uint32
-	err := dec.Decode(&dx)
-	if err != nil {
-		return err
-	}
-	err = dec.Decode(&dy)
-	if err != nil {
-		return err
-	}
-	*ng = make([][]Node, dx)
-	for x := range *ng {
-		(*ng)[x] = make([]Node, dy)
-	}
-	for x := range *ng {
-		for y := range (*ng)[x] {
-			err = dec.Decode(&((*ng)[x][y]))
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (ng *nodeGrid) GobEncode() ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	enc := gob.NewEncoder(buf)
-	err := enc.Encode(uint32(len(*ng)))
-	if err != nil {
-		return nil, err
-	}
-	err = enc.Encode(uint32(len((*ng)[0])))
-	if err != nil {
-		return nil, err
-	}
-	for x := range *ng {
-		for y := range *ng {
-			err = enc.Encode((*ng)[x][y])
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return buf.Bytes(), nil
-}
-
 type Game struct {
-	// All of the nodes on the map
-	Nodes [][]Node
+	manaSource ManaSource
 
 	Room Room
 
@@ -495,7 +409,26 @@ type Game struct {
 
 	Ents []Ent
 
-	Game_thinks int
+	GameThinks int
+}
+
+func (g *Game) Init() {
+	msOptions := ManaSourceOptions{
+		NumSeeds: 10,
+		NumNodeRows: 60,
+		NumNodeCols: 90,
+
+		BoardLeft: 0,
+		BoardTop: 0,
+		BoardRight: float64(g.Dx),
+		BoardBottom: float64(g.Dy),
+
+		RegenPerFrame: 0.003,
+		NodeAmount: 200,
+		MinNodeBrightness: 0,
+		MaxNodeBrightness: 150,
+	}
+	g.manaSource.Init(&msOptions, g.Room.Walls, g.Room.Lava)
 }
 
 func init() {
@@ -545,68 +478,6 @@ func getWeights(distance_squares []float64, value_sum float64, transform func(fl
 	return weights
 }
 
-func (g *Game) GenerateNodes() {
-	c := cmwc.MakeGoodCmwc()
-	c.SeedWithDevRand()
-	g.Nodes = make([][]Node, 1+g.Dx/node_spacing)
-	var primary_nodes []Node
-	for i := 0; i < 9; i++ {
-		x := int(c.Int63() % int64(g.Dx))
-		y := int(c.Int63() % int64(g.Dy))
-		color := int(c.Int63() % 3)
-		primary_nodes = append(primary_nodes, Node{
-			X:     float64(x),
-			Y:     float64(y),
-			Color: Color(color),
-		})
-	}
-	var all_polys []linear.Poly
-	for _, p := range g.Room.Walls {
-		all_polys = append(all_polys, p)
-	}
-	for _, p := range g.Room.Lava {
-		all_polys = append(all_polys, p)
-	}
-	for x := 0; x < 1+g.Dx/node_spacing; x++ {
-		g.Nodes[x] = make([]Node, 1+g.Dy/node_spacing)
-		for y := 0; y < 1+g.Dy/node_spacing; y++ {
-			good := true
-			for i := 1; good && i < len(all_polys); i++ {
-				v := linear.Vec2{float64(x * node_spacing), float64(y * node_spacing)}
-				if vecInsideConvexPoly(v, all_polys[i]) {
-					good = false
-				}
-			}
-			if !good {
-				continue
-			}
-
-			nearest_by_color := []float64{-1.0, -1.0, -1.0}
-			for i := range primary_nodes {
-				c := primary_nodes[i].Color
-				dx := float64(x*node_spacing) - primary_nodes[i].X
-				dy := float64(y*node_spacing) - primary_nodes[i].Y
-				dist_sq := dx*dx + dy*dy
-				if nearest_by_color[c] < 0 || nearest_by_color[c] > dist_sq {
-					nearest_by_color[c] = dist_sq
-				}
-			}
-
-			weights := getWeights(nearest_by_color, mana_cap, invSquareDist)
-			max_weights := make([]float64, len(weights))
-			copy(max_weights, weights)
-
-			g.Nodes[x][y] = Node{
-				X:         float64(x * node_spacing),
-				Y:         float64(y * node_spacing),
-				Regen:     mana_regen,
-				Amount:    weights,
-				MaxAmount: max_weights,
-			}
-		}
-	}
-}
-
 func (g *Game) Merge(g2 *Game) {
 	frac := 0.0 // i.e. don't merge
 	for i := range g.Ents {
@@ -629,13 +500,7 @@ func (g *Game) Merge(g2 *Game) {
 func (g *Game) Copy() interface{} {
 	var g2 Game
 
-	g2.Nodes = make([][]Node, len(g.Nodes))
-	for x := range g2.Nodes {
-		g2.Nodes[x] = make([]Node, len(g.Nodes[x]))
-		for y := range g2.Nodes[x] {
-			g2.Nodes[x][y] = g.Nodes[x][y].Copy()
-		}
-	}
+	g2.manaSource = g.manaSource.Copy()
 
 	g2.Room = g.Room
 
@@ -646,7 +511,7 @@ func (g *Game) Copy() interface{} {
 	g2.Friction = g.Friction
 	g2.Friction_lava = g.Friction_lava
 	g2.Next_id = g.Next_id
-	g2.Game_thinks = g.Game_thinks
+	g2.GameThinks = g.GameThinks
 
 	g2.Ents = make([]Ent, len(g.Ents))
 	g2.Ents = g2.Ents[0:0]
@@ -663,13 +528,14 @@ func (g *Game) Copy() interface{} {
 
 func (g *Game) OverwriteWith(_g2 interface{}) {
 	g2 := _g2.(*Game)
+	g2.manaSource.OverwriteWith(&g.manaSource)
 	g.Rng.OverwriteWith(g2.Rng)
 	g.Dx = g2.Dx
 	g.Dy = g2.Dy
 	g.Friction = g2.Friction
 	g.Room.Walls = g2.Room.Walls
 	g.Next_id = g2.Next_id
-	g.Game_thinks = g2.Game_thinks
+	g.GameThinks = g2.GameThinks
 
 	g.Ents = g.Ents[0:0]
 	for _, ent := range g2.Ents {
@@ -677,16 +543,6 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 		case *Player:
 			p := e.Copy()
 			g.Ents = append(g.Ents, p)
-		}
-	}
-
-	if len(g.Nodes) != len(g2.Nodes) {
-		g.Nodes = make([][]Node, len(g2.Nodes))
-	}
-	for x := range g.Nodes {
-		g.Nodes[x] = g.Nodes[x][0:0]
-		for y := range g2.Nodes[x] {
-			g.Nodes[x] = append(g.Nodes[x], g2.Nodes[x][y].Copy())
 		}
 	}
 }
@@ -707,43 +563,17 @@ func (g *Game) AddEnt(ent Ent) int {
 	return g.Ents[len(g.Ents)-1].Id()
 }
 
-// Returns a mapping from player index to the list of *Nodes that that player
-// has priority on.
-func (g *Game) getPriorities() [][]*Node {
-	r := make([][]*Node, len(g.Ents))
-
-	for x := range g.Nodes {
-		for y := range g.Nodes[x] {
-			var best int = -1
-			var best_rate float64 = 0.0
-			for j := range g.Ents {
-				dist_sq := g.Ents[j].Pos().Sub(linear.MakeVec2(g.Nodes[x][y].X, g.Nodes[x][y].Y)).Mag2()
-				rate := g.Ents[j].Rate(dist_sq)
-				if rate > best_rate {
-					best_rate = rate
-					best = j
-				}
-			}
-			if best == -1 {
-				continue
-			}
-			r[best] = append(r[best], &g.Nodes[x][y])
-		}
-	}
-	return r
-}
-
 func (g *Game) ThinkFirst() {}
 func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
-	g.Game_thinks++
+	g.GameThinks++
 
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
 
 	for i := range g.Ents {
 		g.Ents[i].PreThink(g)
 	}
-	g.nodeAndSupplyThink()
+	g.manaSource.Think()
 
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
@@ -779,121 +609,6 @@ func (g *Game) Think() {
 	}
 }
 
-/*
-func (g *Game) getPriorities() [][]*Node {
-  r := make([][]*Node, len(g.Ents))
-
-  for x := range g.Nodes {
-    for y := range g.Nodes[x] {
-      var best int = -1
-      var best_rate float64 = 0.0
-      for j := range g.Ents {
-        dist_sq := g.Ents[j].Pos().Sub(linear.MakeVec2(g.Nodes[x][y].X, g.Nodes[x][y].Y)).Mag2()
-        rate := g.Ents[j].Rate(dist_sq)
-        if rate > best_rate {
-          best_rate = rate
-          best = j
-        }
-      }
-      if best == -1 {
-        continue
-      }
-      r[best] = append(r[best], &g.Nodes[x][y])
-    }
-  }
-  return r
-}
-*/
-
-func (g *Game) nodeAndSupplyThink2() {
-	mana_ownership_fraction := make([][][]float64, len(g.Nodes))
-	mana_available := make([][]float64, 3)
-	for c_index := 0; c_index < 3; c_index++ {
-		mana_available[c_index] = make([]float64, len(g.Ents))
-	}
-
-	for x_index := range g.Nodes {
-		mana_ownership_fraction[x_index] = make([][]float64, len(g.Nodes[x_index]))
-		for y_index := range g.Nodes[x_index] {
-			mana_ownership_fraction[x_index][y_index] = make([]float64, len(g.Ents))
-			node := g.Nodes[x_index][y_index]
-			dist_sqs := make([]float64, len(g.Ents))
-			for e_index := range g.Ents {
-				dist_sqs[e_index] = g.Ents[e_index].Pos().Sub(
-					linear.MakeVec2(node.X, node.Y)).Mag2()
-			}
-			mana_ownership_fraction[x_index][y_index] = getWeights(
-				dist_sqs, 1 /* value_sum */, invSquareDist)
-			for e_index := range dist_sqs {
-				mana_ownership_fraction[x_index][y_index][e_index] *=
-					g.Ents[e_index].Rate(dist_sqs[e_index])
-				for c_index := 0; c_index < len(node.Amount); c_index++ {
-					mana_available[c_index][e_index] += node.Amount[c_index] *
-						mana_ownership_fraction[x_index][y_index][e_index]
-					// This is not the plan.
-					node.Amount[c_index] = math.Max(
-						0, node.Amount[c_index]*(1-mana_ownership_fraction[x_index][y_index][e_index]))
-				}
-			}
-		}
-	}
-
-}
-
-func (g *Game) nodeAndSupplyThink() {
-	g.nodeAndSupplyThink2()
-	return
-	priorities := g.getPriorities()
-	indexes := make([]int, len(g.Ents))
-	for i := range indexes {
-		indexes[i] = i
-	}
-	for i := range indexes {
-		swap := int(g.Rng.Uint32()%uint32(len(g.Ents)-i)) + i
-		indexes[i], indexes[swap] = indexes[swap], indexes[i]
-	}
-	for _, p := range indexes {
-		player := g.Ents[p]
-		nodes := priorities[p]
-
-		for i := range nodes {
-			swap := int(g.Rng.Uint32()%uint32(len(nodes)-i)) + i
-			nodes[i], nodes[swap] = nodes[swap], nodes[i]
-		}
-
-		var supply Mana
-		for _, node := range nodes {
-			drain := player.Rate(player.Pos().Sub(linear.Vec2{node.X, node.Y}).Mag())
-			for i := 0; i < len(node.Amount); i++ {
-				supply[i] += math.Min(node.Amount[i], drain)
-			}
-			if len(node.Amount) != 3 {
-				base.Log().Printf("What teh crapz?: %v", node)
-			}
-		}
-
-		var used Mana
-		for color, amt := range supply {
-			used[color] = amt
-		}
-		supply = player.Supply(supply)
-		for color, amt := range supply {
-			used[color] -= amt
-		}
-		for _, node := range nodes {
-			for i := 0; i < len(node.Amount); i++ {
-				node.Amount[i] -= used[i]
-			}
-		}
-	}
-
-	for x := range g.Nodes {
-		for y := range g.Nodes[x] {
-			g.Nodes[x][y].Think()
-		}
-	}
-}
-
 func clamp(v, low, high float64) float64 {
 	if v < low {
 		return low
@@ -902,10 +617,6 @@ func clamp(v, low, high float64) float64 {
 		return high
 	}
 	return v
-}
-
-type nodeIndex struct {
-	x, y int
 }
 
 type Turn struct {
@@ -1038,8 +749,8 @@ type GameWindow struct {
 	prev_game *Game
 	region    gui.Region
 
-	node_texture      gl.Uint
-	node_texture_data []byte
+	nodeTextureId   gl.Uint
+	nodeTextureData []byte
 }
 
 func (gw *GameWindow) String() string {
@@ -1085,62 +796,8 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	defer gl.PopMatrix()
 	gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
 
-	// Nodes
-	if gw.node_texture_data == nil {
-		gw.node_texture_data = make([]byte, len(gw.game.Nodes)*len(gw.game.Nodes[0])*4)
-		gl.GenTextures(1, &gw.node_texture)
-		gl.BindTexture(gl.TEXTURE_2D, gw.node_texture)
-		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gl.TexImage2D(
-			gl.TEXTURE_2D,
-			0,
-			gl.RGBA,
-			gl.Sizei(len(gw.game.Nodes)),
-			gl.Sizei(len(gw.game.Nodes[0])),
-			0,
-			gl.RGBA,
-			gl.UNSIGNED_BYTE,
-			gl.Pointer(&gw.node_texture_data[0]))
-	} else {
-		for x := range gw.game.Nodes {
-			for y, node := range gw.game.Nodes[x] {
-				pos := 4 * (y*len(gw.game.Nodes) + x)
-				for c := 0; c < 3; c++ {
-					if len(node.Amount) > c {
-						gw.node_texture_data[pos+c] = byte(
-							node.Amount[c] * mana_brightness * 1.0 / mana_cap)
-					}
-					gw.node_texture_data[pos+3] = 255
-				}
-			}
-		}
-		gl.Enable(gl.TEXTURE_2D)
-		gl.BindTexture(gl.TEXTURE_2D, gw.node_texture)
-	}
-	gl.TexSubImage2D(
-		gl.TEXTURE_2D,
-		0,
-		0,
-		0,
-		gl.Sizei(len(gw.game.Nodes)),
-		gl.Sizei(len(gw.game.Nodes[0])),
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		gl.Pointer(&gw.node_texture_data[0]))
+	gw.game.manaSource.Draw(gw, float64(gw.game.Dx), float64(gw.game.Dy))
 
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	base.EnableShader("nodes")
-	base.SetUniformI("nodes", "width", len(gw.game.Nodes))
-	base.SetUniformI("nodes", "height", len(gw.game.Nodes[0]))
-	texture.Render(0, float64(gw.game.Dy), float64(gw.game.Dx), -float64(gw.game.Dy))
-	base.EnableShader("")
-
-	gl.Disable(gl.TEXTURE_2D)
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
 	for _, poly := range gw.game.Room.Walls {
