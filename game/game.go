@@ -653,8 +653,10 @@ type GameWindow struct {
 	prev_game *Game
 	region    gui.Region
 
-	nodeTextureId   gl.Uint
-	nodeTextureData []byte
+	nodeTextureId      gl.Uint
+	nodeTextureData    []byte
+	nodeWarpingTexture gl.Uint
+	nodeWarpingData    []byte
 }
 
 func (gw *GameWindow) String() string {
