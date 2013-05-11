@@ -137,8 +137,8 @@ func LocalThink() {
 
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	for _, player := range local.players {
-		k0 := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, player.device_index)
-		k1 := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, player.device_index)
+		k0 := gin.In().GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+		k1 := gin.In().GetKeyFlat(gin.KeyB, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
 			g.ActivateAbility(player, 0)
 			return

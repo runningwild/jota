@@ -4,15 +4,17 @@ package game
 
 import (
 	"fmt"
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/linear"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/texture"
+	"math"
 	"math/rand"
 )
 
 // One value for each color
+type ManaRequest [3]bool
 type Mana [3]float64
 
 func (m Mana) Magnitude() float64 {
@@ -56,7 +58,7 @@ func (dst *node) OverwriteWith(src *node) {
 
 type ManaSource struct {
 	options ManaSourceOptions
-	nodes [][]node
+	nodes   [][]node
 }
 
 func normalizeWeights(desiredSum float64, weights []float64) {
@@ -100,10 +102,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 	for col := 0; col < options.NumNodeCols; col++ {
 		ms.nodes[col] = make([]node, options.NumNodeRows)
 		for row := 0; row < options.NumNodeRows; row++ {
-			x := options.BoardLeft + float64(col) / float64(options.NumNodeCols - 1) * (
-				options.BoardRight - options.BoardLeft)
-			y := options.BoardTop + float64(row) / float64(options.NumNodeRows - 1) * (
-				options.BoardBottom - options.BoardTop)
+			x := options.BoardLeft + float64(col)/float64(options.NumNodeCols-1)*(options.BoardRight-options.BoardLeft)
+			y := options.BoardTop + float64(row)/float64(options.NumNodeRows-1)*(options.BoardBottom-options.BoardTop)
 
 			// all_obstacles[0] corresponds to the outer walls. We do not want to drop mana nodes for
 			// being inside there.
@@ -122,7 +122,7 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				c := seed.color
 				dx := x - seed.x
 				dy := y - seed.y
-				distSquared := dx * dx + dy * dy
+				distSquared := dx*dx + dy*dy
 				weight := 1 / (distSquared + 1.0)
 				if weight > maxWeightByColor[c] {
 					maxWeightByColor[c] = weight
@@ -168,78 +168,9 @@ func (dst *ManaSource) OverwriteWith(src *ManaSource) {
 	dst.options = src.options
 }
 
-func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
-	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
-	if distSquared > maxDistSquared {
-		return 0.0
-	}
-	distRatio := 1.0 - distSquared / maxDistSquared
-	return distRatio * distRatio * ms.options.MaxDrainRate
-}
-
-func (ms *ManaSource) Think(players []Ent) {
-	// Regenerate mana
-	for x := range ms.nodes {
-		for y := range ms.nodes[x] {
-			node := &ms.nodes[x][y]
-			for c := range node.Mana {
-				maxRecovery := node.MaxMana[c] * node.RegenPerFrame
-				scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
-				node.Mana[c] += scale * maxRecovery
-			}
-		}
-	}
-
-	// Drain mana.
-	for _, player := range players {
-		// Find the rectangle that this player can drain from.
-		minX := -1
-		maxX := -1
-		minY := -1
-		maxY := -1
-		for x := range ms.nodes {
-			dx := ms.nodes[x][0].X - player.Pos().X
-			if dx >= -ms.options.MaxDrainDistance && minX == -1 {
-				minX = x
-			}
-			if dx <= ms.options.MaxDrainDistance {
-				maxX = x
-			} else {
-				break
-			}
-		}
-		for y := range ms.nodes[0] {
-			dy := ms.nodes[0][y].Y - player.Pos().Y
-			if dy >= -ms.options.MaxDrainDistance && minY == -1 {
-				minY = y
-			}
-			if dy <= ms.options.MaxDrainDistance {
-				maxY = y
-			} else {
-				break
-			}
-		}
-
-		// Do the draining.
-		for x := minX; x <= maxX; x++ {
-			for y := minY; y <= maxY; y++ {
-				node := &ms.nodes[x][y]
-				maxDrainRate := ms.getMaxDrainRate(player.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2())
-				for c := range node.Mana {
-					amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
-					node.Mana[c] -= maxDrainRate * amountScale
-					if node.Mana[c] < 0 {
-						node.Mana[c] = 0
-					}
-				}
-			}
-		}
-	}
-}
-
 func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	if gw.nodeTextureData == nil {
-		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows * ms.options.NumNodeCols * 3)
+		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
 		gl.GenTextures(1, &gw.nodeTextureId)
 		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
@@ -286,10 +217,201 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeTextureData[0]))
 
-	base.EnableShader("nodes")
+	//base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", len(ms.nodes))
 	base.SetUniformI("nodes", "height", len(ms.nodes[0]))
 	texture.Render(0, dy, dx, -dy)
-	base.EnableShader("")
+	//base.EnableShader("")
 	gl.Disable(gl.TEXTURE_2D)
+}
+
+type nodeThinkData struct {
+	// playerDistSquared and playerControl are both 0 if the node is not in the playerThinkData
+	// range.
+	playerDistSquared    []float64
+	playerControl        []float64
+	playerDrain          []Mana
+	hasSomePlayerControl bool
+}
+
+type playerThinkData struct {
+	minX  int
+	maxX  int
+	minY  int
+	maxY  int
+	drain Mana
+}
+
+type thinkData struct {
+	nodeThinkData   [][]nodeThinkData
+	playerThinkData []playerThinkData
+}
+
+func (ms *ManaSource) regenerateMana() {
+	for x := range ms.nodes {
+		for y := range ms.nodes[x] {
+			node := &ms.nodes[x][y]
+			for c := range node.Mana {
+				maxRecovery := node.MaxMana[c] * node.RegenPerFrame
+				scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
+				node.Mana[c] += scale * maxRecovery
+			}
+		}
+	}
+}
+
+func (ms *ManaSource) initThinkData(td *thinkData, numPlayers int) {
+	if len(td.nodeThinkData) != len(ms.nodes) {
+		td.nodeThinkData = make([][]nodeThinkData, len(ms.nodes))
+	}
+	for x := range ms.nodes {
+		if len(td.nodeThinkData[x]) != len(ms.nodes[x]) {
+			td.nodeThinkData[x] = make([]nodeThinkData, len(ms.nodes[x]))
+		}
+		for y := range ms.nodes[x] {
+			node := &td.nodeThinkData[x][y]
+			if len(node.playerDistSquared) != numPlayers {
+				node.playerDistSquared = make([]float64, numPlayers)
+				node.playerControl = make([]float64, numPlayers)
+				node.playerDrain = make([]Mana, numPlayers)
+			}
+			for i := 0; i < numPlayers; i++ {
+				node.playerDistSquared[i] = 0
+				node.playerControl[i] = 0
+				node.playerDrain[i] = Mana{0, 0, 0}
+			}
+			node.hasSomePlayerControl = false
+		}
+	}
+
+	if len(td.playerThinkData) != numPlayers {
+		td.playerThinkData = make([]playerThinkData, numPlayers)
+	}
+	for i := 0; i < numPlayers; i++ {
+		td.playerThinkData[i].drain = Mana{0, 0, 0}
+	}
+}
+
+func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
+	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
+	if distSquared > maxDistSquared {
+		return 0.0
+	}
+	distRatio := 1.0 - distSquared / maxDistSquared
+	return distRatio * distRatio * ms.options.MaxDrainRate
+}
+
+func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
+	for i, player := range players {
+		playerThinkData := &td.playerThinkData[i]
+
+		playerThinkData.minX = -1
+		playerThinkData.minY = -1
+		playerThinkData.maxX = -1
+		playerThinkData.maxY = -1
+
+		for x := range ms.nodes {
+			dx := ms.nodes[x][0].X - player.Pos().X
+			if dx >= -ms.options.MaxDrainDistance && playerThinkData.minX == -1 {
+				playerThinkData.minX = x
+			}
+			if dx <= ms.options.MaxDrainDistance {
+				playerThinkData.maxX = x
+			} else {
+				break
+			}
+		}
+
+		for y := range ms.nodes[0] {
+			dy := ms.nodes[0][y].Y - player.Pos().Y
+			if dy >= -ms.options.MaxDrainDistance && playerThinkData.minY == -1 {
+				playerThinkData.minY = y
+			}
+			if dy <= ms.options.MaxDrainDistance {
+				playerThinkData.maxY = y
+			} else {
+				break
+			}
+		}
+	}
+}
+
+func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
+	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
+	for i, player := range players {
+		playerThinkData := &td.playerThinkData[i]
+		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
+			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
+				node := &ms.nodes[x][y]
+				nodeThinkData := &td.nodeThinkData[x][y]
+				distSquared := player.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2()
+				if distSquared <= maxDistSquared {
+					nodeThinkData.playerDistSquared[i] = distSquared
+					nodeThinkData.playerControl[i] = 1.0 / (distSquared + 1.0)
+					nodeThinkData.hasSomePlayerControl = true
+				}
+			}
+		}
+	}
+
+	for x := range ms.nodes {
+		for y := range ms.nodes[x] {
+			nodeThinkData := &td.nodeThinkData[x][y]
+			if nodeThinkData.hasSomePlayerControl {
+				normalizeWeights(1.0, nodeThinkData.playerControl)
+			}
+		}
+	}
+}
+
+func (ms *ManaSource) setPlayerDrain(td *thinkData) {
+	for i := range td.playerThinkData {
+		playerThinkData := &td.playerThinkData[i]
+		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
+			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
+				node := &ms.nodes[x][y]
+				nodeThinkData := td.nodeThinkData[x][y]
+				control := nodeThinkData.playerControl[i]
+				if control > 0 {
+					maxDrainRate := ms.getMaxDrainRate(nodeThinkData.playerDistSquared[i])
+					for c := range node.Mana {
+						amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
+						nodeThinkData.playerDrain[i][c] =
+							math.Min(amountScale * maxDrainRate, node.Mana[c]) * control
+						playerThinkData.drain[c] += nodeThinkData.playerDrain[i][c]
+					}
+				}
+			}
+		}
+	}
+}
+
+func (ms *ManaSource) supplyPlayers(td *thinkData, players []Ent) {
+	for i, player := range players {
+		playerThinkData := &td.playerThinkData[i]
+		drainUsed := player.Supply(playerThinkData.drain)
+		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
+			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
+				node := &ms.nodes[x][y]
+				nodeThinkData := td.nodeThinkData[x][y]
+				if nodeThinkData.playerControl[i] > 0 {
+					for c := range node.Mana {
+						usedFrac := 1.0 - drainUsed[c]/playerThinkData.drain[c]
+						node.Mana[c] = math.Max(0.0, node.Mana[c]-nodeThinkData.playerDrain[i][c]*usedFrac)
+					}
+				}
+			}
+		}
+	}
+}
+
+var globalThinkData thinkData 
+
+func (ms *ManaSource) Think(players []Ent) {
+	ms.regenerateMana()
+	ms.initThinkData(&globalThinkData, len(players))
+	ms.getPlayerRanges(&globalThinkData, players)
+	ms.setPlayerControl(&globalThinkData, players)
+	ms.setPlayerDrain(&globalThinkData)
+	ms.supplyPlayers(&globalThinkData, players)
 }

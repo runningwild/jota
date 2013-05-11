@@ -396,20 +396,20 @@ type Game struct {
 
 func (g *Game) Init() {
 	msOptions := ManaSourceOptions{
-		NumSeeds: 10,
+		NumSeeds:    20,
 		NumNodeRows: 60,
 		NumNodeCols: 90,
 
-		BoardLeft: 0,
-		BoardTop: 0,
-		BoardRight: float64(g.Dx),
+		BoardLeft:   0,
+		BoardTop:    0,
+		BoardRight:  float64(g.Dx),
 		BoardBottom: float64(g.Dy),
 
-		MaxDrainDistance: 100.0,
-		MaxDrainRate: 10.0,
+		MaxDrainDistance: 120.0,
+		MaxDrainRate:     5.0,
 
-		RegenPerFrame: 0.005,
-		NodeMagnitude: 200,
+		RegenPerFrame:     0.002,
+		NodeMagnitude:     100,
 		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
 	}
@@ -646,88 +646,6 @@ func (a Accelerate) Apply(_g interface{}) {
 	player := _player.(*Player)
 	player.Delta.Speed = a.Delta / 2
 }
-
-// type Burst struct {
-// 	Player_id int
-// 	Id        int
-// 	Frames    int
-// 	Force     int
-// }
-
-// func init() {
-// 	gob.Register(Burst{})
-// }
-
-// func (b Burst) ApplyFirst(g interface{}) {}
-// func (b Burst) ApplyFinal(g interface{}) {}
-// func (b Burst) Apply(_g interface{}) {
-// 	g := _g.(*Game)
-// 	player := g.GetEnt(b.Player_id).(*Player)
-// 	if !player.Alive() || player.Exiled() {
-// 		return
-// 	}
-// 	if _, ok := player.Processes[b.Id]; ok {
-// 		// Already running this process
-// 		return
-// 	}
-// 	params := map[string]int{"frames": b.Frames, "force": b.Force}
-// 	process := abilities["burst"](g, player, params)
-// 	player.Processes[b.Id] = process
-// }
-
-// type MoonFire struct {
-// 	Player_id int
-// 	Id        int
-// 	Damage    int
-// 	Radius    int
-// }
-
-// func init() {
-// 	gob.Register(MoonFire{})
-// }
-
-// func (mf MoonFire) ApplyFirst(g interface{}) {}
-// func (mf MoonFire) ApplyFinal(g interface{}) {}
-// func (mf MoonFire) Apply(_g interface{}) {
-// 	g := _g.(*Game)
-// 	player := g.GetEnt(mf.Player_id).(*Player)
-// 	if !player.Alive() || player.Exiled() {
-// 		return
-// 	}
-
-// 	params := map[string]int{"damage": mf.Damage, "radius": mf.Radius}
-// 	process := abilities["moonfire"](g, player, params)
-// 	player.Processes[mf.Id] = process
-// }
-
-// type Nitro struct {
-// 	Player_id int
-// 	Id        int
-// 	Inc       int
-// }
-
-// func init() {
-// 	gob.Register(Nitro{})
-// }
-
-// func (n Nitro) ApplyFirst(g interface{}) {}
-// func (n Nitro) ApplyFinal(g interface{}) {}
-// func (n Nitro) Apply(_g interface{}) {
-// 	g := _g.(*Game)
-// 	player := g.GetEnt(n.Player_id).(*Player)
-// 	if !player.Alive() || player.Exiled() {
-// 		return
-// 	}
-// 	if proc, ok := player.Processes[n.Id]; ok {
-// 		// Already running this process, so kill it
-// 		proc.Kill(g)
-// 		base.Log().Printf("Killed nitro")
-// 		return
-// 	}
-// 	params := map[string]int{"inc": n.Inc}
-// 	process := abilities["nitro"](g, player, params)
-// 	player.Processes[n.Id] = process
-// }
 
 type GameWindow struct {
 	Engine    *cgf.Engine
