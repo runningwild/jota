@@ -58,7 +58,9 @@ func (dst *node) OverwriteWith(src *node) {
 
 type ManaSource struct {
 	options ManaSourceOptions
-	nodes   [][]node
+
+	nodes    [][]node
+	rawNodes []node // the underlying array for nodes
 }
 
 func normalizeWeights(desiredSum float64, weights []float64) {
@@ -98,9 +100,10 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 		allObstacles = append(allObstacles, p)
 	}
 
+	ms.rawNodes = make([]node, options.NumNodeCols*options.NumNodeRows)
 	ms.nodes = make([][]node, options.NumNodeCols)
 	for col := 0; col < options.NumNodeCols; col++ {
-		ms.nodes[col] = make([]node, options.NumNodeRows)
+		ms.nodes[col] = ms.rawNodes[col*options.NumNodeRows : (col+1)*options.NumNodeRows]
 		for row := 0; row < options.NumNodeRows; row++ {
 			x := options.BoardLeft + float64(col)/float64(options.NumNodeCols-1)*(options.BoardRight-options.BoardLeft)
 			y := options.BoardTop + float64(row)/float64(options.NumNodeRows-1)*(options.BoardBottom-options.BoardTop)
@@ -147,12 +150,13 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 func (src *ManaSource) Copy() ManaSource {
 	var dst ManaSource
 
+	dst.rawNodes = make([]node, len(src.rawNodes))
 	dst.nodes = make([][]node, len(src.nodes))
 	for x := range src.nodes {
-		dst.nodes[x] = make([]node, len(src.nodes[x]))
-		for y, srcN := range src.nodes[x] {
-			dst.nodes[x][y] = srcN
-		}
+		dst.nodes[x] = dst.rawNodes[x*len(src.nodes[x]) : (x+1)*len(src.nodes[x])]
+	}
+	for i, srcNode := range src.rawNodes {
+		dst.rawNodes[i] = srcNode
 	}
 	dst.options = src.options
 
@@ -160,6 +164,9 @@ func (src *ManaSource) Copy() ManaSource {
 }
 
 func (dst *ManaSource) OverwriteWith(src *ManaSource) {
+	for i, srcNode := range src.rawNodes {
+		dst.rawNodes[i] = srcNode
+	}
 	for x := range src.nodes {
 		for y, srcN := range src.nodes[x] {
 			dst.nodes[x][y] = srcN
@@ -183,8 +190,8 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			gl.TEXTURE_2D,
 			0,
 			gl.RGB,
-			gl.Sizei(ms.options.NumNodeCols),
 			gl.Sizei(ms.options.NumNodeRows),
+			gl.Sizei(ms.options.NumNodeCols),
 			0,
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
@@ -209,16 +216,12 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			gl.UNSIGNED_BYTE,
 			gl.Pointer(&gw.nodeWarpingData[0]))
 	}
-
-	for x := range ms.nodes {
-		for y, node := range ms.nodes[x] {
-			pos := 3 * (y*ms.options.NumNodeCols + x)
-			for c := 0; c < 3; c++ {
-				color_frac := node.Mana[c] * 1.0 / ms.options.NodeMagnitude
-				color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-				gw.nodeTextureData[pos+c] = byte(
-					color_frac*color_range + float64(ms.options.MinNodeBrightness))
-			}
+	for i := range ms.rawNodes {
+		for c := 0; c < 3; c++ {
+			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
+			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
+			gw.nodeTextureData[i*3+c] = byte(
+				color_frac*color_range + float64(ms.options.MinNodeBrightness))
 		}
 	}
 	gl.Enable(gl.TEXTURE_1D)
@@ -230,8 +233,8 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		0,
 		0,
 		0,
-		gl.Sizei(ms.options.NumNodeCols),
 		gl.Sizei(ms.options.NumNodeRows),
+		gl.Sizei(ms.options.NumNodeCols),
 		gl.RGB,
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeTextureData[0]))
@@ -254,8 +257,8 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.Pointer(&gw.nodeWarpingData[0]))
 
 	base.EnableShader("nodes")
-	base.SetUniformI("nodes", "width", ms.options.NumNodeCols)
-	base.SetUniformI("nodes", "height", ms.options.NumNodeRows)
+	base.SetUniformI("nodes", "width", ms.options.NumNodeRows)
+	base.SetUniformI("nodes", "height", ms.options.NumNodeCols)
 	base.SetUniformI("nodes", "drains", 1)
 	base.SetUniformI("nodes", "tex0", 0)
 	base.SetUniformI("nodes", "tex1", 1)
@@ -263,7 +266,7 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
-	texture.Render(0, dy, dx, -dy)
+	texture.RenderAdvanced(150, -150, dy, dx, 3.1415926535/2, true)
 	base.EnableShader("")
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.TEXTURE_1D)
@@ -287,52 +290,56 @@ type playerThinkData struct {
 }
 
 type thinkData struct {
-	nodeThinkData   [][]nodeThinkData
-	playerThinkData []playerThinkData
+	nodeThinkData    [][]nodeThinkData
+	rawNodeThinkData []nodeThinkData // Underlying array for nodeThinkData
+	playerThinkData  []playerThinkData
 }
 
 func (ms *ManaSource) regenerateMana() {
-	for x := range ms.nodes {
-		for y := range ms.nodes[x] {
-			node := &ms.nodes[x][y]
-			for c := range node.Mana {
-				maxRecovery := node.MaxMana[c] * node.RegenPerFrame
-				scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
-				node.Mana[c] += scale * maxRecovery
-			}
+	for i := range ms.rawNodes {
+		node := &ms.rawNodes[i]
+		for c := range node.Mana {
+			maxRecovery := node.MaxMana[c] * node.RegenPerFrame
+			scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
+			node.Mana[c] += scale * maxRecovery
 		}
 	}
 }
 
 func (ms *ManaSource) initThinkData(td *thinkData, numPlayers int) {
 	if len(td.nodeThinkData) != len(ms.nodes) {
+		td.rawNodeThinkData = make([]nodeThinkData, len(ms.rawNodes))
 		td.nodeThinkData = make([][]nodeThinkData, len(ms.nodes))
+		for i := range td.nodeThinkData {
+			td.nodeThinkData[i] =
+				td.rawNodeThinkData[i*ms.options.NumNodeRows : (i+1)*ms.options.NumNodeRows]
+		}
 	}
-	for x := range ms.nodes {
-		if len(td.nodeThinkData[x]) != len(ms.nodes[x]) {
-			td.nodeThinkData[x] = make([]nodeThinkData, len(ms.nodes[x]))
+
+	for i := range ms.rawNodes {
+		node := &td.rawNodeThinkData[i]
+		if len(node.playerDistSquared) != numPlayers {
+			node.playerDistSquared = make([]float64, numPlayers)
+			node.playerControl = make([]float64, numPlayers)
+			node.playerDrain = make([]Mana, numPlayers)
 		}
-		for y := range ms.nodes[x] {
-			node := &td.nodeThinkData[x][y]
-			if len(node.playerDistSquared) != numPlayers {
-				node.playerDistSquared = make([]float64, numPlayers)
-				node.playerControl = make([]float64, numPlayers)
-				node.playerDrain = make([]Mana, numPlayers)
-			}
-			for i := 0; i < numPlayers; i++ {
-				node.playerDistSquared[i] = 0
-				node.playerControl[i] = 0
-				node.playerDrain[i] = Mana{0, 0, 0}
-			}
-			node.hasSomePlayerControl = false
+		for i := 0; i < numPlayers; i++ {
+			node.playerDistSquared[i] = 0
+			node.playerControl[i] = 0
+			node.playerDrain[i][0] = 0
+			node.playerDrain[i][1] = 0
+			node.playerDrain[i][2] = 0
 		}
+		node.hasSomePlayerControl = false
 	}
 
 	if len(td.playerThinkData) != numPlayers {
 		td.playerThinkData = make([]playerThinkData, numPlayers)
 	}
 	for i := 0; i < numPlayers; i++ {
-		td.playerThinkData[i].drain = Mana{0, 0, 0}
+		td.playerThinkData[i].drain[0] = 0
+		td.playerThinkData[i].drain[1] = 0
+		td.playerThinkData[i].drain[2] = 0
 	}
 }
 

@@ -56,9 +56,6 @@ void main(void) {
   vec2 tpos = gl_TexCoord[0].xy;
   vec2 pull = drain_data.xy;
   vec2 diff = tpos - pull;
-  float d = 4.0 * length(diff);
-  float d2 = d * d;
-  tpos = tpos + diff / (d2 + 1.0) * attAtPos(tpos);
   vec4 color = texture2D(tex0, tpos);
   vec4 grid_color = color * gridAttenuation(tpos);
   grid_color = alphaTransform(grid_color);
