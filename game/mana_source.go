@@ -167,11 +167,6 @@ func (dst *ManaSource) OverwriteWith(src *ManaSource) {
 	for i, srcNode := range src.rawNodes {
 		dst.rawNodes[i] = srcNode
 	}
-	for x := range src.nodes {
-		for y, srcN := range src.nodes[x] {
-			dst.nodes[x][y] = srcN
-		}
-	}
 	dst.options = src.options
 }
 
