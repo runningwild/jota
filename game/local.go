@@ -104,10 +104,16 @@ func (g *Game) RenderLosMask() {
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", LosResolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-	base.SetUniformV2Array("los", "playerPos", []linear.Vec2{
-		g.Ents[0].Pos(),
-		g.Ents[1].Pos(),
-	})
+	var playerPos []linear.Vec2
+	for i := range g.Ents {
+		_, ok := g.Ents[i].(*Player)
+		if !ok {
+			continue
+		}
+		playerPos = append(playerPos, g.Ents[i].Pos())
+	}
+	base.SetUniformV2Array("los", "playerPos", playerPos)
+	base.SetUniformI("los", "losNumPlayers", len(playerPos))
 	gl.Color4d(0, 0, 1, 1)
 	gl.Begin(gl.QUADS)
 	gl.TexCoord2d(0, 1)

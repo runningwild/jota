@@ -1,7 +1,7 @@
 uniform float losMaxDist;
 uniform float losResolution;
 uniform float losMaxPlayers;
-uniform float losNumPlayers;
+uniform int losNumPlayers;
 uniform float dx;
 uniform float dy;
 uniform sampler2D tex0;
@@ -11,7 +11,7 @@ void main(void) {
 
   int i;
   float best = 1.0;
-  for (i = 0; i < 2; i++) {
+  for (i = 0; i < losNumPlayers; i++) {
     // Only check player 0 right now
     vec2 ray = pos - playerPos[i];
     float dist = length(ray);
