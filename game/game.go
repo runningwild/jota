@@ -730,14 +730,14 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.End()
 
-	gl.Begin(gl.TRIANGLE_FAN)
 	gl.Color4d(1, 0, 0, 1)
 	for _, poly := range gw.game.Room.Lava {
+		gl.Begin(gl.TRIANGLE_FAN)
 		for _, v := range poly {
 			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
 		}
+		gl.End()
 	}
-	gl.End()
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
