@@ -11,6 +11,7 @@ import (
 	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	"math"
@@ -136,6 +137,8 @@ type Player struct {
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
+
+	Los *los.Los
 }
 
 func (p *Player) Copy() Ent {
@@ -147,6 +150,7 @@ func (p *Player) Copy() Ent {
 			panic("ASDF")
 		}
 	}
+	p2.Los = p.Los.Copy()
 	return &p2
 }
 
@@ -341,6 +345,14 @@ func (p *Player) Think(g *Game) {
 	}
 	if p.Angle > math.Pi*2 {
 		p.Angle -= math.Pi * 2
+	}
+
+	// Now that we've set our position properly we can do los
+	p.Los.Reset(p.Pos())
+	for _, poly := range g.Room.Walls {
+		for i := range poly {
+			p.Los.DrawSeg(poly.Seg(i))
+		}
 	}
 
 	p.Delta.Angle = 0
@@ -727,6 +739,18 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}
 	gl.End()
 
+	gl.Color4d(1, 1, 1, 1)
+	losCount := 0
+	for _, ent := range gw.game.Ents {
+		p, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		// p.Los.Render()
+		p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
+		losCount++
+	}
+	gw.game.RenderLosMask()
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range gw.game.Ents {
 		ent.Draw(gw.game)

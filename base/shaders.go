@@ -4,6 +4,7 @@ import (
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/render"
+	"github.com/runningwild/linear"
 	"io/ioutil"
 	"path/filepath"
 	"unsafe"
@@ -71,6 +72,39 @@ func SetUniformF(shader, variable string, f float32) {
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
 	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
 	gl.Uniform1f(loc, gl.Float(f))
+}
+
+func SetUniformV2(shader, variable string, v linear.Vec2) {
+	prog, ok := shader_progs[shader]
+	if !ok {
+		if !warned_names[shader] {
+			Warn().Printf("Tried to set a uniform in an unknown shader '%s'", shader)
+			warned_names[shader] = true
+		}
+		return
+	}
+	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
+	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
+	gl.Uniform2f(loc, gl.Float(v.X), gl.Float(v.Y))
+}
+
+func SetUniformV2Array(shader, variable string, vs []linear.Vec2) {
+	prog, ok := shader_progs[shader]
+	if !ok {
+		if !warned_names[shader] {
+			Warn().Printf("Tried to set a uniform in an unknown shader '%s'", shader)
+			warned_names[shader] = true
+		}
+		return
+	}
+	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
+	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
+	var fs []gl.Float
+	for i := range vs {
+		fs = append(fs, gl.Float(vs[i].X))
+		fs = append(fs, gl.Float(vs[i].Y))
+	}
+	gl.Uniform2fv(loc, gl.Sizei(len(vs)), (*gl.Float)(unsafe.Pointer(&fs[0])))
 }
 
 func InitShaders() {

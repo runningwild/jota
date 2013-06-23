@@ -17,6 +17,7 @@ import (
 	_ "github.com/runningwild/magnus/ability"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/magnus/los"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -126,6 +127,7 @@ func main() {
 				// p.Mass += float64(x+y) * 150
 				p.Processes = make(map[int]game.Process)
 				temp := p
+				temp.Los = los.Make(game.LosResolution, game.LosMaxDist)
 				ids = append(ids, g.AddEnt(&temp))
 
 				// p.Mass -= float64(x+y) * 150
@@ -135,8 +137,10 @@ func main() {
 		}
 		g.Ents[0].(*game.Player).X = 500
 		g.Ents[0].(*game.Player).Y = 300
+		g.Ents[0].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
 		g.Ents[1].(*game.Player).X = 550
 		g.Ents[1].(*game.Player).Y = 300
+		g.Ents[1].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
 		g.SetLocalData()
 		d := sys.GetActiveDevices()
 		base.Log().Printf("%v\n", d)

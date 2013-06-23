@@ -1,11 +1,18 @@
 package game
 
 import (
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
+	"github.com/runningwild/glop/render"
+	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 )
+
+const LosResolution = 2048
+const LosMaxPlayers = 2
+const LosMaxDist = 1000
 
 type localPlayer struct {
 	// This player's id
@@ -31,6 +38,12 @@ type localData struct {
 
 	// All of the players controlled by humans on localhost.
 	players []*localPlayer
+
+	los struct {
+		texData    [][]uint32
+		texRawData []uint32
+		texId      gl.Uint
+	}
 }
 
 var local localData
@@ -41,6 +54,72 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 	}
 	local.engine = engine
 	gin.In().RegisterEventListener(&gameResponderWrapper{g})
+
+	local.los.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
+	local.los.texData = make([][]uint32, LosMaxPlayers)
+	for i := range local.los.texData {
+		start := i * LosResolution
+		end := (i + 1) * LosResolution
+		local.los.texData[i] = local.los.texRawData[start:end]
+	}
+	render.Queue(func() {
+		gl.GenTextures(1, &local.los.texId)
+		gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
+		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.ALPHA,
+			LosResolution,
+			LosMaxPlayers,
+			0,
+			gl.ALPHA,
+			gl.UNSIGNED_INT,
+			gl.Pointer(&local.los.texRawData[0]))
+	})
+}
+
+func (g *Game) RenderLosMask() {
+	base.EnableShader("los")
+	gl.Enable(gl.TEXTURE_2D)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
+	gl.TexSubImage2D(
+		gl.TEXTURE_2D,
+		0,
+		0,
+		0,
+		LosResolution,
+		LosMaxPlayers,
+		gl.ALPHA,
+		gl.UNSIGNED_INT,
+		gl.Pointer(&local.los.texRawData[0]))
+	base.SetUniformI("los", "tex0", 0)
+	base.SetUniformF("los", "dx", 1200)
+	base.SetUniformF("los", "dy", 800)
+	base.SetUniformF("los", "losMaxDist", LosMaxDist)
+	base.SetUniformF("los", "losResolution", LosResolution)
+	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
+	base.SetUniformV2Array("los", "playerPos", []linear.Vec2{
+		g.Ents[0].Pos(),
+		g.Ents[1].Pos(),
+	})
+	gl.Color4d(0, 0, 1, 1)
+	gl.Begin(gl.QUADS)
+	gl.TexCoord2d(0, 1)
+	gl.Vertex2i(0, 0)
+	gl.TexCoord2d(0, 0)
+	gl.Vertex2i(0, 800)
+	gl.TexCoord2d(1, 0)
+	gl.Vertex2i(1200, 800)
+	gl.TexCoord2d(1, 1)
+	gl.Vertex2i(1200, 0)
+	gl.End()
+	base.EnableShader("")
 }
 
 func (g *Game) SetLocalData() {
