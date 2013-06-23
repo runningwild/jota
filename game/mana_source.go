@@ -294,9 +294,16 @@ func (ms *ManaSource) regenerateMana() {
 	for i := range ms.rawNodes {
 		node := &ms.rawNodes[i]
 		for c := range node.Mana {
+			if node.MaxMana[c] == 0 {
+				continue
+			}
 			maxRecovery := node.MaxMana[c] * node.RegenPerFrame
 			scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
 			node.Mana[c] += scale * maxRecovery
+			if scale != scale || maxRecovery != maxRecovery {
+				base.Log().Printf("NAN: %v %v", scale, maxRecovery)
+				panic("fd")
+			}
 		}
 	}
 }
