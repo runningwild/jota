@@ -117,6 +117,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				}
 			}
 			if insideObstacle {
+				ms.nodes[col][row].X = x
+				ms.nodes[col][row].Y = y
 				continue
 			}
 
@@ -301,7 +303,6 @@ func (ms *ManaSource) regenerateMana() {
 			scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
 			node.Mana[c] += scale * maxRecovery
 			if scale != scale || maxRecovery != maxRecovery {
-				base.Log().Printf("NAN: %v %v", scale, maxRecovery)
 				panic("fd")
 			}
 		}
