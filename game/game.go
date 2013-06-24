@@ -386,7 +386,7 @@ type Ent interface {
 }
 
 type Game struct {
-	manaSource ManaSource
+	ManaSource ManaSource
 
 	Room Room
 
@@ -425,7 +425,7 @@ func (g *Game) Init() {
 		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
 	}
-	g.manaSource.Init(&msOptions, g.Room.Walls, g.Room.Lava)
+	g.ManaSource.Init(&msOptions, g.Room.Walls, g.Room.Lava)
 }
 
 func init() {
@@ -497,7 +497,7 @@ func (g *Game) Merge(g2 *Game) {
 func (g *Game) Copy() interface{} {
 	var g2 Game
 
-	g2.manaSource = g.manaSource.Copy()
+	g2.ManaSource = g.ManaSource.Copy()
 
 	g2.Room = g.Room
 
@@ -525,7 +525,7 @@ func (g *Game) Copy() interface{} {
 
 func (g *Game) OverwriteWith(_g2 interface{}) {
 	g2 := _g2.(*Game)
-	g.manaSource.OverwriteWith(&g2.manaSource)
+	g.ManaSource.OverwriteWith(&g2.ManaSource)
 	g.Rng.OverwriteWith(g2.Rng)
 	g.Dx = g2.Dx
 	g.Dy = g2.Dy
@@ -571,7 +571,7 @@ func (g *Game) Think() {
 		g.Ents[i].PreThink(g)
 	}
 
-	g.manaSource.Think(g.Ents)
+	g.ManaSource.Think(g.Ents)
 
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
@@ -717,7 +717,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	gw.game.manaSource.Draw(gw, float64(gw.game.Dx), float64(gw.game.Dy))
+	gw.game.ManaSource.Draw(gw, float64(gw.game.Dx), float64(gw.game.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)

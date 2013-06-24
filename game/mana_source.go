@@ -66,39 +66,45 @@ type ManaSource struct {
 }
 
 func (ms *ManaSource) GobEncode() ([]byte, error) {
+	base.Log().Printf("GobEncode")
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)
 	err := enc.Encode(ms.options)
-	if err != nil {
+	if err == nil {
 		err = enc.Encode(uint32(len(ms.nodes)))
+		base.Log().Printf("Encode dx: %d", len(ms.nodes))
 	}
-	if err != nil {
+	if err == nil {
 		err = enc.Encode(uint32(len(ms.nodes[0])))
+		base.Log().Printf("Encode dy: %d", len(ms.nodes[0]))
 	}
-	if err != nil {
+	if err == nil {
 		err = enc.Encode(ms.rawNodes)
 	}
 	return buf.Bytes(), err
 }
 
 func (ms *ManaSource) GobDecode(data []byte) error {
+	base.Log().Printf("GobDecode")
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	err := dec.Decode(&ms.options)
 	var d1, d2 int
-	if err != nil {
+	if err == nil {
 		var d uint32
 		err = dec.Decode(&d)
 		d1 = int(d)
+		base.Log().Printf("Decoded %d", d1)
 	}
-	if err != nil {
+	if err == nil {
 		var d uint32
 		err = dec.Decode(&d)
 		d2 = int(d)
+		base.Log().Printf("Decoded %d", d2)
 	}
-	if err != nil {
+	if err == nil {
 		err = dec.Decode(&ms.rawNodes)
 	}
-	if err != nil {
+	if err == nil {
 		ms.nodes = make([][]node, d1)
 		for i := range ms.nodes {
 			ms.nodes[i] = ms.rawNodes[i*d2 : (i+1)*d2]
