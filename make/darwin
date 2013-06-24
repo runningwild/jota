@@ -1,6 +1,7 @@
 go build --tags host .
 
 rm -rf magnus.app
+rm -rf bagnus.app
 mkdir -p magnus.app/Contents/MacOS
 mkdir -p magnus.app/Contents/lib
 
@@ -9,7 +10,8 @@ cp ~/code/src/github.com/runningwild/glop/gos/darwin/lib/libglop.so lib/darwin/
 cp lib/darwin/* magnus.app/Contents/lib/
 cp -r data/* magnus.app/Contents/
 #ls data | awk '{print "scr --src data/" $0 " --dst magnus.app/Contents/" $0}' | bash
-
+cp -r magnus.app bagnus.app
+mv bagnus.app/Contents/MacOS/magnus bagnus.app/Contents/MacOS/bagnus
 
 #go build .
 #

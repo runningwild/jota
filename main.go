@@ -85,7 +85,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if IsHost() {
+	sys.Think()
+	is_host := false
+	for {
+		time.Sleep(time.Millisecond * 100)
+		sys.Think()
+		h := gin.In().GetKeyFlat(gin.KeyH, gin.DeviceTypeAny, gin.DeviceIndexAny)
+		if h.FramePressCount() > 0 {
+			is_host = true
+			break
+		}
+		any := gin.In().GetKeyFlat(gin.AnyKey, gin.DeviceTypeAny, gin.DeviceIndexAny)
+		if any.FramePressCount() > 0 {
+			break
+		}
+	}
+	if is_host {
 		sys.Think()
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
@@ -168,6 +183,7 @@ func main() {
 	} else {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
+			base.Log().Printf("Unable to connect: %v", err)
 			panic(err.Error())
 		}
 		engine.CopyState().(*game.Game).SetEngine(engine)
