@@ -57,10 +57,10 @@ func (dst *node) OverwriteWith(src *node) {
 }
 
 type ManaSource struct {
-	options ManaSourceOptions
+	Options ManaSourceOptions
 
-	nodes    [][]node
-	rawNodes []node // the underlying array for nodes
+	Nodes    [][]node
+	RawNodes []node // the underlying array for Nodes
 }
 
 func normalizeWeights(desiredSum float64, weights []float64) {
@@ -74,21 +74,21 @@ func normalizeWeights(desiredSum float64, weights []float64) {
 	}
 }
 
-func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava []linear.Poly) {
-	ms.options = *options
-	if options.NumNodeCols < 2 || options.NumNodeRows < 2 {
-		panic(fmt.Sprintf("Invalid options: %v", options))
+func (ms *ManaSource) Init(Options *ManaSourceOptions, walls []linear.Poly, lava []linear.Poly) {
+	ms.Options = *Options
+	if Options.NumNodeCols < 2 || Options.NumNodeRows < 2 {
+		panic(fmt.Sprintf("Invalid Options: %v", Options))
 	}
 
 	c := cmwc.MakeGoodCmwc()
 	c.SeedWithDevRand()
 	r := rand.New(c)
 
-	seeds := make([]nodeSeed, options.NumSeeds)
+	seeds := make([]nodeSeed, Options.NumSeeds)
 	for i := range seeds {
 		seed := &seeds[i]
-		seed.x = options.BoardLeft + r.Float64()*(options.BoardRight-options.BoardLeft)
-		seed.y = options.BoardTop + r.Float64()*(options.BoardBottom-options.BoardTop)
+		seed.x = Options.BoardLeft + r.Float64()*(Options.BoardRight-Options.BoardLeft)
+		seed.y = Options.BoardTop + r.Float64()*(Options.BoardBottom-Options.BoardTop)
 		seed.color = r.Intn(3)
 	}
 
@@ -100,15 +100,15 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 		allObstacles = append(allObstacles, p)
 	}
 
-	ms.rawNodes = make([]node, options.NumNodeCols*options.NumNodeRows)
-	ms.nodes = make([][]node, options.NumNodeCols)
-	for col := 0; col < options.NumNodeCols; col++ {
-		ms.nodes[col] = ms.rawNodes[col*options.NumNodeRows : (col+1)*options.NumNodeRows]
-		for row := 0; row < options.NumNodeRows; row++ {
-			x := options.BoardLeft + float64(col)/float64(options.NumNodeCols-1)*(options.BoardRight-options.BoardLeft)
-			y := options.BoardTop + float64(row)/float64(options.NumNodeRows-1)*(options.BoardBottom-options.BoardTop)
+	ms.RawNodes = make([]node, Options.NumNodeCols*Options.NumNodeRows)
+	ms.Nodes = make([][]node, Options.NumNodeCols)
+	for col := 0; col < Options.NumNodeCols; col++ {
+		ms.Nodes[col] = ms.RawNodes[col*Options.NumNodeRows : (col+1)*Options.NumNodeRows]
+		for row := 0; row < Options.NumNodeRows; row++ {
+			x := Options.BoardLeft + float64(col)/float64(Options.NumNodeCols-1)*(Options.BoardRight-Options.BoardLeft)
+			y := Options.BoardTop + float64(row)/float64(Options.NumNodeRows-1)*(Options.BoardBottom-Options.BoardTop)
 
-			// all_obstacles[0] corresponds to the outer walls. We do not want to drop mana nodes for
+			// all_obstacles[0] corresponds to the outer walls. We do not want to drop mana Nodes for
 			// being inside there.
 			insideObstacle := false
 			for i := 1; !insideObstacle && i < len(allObstacles); i++ {
@@ -117,8 +117,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				}
 			}
 			if insideObstacle {
-				ms.nodes[col][row].X = x
-				ms.nodes[col][row].Y = y
+				ms.Nodes[col][row].X = x
+				ms.Nodes[col][row].Y = y
 				continue
 			}
 
@@ -134,14 +134,14 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 				}
 			}
 
-			normalizeWeights(options.NodeMagnitude, maxWeightByColor[:])
+			normalizeWeights(Options.NodeMagnitude, maxWeightByColor[:])
 			var weightsCopy [3]float64
 			copy(weightsCopy[:], maxWeightByColor[:])
 
-			ms.nodes[col][row] = node{
+			ms.Nodes[col][row] = node{
 				X:             x,
 				Y:             y,
-				RegenPerFrame: options.RegenPerFrame,
+				RegenPerFrame: Options.RegenPerFrame,
 				Mana:          maxWeightByColor,
 				MaxMana:       weightsCopy,
 			}
@@ -152,30 +152,30 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 func (src *ManaSource) Copy() ManaSource {
 	var dst ManaSource
 
-	dst.rawNodes = make([]node, len(src.rawNodes))
-	dst.nodes = make([][]node, len(src.nodes))
-	for x := range src.nodes {
-		dst.nodes[x] = dst.rawNodes[x*len(src.nodes[x]) : (x+1)*len(src.nodes[x])]
+	dst.RawNodes = make([]node, len(src.RawNodes))
+	dst.Nodes = make([][]node, len(src.Nodes))
+	for x := range src.Nodes {
+		dst.Nodes[x] = dst.RawNodes[x*len(src.Nodes[x]) : (x+1)*len(src.Nodes[x])]
 	}
-	for i, srcNode := range src.rawNodes {
-		dst.rawNodes[i] = srcNode
+	for i, srcNode := range src.RawNodes {
+		dst.RawNodes[i] = srcNode
 	}
-	dst.options = src.options
+	dst.Options = src.Options
 
 	return dst
 }
 
 func (dst *ManaSource) OverwriteWith(src *ManaSource) {
-	for i, srcNode := range src.rawNodes {
-		dst.rawNodes[i] = srcNode
+	for i, srcNode := range src.RawNodes {
+		dst.RawNodes[i] = srcNode
 	}
-	dst.options = src.options
+	dst.Options = src.Options
 }
 
 func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	if gw.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)
-		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
+		gw.nodeTextureData = make([]byte, ms.Options.NumNodeRows*ms.Options.NumNodeCols*3)
 		gl.GenTextures(1, &gw.nodeTextureId)
 		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
@@ -187,8 +187,8 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			gl.TEXTURE_2D,
 			0,
 			gl.RGB,
-			gl.Sizei(ms.options.NumNodeRows),
-			gl.Sizei(ms.options.NumNodeCols),
+			gl.Sizei(ms.Options.NumNodeRows),
+			gl.Sizei(ms.Options.NumNodeCols),
 			0,
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
@@ -213,12 +213,12 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			gl.UNSIGNED_BYTE,
 			gl.Pointer(&gw.nodeWarpingData[0]))
 	}
-	for i := range ms.rawNodes {
+	for i := range ms.RawNodes {
 		for c := 0; c < 3; c++ {
-			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
-			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
+			color_frac := ms.RawNodes[i].Mana[c] * 1.0 / ms.Options.NodeMagnitude
+			color_range := float64(ms.Options.MaxNodeBrightness - ms.Options.MinNodeBrightness)
 			gw.nodeTextureData[i*3+c] = byte(
-				color_frac*color_range + float64(ms.options.MinNodeBrightness))
+				color_frac*color_range + float64(ms.Options.MinNodeBrightness))
 		}
 	}
 	gl.Enable(gl.TEXTURE_1D)
@@ -230,8 +230,8 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		0,
 		0,
 		0,
-		gl.Sizei(ms.options.NumNodeRows),
-		gl.Sizei(ms.options.NumNodeCols),
+		gl.Sizei(ms.Options.NumNodeRows),
+		gl.Sizei(ms.Options.NumNodeCols),
 		gl.RGB,
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeTextureData[0]))
@@ -253,12 +253,12 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&gw.nodeWarpingData[0]))
 
-	base.EnableShader("nodes")
-	base.SetUniformI("nodes", "width", ms.options.NumNodeRows)
-	base.SetUniformI("nodes", "height", ms.options.NumNodeCols)
-	base.SetUniformI("nodes", "drains", 1)
-	base.SetUniformI("nodes", "tex0", 0)
-	base.SetUniformI("nodes", "tex1", 1)
+	base.EnableShader("Nodes")
+	base.SetUniformI("Nodes", "width", ms.Options.NumNodeRows)
+	base.SetUniformI("Nodes", "height", ms.Options.NumNodeCols)
+	base.SetUniformI("Nodes", "drains", 1)
+	base.SetUniformI("Nodes", "tex0", 0)
+	base.SetUniformI("Nodes", "tex1", 1)
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -293,8 +293,8 @@ type thinkData struct {
 }
 
 func (ms *ManaSource) regenerateMana() {
-	for i := range ms.rawNodes {
-		node := &ms.rawNodes[i]
+	for i := range ms.RawNodes {
+		node := &ms.RawNodes[i]
 		for c := range node.Mana {
 			if node.MaxMana[c] == 0 {
 				continue
@@ -310,16 +310,16 @@ func (ms *ManaSource) regenerateMana() {
 }
 
 func (ms *ManaSource) initThinkData(td *thinkData, numPlayers int) {
-	if len(td.nodeThinkData) != len(ms.nodes) {
-		td.rawNodeThinkData = make([]nodeThinkData, len(ms.rawNodes))
-		td.nodeThinkData = make([][]nodeThinkData, len(ms.nodes))
+	if len(td.nodeThinkData) != len(ms.Nodes) {
+		td.rawNodeThinkData = make([]nodeThinkData, len(ms.RawNodes))
+		td.nodeThinkData = make([][]nodeThinkData, len(ms.Nodes))
 		for i := range td.nodeThinkData {
 			td.nodeThinkData[i] =
-				td.rawNodeThinkData[i*ms.options.NumNodeRows : (i+1)*ms.options.NumNodeRows]
+				td.rawNodeThinkData[i*ms.Options.NumNodeRows : (i+1)*ms.Options.NumNodeRows]
 		}
 	}
 
-	for i := range ms.rawNodes {
+	for i := range ms.RawNodes {
 		node := &td.rawNodeThinkData[i]
 		if len(node.playerDistSquared) != numPlayers {
 			node.playerDistSquared = make([]float64, numPlayers)
@@ -347,12 +347,12 @@ func (ms *ManaSource) initThinkData(td *thinkData, numPlayers int) {
 }
 
 func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
-	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
+	maxDistSquared := ms.Options.MaxDrainDistance * ms.Options.MaxDrainDistance
 	if distSquared > maxDistSquared {
 		return 0.0
 	}
 	distRatio := 1.0 - distSquared/maxDistSquared
-	return distRatio * distRatio * ms.options.MaxDrainRate
+	return distRatio * distRatio * ms.Options.MaxDrainRate
 }
 
 func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
@@ -364,24 +364,24 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
 		playerThinkData.maxX = -1
 		playerThinkData.maxY = -1
 
-		for x := range ms.nodes {
-			dx := ms.nodes[x][0].X - player.Pos().X
-			if dx >= -ms.options.MaxDrainDistance && playerThinkData.minX == -1 {
+		for x := range ms.Nodes {
+			dx := ms.Nodes[x][0].X - player.Pos().X
+			if dx >= -ms.Options.MaxDrainDistance && playerThinkData.minX == -1 {
 				playerThinkData.minX = x
 			}
-			if dx <= ms.options.MaxDrainDistance {
+			if dx <= ms.Options.MaxDrainDistance {
 				playerThinkData.maxX = x
 			} else {
 				break
 			}
 		}
 
-		for y := range ms.nodes[0] {
-			dy := ms.nodes[0][y].Y - player.Pos().Y
-			if dy >= -ms.options.MaxDrainDistance && playerThinkData.minY == -1 {
+		for y := range ms.Nodes[0] {
+			dy := ms.Nodes[0][y].Y - player.Pos().Y
+			if dy >= -ms.Options.MaxDrainDistance && playerThinkData.minY == -1 {
 				playerThinkData.minY = y
 			}
-			if dy <= ms.options.MaxDrainDistance {
+			if dy <= ms.Options.MaxDrainDistance {
 				playerThinkData.maxY = y
 			} else {
 				break
@@ -391,12 +391,12 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
 }
 
 func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
-	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
+	maxDistSquared := ms.Options.MaxDrainDistance * ms.Options.MaxDrainDistance
 	for i, player := range players {
 		playerThinkData := &td.playerThinkData[i]
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
-				node := &ms.nodes[x][y]
+				node := &ms.Nodes[x][y]
 				nodeThinkData := &td.nodeThinkData[x][y]
 				distSquared := player.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2()
 				if distSquared <= maxDistSquared {
@@ -408,8 +408,8 @@ func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
 		}
 	}
 
-	for x := range ms.nodes {
-		for y := range ms.nodes[x] {
+	for x := range ms.Nodes {
+		for y := range ms.Nodes[x] {
 			nodeThinkData := &td.nodeThinkData[x][y]
 			if nodeThinkData.hasSomePlayerControl {
 				normalizeWeights(1.0, nodeThinkData.playerControl)
@@ -423,13 +423,13 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 		playerThinkData := &td.playerThinkData[i]
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
-				node := &ms.nodes[x][y]
+				node := &ms.Nodes[x][y]
 				nodeThinkData := td.nodeThinkData[x][y]
 				control := nodeThinkData.playerControl[i]
 				if control > 0 {
 					maxDrainRate := ms.getMaxDrainRate(nodeThinkData.playerDistSquared[i])
 					for c := range node.Mana {
-						amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
+						amountScale := node.MaxMana[c] / float64(ms.Options.NodeMagnitude)
 						nodeThinkData.playerDrain[i][c] =
 							math.Min(amountScale*maxDrainRate, node.Mana[c]) * control
 						playerThinkData.drain[c] += nodeThinkData.playerDrain[i][c]
@@ -446,7 +446,7 @@ func (ms *ManaSource) supplyPlayers(td *thinkData, players []Ent) {
 		drainUsed := player.Supply(playerThinkData.drain)
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
-				node := &ms.nodes[x][y]
+				node := &ms.Nodes[x][y]
 				nodeThinkData := td.nodeThinkData[x][y]
 				if nodeThinkData.playerControl[i] > 0 {
 					for c := range node.Mana {
