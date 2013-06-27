@@ -2,6 +2,7 @@ uniform float losMaxDist;
 uniform float losResolution;
 uniform float losMaxPlayers;
 uniform int losNumPlayers;
+uniform int master;
 uniform float dx;
 uniform float dy;
 uniform sampler2D tex0;
@@ -25,8 +26,8 @@ void main(void) {
     float buffer = 10.0;
 
     if (dist < zval) {
-      gl_FragColor = vec4(0.0, 1.0, 0.0, 0.0);
-      return;
+      best = 0.0;
+      break;
     }
 
     if (zval < dist) {
@@ -36,6 +37,10 @@ void main(void) {
       }
     }
   }
-  gl_FragColor = vec4(0.0, 0.0, 0.0, best / 2.0);
+  if (master == 1) {
+    gl_FragColor = vec4(1.0, 0.0, 0.0, (1.0 - best) / 2.0);
+  } else {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, best);
+  }
 }
 

@@ -10,7 +10,7 @@ import (
 	"github.com/runningwild/magnus/base"
 )
 
-const LosResolution = 2048
+const LosResolution = 2048 * 2
 const LosMaxPlayers = 2
 const LosMaxDist = 1000
 
@@ -36,6 +36,9 @@ type localData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
+	// true iff this is the computer playing the master side of the game
+	isMaster bool
+
 	// All of the players controlled by humans on localhost.
 	players []*localPlayer
 
@@ -48,11 +51,12 @@ type localData struct {
 
 var local localData
 
-func (g *Game) SetEngine(engine *cgf.Engine) {
+func (g *Game) SetEngine(engine *cgf.Engine, isMaster bool) {
 	if local.engine != nil {
 		panic("Engine has already been set.")
 	}
 	local.engine = engine
+	local.isMaster = isMaster
 	gin.In().RegisterEventListener(&gameResponderWrapper{g})
 
 	local.los.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
@@ -104,6 +108,11 @@ func (g *Game) RenderLosMask() {
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", LosResolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
+	if local.isMaster {
+		base.SetUniformI("los", "master", 1)
+	} else {
+		base.SetUniformI("los", "master", 0)
+	}
 	var playerPos []linear.Vec2
 	for i := range g.Ents {
 		_, ok := g.Ents[i].(*Player)

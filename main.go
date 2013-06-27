@@ -179,14 +179,14 @@ func main() {
 		if err != nil {
 			panic(err.Error())
 		}
-		g.SetEngine(engine)
+		g.SetEngine(engine, false)
 	} else {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			panic(err.Error())
 		}
-		engine.CopyState().(*game.Game).SetEngine(engine)
+		engine.CopyState().(*game.Game).SetEngine(engine, true)
 	}
 
 	anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
