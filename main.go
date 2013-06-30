@@ -156,7 +156,7 @@ func main() {
 		g.Ents[1].(*game.Player).X = 550
 		g.Ents[1].(*game.Player).Y = 300
 		g.Ents[1].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
-		g.SetLocalData()
+		g.SetLocalData(sys)
 		d := sys.GetActiveDevices()
 		base.Log().Printf("%v\n", d)
 		n := 0
@@ -186,6 +186,7 @@ func main() {
 			base.Log().Printf("Unable to connect: %v", err)
 			panic(err.Error())
 		}
+		engine.CopyState().(*game.Game).SetLocalData(sys)
 		engine.CopyState().(*game.Game).SetEngine(engine, true)
 	}
 

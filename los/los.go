@@ -88,6 +88,36 @@ func (l *Los) DrawSeg(seg linear.Seg2) {
 	}
 }
 
+// Returns the fraction of the segment that was visible
+func (l *Los) TestSeg(seg linear.Seg2) float64 {
+	seg.P = seg.P.Sub(l.in.Pos)
+	seg.Q = seg.Q.Sub(l.in.Pos)
+	wrap := len(l.in.ZBuffer)
+	a1 := math.Atan2(seg.P.Y, seg.P.X)
+	a2 := math.Atan2(seg.Q.Y, seg.Q.X)
+	if a1 > a2 {
+		a1, a2 = a2, a1
+		seg.P, seg.Q = seg.Q, seg.P
+	}
+	if a2-a1 > math.Pi {
+		a1, a2 = a2, a1
+		seg.P, seg.Q = seg.Q, seg.P
+	}
+	start := int(((a1 / (2 * math.Pi)) + 0.5) * float64(len(l.in.ZBuffer)))
+	end := int(((a2 / (2 * math.Pi)) + 0.5) * float64(len(l.in.ZBuffer)))
+
+	count := 0.0
+	visible := 0.0
+	for i := start % wrap; i != end%wrap; i = (i + 1) % wrap {
+		dist2 := float32(l.in.Rays[i].Isect(seg).Mag2())
+		if dist2 < l.in.ZBuffer[i] {
+			visible += 1.0
+		}
+		count += 1.0
+	}
+	return visible / count
+}
+
 func (l *Los) Render() {
 	var v0, v1 linear.Vec2
 	gl.Begin(gl.TRIANGLES)

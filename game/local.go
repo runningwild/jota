@@ -6,6 +6,7 @@ import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/glop/render"
+	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 )
@@ -52,6 +53,8 @@ type localData struct {
 		texRawData []uint32
 		texId      gl.Uint
 	}
+
+	sys system.System
 }
 
 var local localData
@@ -135,7 +138,7 @@ func (g *Game) copyBackbuffer() {
 	gl.End()
 }
 
-func (g *Game) RenderLosMask() {
+func (g *Game) renderLosMask() {
 	base.EnableShader("los")
 	gl.Enable(gl.TEXTURE_2D)
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -185,8 +188,64 @@ func (g *Game) RenderLosMask() {
 	base.EnableShader("")
 }
 
-func (g *Game) SetLocalData() {
+func (g *Game) renderLocalInvaders(region gui.Region) {
+	g.renderLosMask()
+}
+func (g *Game) renderLocalMaster(region gui.Region) {
+	g.renderLosMask()
+	gl.Disable(gl.TEXTURE_2D)
+	base.Log().Printf("Sys: %v\n", local.sys)
+	mx, my := local.sys.GetCursorPos()
+	mx -= region.X
+	my -= region.Y
+	dx, dy := float64(50), float64(50)
+	x, y := float64(int((float64(mx)-dx/2)/10)*10), float64(int((float64(my)-dy/2)/10)*10)
+	visible := false
+	crosses := []linear.Seg2{
+		linear.Seg2{linear.Vec2{x, y}, linear.Vec2{x + dx, y + dy}},
+		linear.Seg2{linear.Vec2{x + dx, y}, linear.Vec2{x, y + dy}},
+	}
+	for _, ent := range g.Ents {
+		p, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		if p.Los.TestSeg(crosses[0]) > 0.0 || p.Los.TestSeg(crosses[1]) > 0.0 {
+			visible = true
+			break
+		}
+	}
+	if visible {
+		gl.Color4ub(255, 0, 0, 255)
+	} else {
+		gl.Color4ub(255, 255, 255, 255)
+	}
+	gl.Begin(gl.LINES)
+	gl.Vertex2i(gl.Int(x), gl.Int(y))
+	gl.Vertex2i(gl.Int(x), gl.Int(y+dy))
+	gl.Vertex2i(gl.Int(x), gl.Int(y+dy))
+	gl.Vertex2i(gl.Int(x+dx), gl.Int(y+dy))
+	gl.Vertex2i(gl.Int(x+dx), gl.Int(y+dy))
+	gl.Vertex2i(gl.Int(x+dx), gl.Int(y))
+	gl.Vertex2i(gl.Int(x+dx), gl.Int(y))
+	gl.Vertex2i(gl.Int(x), gl.Int(y))
+	gl.End()
+}
+
+// Draws everything that is relevant to the players on a compute, but not the
+// players across the network.  Any ui used to determine how to place an object
+// or use an ability, for example.
+func (g *Game) RenderLocal(region gui.Region) {
+	if local.isMaster {
+		g.renderLocalMaster(region)
+	} else {
+		g.renderLocalInvaders(region)
+	}
+}
+
+func (g *Game) SetLocalData(sys system.System) {
 	local.game = g
+	local.sys = sys
 }
 
 func (g *Game) SetLocalPlayer(player *Player, index gin.DeviceIndex) {
