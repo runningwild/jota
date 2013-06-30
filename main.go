@@ -85,22 +85,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	sys.Think()
-	is_host := false
-	for {
-		time.Sleep(time.Millisecond * 100)
-		sys.Think()
-		h := gin.In().GetKeyFlat(gin.KeyH, gin.DeviceTypeAny, gin.DeviceIndexAny)
-		if h.FramePressCount() > 0 {
-			is_host = true
-			break
-		}
-		any := gin.In().GetKeyFlat(gin.AnyKey, gin.DeviceTypeAny, gin.DeviceIndexAny)
-		if any.FramePressCount() > 0 {
-			break
-		}
-	}
-	if is_host {
+	if Version() == "host" {
 		sys.Think()
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
@@ -180,7 +165,7 @@ func main() {
 			panic(err.Error())
 		}
 		g.SetEngine(engine, false)
-	} else {
+	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
@@ -188,6 +173,8 @@ func main() {
 		}
 		engine.CopyState().(*game.Game).SetLocalData(sys)
 		engine.CopyState().(*game.Game).SetEngine(engine, true)
+	} else {
+		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
 
 	anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
@@ -210,40 +197,6 @@ func main() {
 		})
 		render.Purge()
 		game.LocalThink()
-
-		if IsHost() {
-			for i := 0; i <= 0; i++ {
-				// down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-				// up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-				// right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
-				// left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
-				// up := key_map[fmt.Sprintf("%dup", i)].FramePressAvg()
-				// down := key_map[fmt.Sprintf("%ddown", i)].FramePressAvg()
-				// left := key_map[fmt.Sprintf("%dleft", i)].FramePressAvg()
-				// right := key_map[fmt.Sprintf("%dright", i)].FramePressAvg()
-				// up = axisControl(up_axis.FramePressAmt())
-				// down = axisControl(down_axis.FramePressAmt())
-				// left = axisControl(left_axis.FramePressAmt())
-				// right = axisControl(right_axis.FramePressAmt())
-				// if up-down != 0 {
-				// 	engine.ApplyEvent(game.Accelerate{ids[i], 2 * (up - down)})
-				// }
-				// if left-right != 0 {
-				// 	engine.ApplyEvent(game.Turn{ids[i], (left - right)})
-				// }
-
-				// if key_map[fmt.Sprintf("%d-1", i)].FramePressCount() > 0 {
-				// 	engine.ApplyEvent(game.Pull{ids[i], 0, 20000})
-				// }
-				// if key_map[fmt.Sprintf("%d-2", i)].FramePressCount() > 0 {
-				// 	engine.ApplyEvent(game.MoonFire{ids[i], 1, 50, 50})
-				// }
-				// if gin.In().GetKeyFlat(gin.ControllerButton0, gin.DeviceTypeController, gin.DeviceTypeAny).FramePressCount() > 0 {
-				// if key_map[fmt.Sprintf("%d-3", i)].FramePressCount() > 0 {
-				// engine.ApplyEvent(game.Burst{ids[i], 2, 3, 100000})
-				// }
-			}
-		}
 
 		// TODO: Replace the 'P' key with an appropriate keybind
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {

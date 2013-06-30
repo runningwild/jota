@@ -1,7 +1,7 @@
-// +build client
+// +build magnus
 
 package main
 
 func Version() string {
-	return "client"
+	return "magnus"
 }

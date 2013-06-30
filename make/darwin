@@ -1,24 +1,20 @@
-go build --tags host .
+set -e
 
-rm -rf magnus.app
-rm -rf bagnus.app
-mkdir -p magnus.app/Contents/MacOS
-mkdir -p magnus.app/Contents/lib
+function doBuild {
+  go build --tags $1 .
+  rm -rf $1.app
+  mkdir -p $1.app/Contents/MacOS
+  mkdir -p $1.app/Contents/lib
+  mv magnus $1.app/Contents/MacOS/$1
+  cp ~/code/src/github.com/runningwild/glop/gos/darwin/lib/libglop.so lib/darwin/
+  cp lib/darwin/* $1.app/Contents/lib/
+  cp -r data/* $1.app/Contents/
+}
 
-mv magnus magnus.app/Contents/MacOS/magnus
-cp ~/code/src/github.com/runningwild/glop/gos/darwin/lib/libglop.so lib/darwin/
-cp lib/darwin/* magnus.app/Contents/lib/
-cp -r data/* magnus.app/Contents/
-#ls data | awk '{print "scr --src data/" $0 " --dst magnus.app/Contents/" $0}' | bash
-cp -r magnus.app bagnus.app
-mv bagnus.app/Contents/MacOS/magnus bagnus.app/Contents/MacOS/bagnus
+#doBuild 'magnus'
+doBuild 'host'
+doBuild 'client'
 
-#go build .
-#
-#rm -rf bagnus.app
-#mkdir -p bagnus.app/Contents/MacOS
-#mkdir -p bagnus.app/Contents/lib
-#
-#mv magnus bagnus.app/Contents/MacOS/bagnus
-#cp lib/darwin/* bagnus.app/Contents/lib/
-#cp -r data/* bagnus.app/Contents/
+open host.app
+sleep 0.3
+open client.app

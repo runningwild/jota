@@ -2,6 +2,6 @@
 
 package main
 
-func IsHost() bool {
-	return true
+func Version() string {
+	return "host"
 }
