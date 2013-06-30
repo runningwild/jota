@@ -626,8 +626,6 @@ func init() {
 	gob.Register(Turn{})
 }
 
-func (t Turn) ApplyFirst(g interface{}) {}
-func (t Turn) ApplyFinal(g interface{}) {}
 func (t Turn) Apply(_g interface{}) {
 	g := _g.(*Game)
 	_player := g.GetEnt(t.Player_id)
@@ -647,8 +645,6 @@ func init() {
 	gob.Register(Accelerate{})
 }
 
-func (a Accelerate) ApplyFirst(g interface{}) {}
-func (a Accelerate) ApplyFinal(g interface{}) {}
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
 	_player := g.GetEnt(a.Player_id)

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
@@ -29,6 +30,10 @@ type localPlayer struct {
 	active_ability Ability
 }
 
+type localMasterData struct {
+	place linear.Poly
+}
+
 type localData struct {
 	game *Game
 
@@ -54,7 +59,8 @@ type localData struct {
 		texId      gl.Uint
 	}
 
-	sys system.System
+	sys    system.System
+	master localMasterData
 }
 
 var local localData
@@ -194,7 +200,6 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 func (g *Game) renderLocalMaster(region gui.Region) {
 	g.renderLosMask()
 	gl.Disable(gl.TEXTURE_2D)
-	base.Log().Printf("Sys: %v\n", local.sys)
 	mx, my := local.sys.GetCursorPos()
 	mx -= region.X
 	my -= region.Y
@@ -219,6 +224,12 @@ func (g *Game) renderLocalMaster(region gui.Region) {
 		gl.Color4ub(255, 0, 0, 255)
 	} else {
 		gl.Color4ub(255, 255, 255, 255)
+	}
+	local.master.place = linear.Poly{
+		linear.Vec2{x, y},
+		linear.Vec2{x, y + dy},
+		linear.Vec2{x + dx, y + dy},
+		linear.Vec2{x + dx, y},
 	}
 	gl.Begin(gl.LINES)
 	gl.Vertex2i(gl.Int(x), gl.Int(y))
@@ -300,7 +311,26 @@ func axisControl(v float64) float64 {
 	return v
 }
 
-func LocalThink() {
+type PlacePoly struct {
+	Poly linear.Poly
+}
+
+func init() {
+	gob.Register(PlacePoly{})
+}
+
+func (p PlacePoly) Apply(_g interface{}) {
+	g := _g.(*Game)
+	g.Room.Walls = append(g.Room.Walls, p.Poly)
+}
+
+func localThinkMaster() {
+	lmouse := gin.In().GetKey(gin.AnyMouseLButton)
+	if lmouse.FramePressCount() > 0 {
+		local.engine.ApplyEvent(PlacePoly{local.master.place})
+	}
+}
+func localThinkInvaders() {
 	for _, player := range local.players {
 		if player.active_ability != nil {
 			events, die := player.active_ability.Think(player.id, local.game)
@@ -333,6 +363,13 @@ func LocalThink() {
 		if left-right != 0 {
 			local.engine.ApplyEvent(Turn{player.id, (left - right)})
 		}
+	}
+}
+func LocalThink() {
+	if local.isMaster {
+		localThinkMaster()
+	} else {
+		localThinkInvaders()
 	}
 }
 
