@@ -211,6 +211,7 @@ func (p *Player) Draw(game *Game) {
 		return
 	}
 	var t *texture.Data
+	gl.Color4ub(255, 255, 255, 255)
 	if p.Id() == 1 {
 		t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
 	} else if p.Id() == 2 {
@@ -223,6 +224,26 @@ func (p *Player) Draw(game *Game) {
 	for _, proc := range p.Processes {
 		proc.Draw(p.Id(), game)
 	}
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.08)
+	base.SetUniformF("status_bar", "outer", 0.09)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+
+	base.SetUniformF("status_bar", "frac", 1.0)
+	gl.Color4ub(125, 125, 125, 100)
+	texture.Render(p.X-100, p.Y-100, 200, 200)
+
+	health_frac := float32(p.Stats.HealthCur() / p.Stats.HealthMax())
+	if health_frac > 0.5 {
+		color_frac := 1.0 - (health_frac-0.5)*2.0
+		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
+	} else {
+		color_frac := health_frac * 2.0
+		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
+	}
+	base.SetUniformF("status_bar", "frac", health_frac)
+	texture.Render(p.X-100, p.Y-100, 200, 200)
+	base.EnableShader("")
 }
 
 func (p *Player) PreThink(g *Game) {
