@@ -47,6 +47,11 @@ type localData struct {
 		texRawData []uint32
 		texId      gl.Uint
 	}
+	back struct {
+		texData    [][]uint32
+		texRawData []uint32
+		texId      gl.Uint
+	}
 }
 
 var local localData
@@ -85,6 +90,49 @@ func (g *Game) SetEngine(engine *cgf.Engine, isMaster bool) {
 			gl.UNSIGNED_INT,
 			gl.Pointer(&local.los.texRawData[0]))
 	})
+
+	local.back.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
+	local.back.texData = make([][]uint32, LosMaxPlayers)
+	for i := range local.back.texData {
+		start := i * LosResolution
+		end := (i + 1) * LosResolution
+		local.back.texData[i] = local.back.texRawData[start:end]
+	}
+	render.Queue(func() {
+		gl.GenTextures(1, &local.back.texId)
+		gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
+		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	})
+}
+
+// This is just a placeholder for code that copies the backbuffer to a texture
+func (g *Game) copyBackbuffer() {
+	gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
+	gl.CopyTexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		0,
+		0,
+		900,
+		600,
+		0)
+	gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
+	gl.Color4d(1, 1, 1, 1)
+	gl.Begin(gl.QUADS)
+	gl.TexCoord2d(0, 1)
+	gl.Vertex2i(0, 0)
+	gl.TexCoord2d(0, 0)
+	gl.Vertex2i(0, 60*3)
+	gl.TexCoord2d(1, 0)
+	gl.Vertex2i(90*3, 60*3)
+	gl.TexCoord2d(1, 1)
+	gl.Vertex2i(90*3, 0)
+	gl.End()
 }
 
 func (g *Game) RenderLosMask() {
