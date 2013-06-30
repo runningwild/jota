@@ -287,7 +287,11 @@ func (p *Player) Think(g *Game) {
 	p.Vx *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
 	p.Vy *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
 
-	move := linear.MakeSeg2(p.X, p.Y, p.X+p.Vx, p.Y+p.Vy)
+	// We pretend that the player is started from a little behind wherever they
+	// actually are.  This makes it a lot easier to get collisions to make sense
+	// from frame to frame.
+	epsilon := (linear.Vec2{p.Vx, p.Vy}).Norm().Scale(0.1)
+	move := linear.MakeSeg2(p.X-epsilon.X, p.Y-epsilon.Y, p.X+p.Vx, p.Y+p.Vy)
 	size := 12.0
 	px := p.X
 	py := p.Y
