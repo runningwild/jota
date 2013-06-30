@@ -158,20 +158,6 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 			x := options.BoardLeft + float64(col)/float64(options.NumNodeCols-1)*(options.BoardRight-options.BoardLeft)
 			y := options.BoardTop + float64(row)/float64(options.NumNodeRows-1)*(options.BoardBottom-options.BoardTop)
 
-			// all_obstacles[0] corresponds to the outer walls. We do not want to drop mana nodes for
-			// being inside there.
-			insideObstacle := false
-			for i := 1; !insideObstacle && i < len(allObstacles); i++ {
-				if vecInsideConvexPoly(linear.Vec2{x, y}, allObstacles[i]) {
-					insideObstacle = true
-				}
-			}
-			if insideObstacle {
-				ms.nodes[col][row].X = x
-				ms.nodes[col][row].Y = y
-				continue
-			}
-
 			maxWeightByColor := [3]float64{0.0, 0.0, 0.0}
 			for _, seed := range seeds {
 				c := seed.color
