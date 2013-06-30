@@ -197,6 +197,31 @@ func (g *Game) renderLosMask() {
 func (g *Game) renderLocalInvaders(region gui.Region) {
 	g.renderLosMask()
 }
+
+func (g *Game) isPolyPlaceable(poly linear.Poly) bool {
+	// Not placeable it any player can see it
+	for _, ent := range g.Ents {
+		p, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		for i := 0; i < len(poly); i++ {
+			if p.Los.TestSeg(poly.Seg(i)) > 0.0 {
+				return false
+			}
+		}
+	}
+
+	// Not placeable if it intersects with any walls
+	for _, wall := range g.Room.Walls {
+		if linear.ConvexPolysOverlap(poly, wall) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (g *Game) renderLocalMaster(region gui.Region) {
 	g.renderLosMask()
 	gl.Disable(gl.TEXTURE_2D)
@@ -205,41 +230,25 @@ func (g *Game) renderLocalMaster(region gui.Region) {
 	my -= region.Y
 	dx, dy := float64(50), float64(50)
 	x, y := float64(int((float64(mx)-dx/2)/10)*10), float64(int((float64(my)-dy/2)/10)*10)
-	visible := false
-	crosses := []linear.Seg2{
-		linear.Seg2{linear.Vec2{x, y}, linear.Vec2{x + dx, y + dy}},
-		linear.Seg2{linear.Vec2{x + dx, y}, linear.Vec2{x, y + dy}},
-	}
-	for _, ent := range g.Ents {
-		p, ok := ent.(*Player)
-		if !ok {
-			continue
-		}
-		if p.Los.TestSeg(crosses[0]) > 0.0 || p.Los.TestSeg(crosses[1]) > 0.0 {
-			visible = true
-			break
-		}
-	}
-	if visible {
-		gl.Color4ub(255, 0, 0, 255)
-	} else {
-		gl.Color4ub(255, 255, 255, 255)
-	}
-	local.master.place = linear.Poly{
+	poly := linear.Poly{
 		linear.Vec2{x, y},
 		linear.Vec2{x, y + dy},
 		linear.Vec2{x + dx, y + dy},
 		linear.Vec2{x + dx, y},
 	}
+	placeable := g.isPolyPlaceable(poly)
+	if placeable {
+		gl.Color4ub(255, 255, 255, 255)
+	} else {
+		gl.Color4ub(255, 0, 0, 255)
+	}
+	local.master.place = poly
 	gl.Begin(gl.LINES)
-	gl.Vertex2i(gl.Int(x), gl.Int(y))
-	gl.Vertex2i(gl.Int(x), gl.Int(y+dy))
-	gl.Vertex2i(gl.Int(x), gl.Int(y+dy))
-	gl.Vertex2i(gl.Int(x+dx), gl.Int(y+dy))
-	gl.Vertex2i(gl.Int(x+dx), gl.Int(y+dy))
-	gl.Vertex2i(gl.Int(x+dx), gl.Int(y))
-	gl.Vertex2i(gl.Int(x+dx), gl.Int(y))
-	gl.Vertex2i(gl.Int(x), gl.Int(y))
+	for i := range poly {
+		seg := poly.Seg(i)
+		gl.Vertex2i(gl.Int(seg.P.X), gl.Int(seg.P.Y))
+		gl.Vertex2i(gl.Int(seg.Q.X), gl.Int(seg.Q.Y))
+	}
 	gl.End()
 }
 
@@ -321,6 +330,9 @@ func init() {
 
 func (p PlacePoly) Apply(_g interface{}) {
 	g := _g.(*Game)
+	if !g.isPolyPlaceable(p.Poly) {
+		return
+	}
 	g.Room.Walls = append(g.Room.Walls, p.Poly)
 }
 
