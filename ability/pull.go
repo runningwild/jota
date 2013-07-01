@@ -146,7 +146,7 @@ func (p *pullProcess) Think(g *game.Game) {
 		if !ok || target == player {
 			continue
 		}
-		target_pos := linear.Vec2{target.X, target.Y}
+		target_pos := target.Pos()
 		ray := target_pos.Sub(player.Pos())
 		target_angle := ray.Angle() - player.Angle
 		for target_angle < 0 {
@@ -176,7 +176,7 @@ func (p *pullProcess) Draw(player_id int, g *game.Game) {
 	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)
 	v4 := v2.RotateAround(v1, player.Angle+p.Angle/2)
 	gl.Begin(gl.LINES)
-	vs := []linear.Vec2{v3, v4, linear.Vec2{player.X, player.Y}}
+	vs := []linear.Vec2{v3, v4, player.Pos()}
 	for i := range vs {
 		gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
 		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))

@@ -96,7 +96,6 @@ func main() {
 		g.Friction_lava = 0.85
 		g.Room = room
 		var p game.Player
-		p.Color.R = 255
 		err := json.NewDecoder(bytes.NewBuffer([]byte(`
       {
         "Base": {
@@ -117,12 +116,12 @@ func main() {
 		}
 		Nx := 2
 		Ny := 1
-		p.X = float64(g.Dx-Nx)/2 - 200
-		p.Y = float64(g.Dy-Ny)/2 - 200
+		p.Position.X = float64(g.Dx-Nx)/2 - 200
+		p.Position.Y = float64(g.Dy-Ny)/2 - 200
 		for x := 0; x < Nx; x++ {
 			for y := 0; y < Ny; y++ {
-				p.X += float64(x * 25)
-				p.Y += float64(y * 25)
+				p.Position.X += float64(x * 25)
+				p.Position.Y += float64(y * 25)
 				p.Gid++
 				// p.Mass += float64(x+y) * 150
 				p.Processes = make(map[int]game.Process)
@@ -131,15 +130,15 @@ func main() {
 				ids = append(ids, g.AddEnt(&temp))
 
 				// p.Mass -= float64(x+y) * 150
-				p.X -= float64(x * 25)
-				p.Y -= float64(y * 25)
+				p.Position.X -= float64(x * 25)
+				p.Position.Y -= float64(y * 25)
 			}
 		}
-		g.Ents[0].(*game.Player).X = 500
-		g.Ents[0].(*game.Player).Y = 300
+		g.Ents[0].(*game.Player).Position.X = 500
+		g.Ents[0].(*game.Player).Position.Y = 300
 		g.Ents[0].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
-		g.Ents[1].(*game.Player).X = 550
-		g.Ents[1].(*game.Player).Y = 300
+		g.Ents[1].(*game.Player).Position.X = 550
+		g.Ents[1].(*game.Player).Position.Y = 300
 		g.Ents[1].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
 		var pest game.Pest
 		err = json.NewDecoder(bytes.NewBuffer([]byte(`

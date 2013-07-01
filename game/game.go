@@ -14,7 +14,6 @@ import (
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	"math"
 	"path/filepath"
 )
 
@@ -113,31 +112,7 @@ func init() {
 }
 
 type Player struct {
-	Stats  stats.Inst
-	X, Y   float64
-	Vx, Vy float64
-	Angle  float64
-	Delta  struct {
-		Speed float64
-		Angle float64
-	}
-	Color struct {
-		R, G, B byte
-	}
-
-	// Unique Id over all entities ever
-	Gid int
-
-	// If Exile_frames > 0 then the Player is not present in the game right now
-	// and is excluded from all combat/mana/rendering/processing/etc...
-	// Exile_frames is the number of frames remaining that the player is in
-	// exile.
-	Exile_frames int32
-
-	// Processes contains all of the processes that this player is casting
-	// right now.
-	Processes map[int]Process
-
+	BaseEnt
 	Los *los.Los
 }
 
@@ -158,58 +133,7 @@ func init() {
 	gob.Register(&Player{})
 }
 
-func (p *Player) Alive() bool {
-	return p.Stats.HealthCur() > 0
-}
-
-func (p *Player) Exiled() bool {
-	return p.Exile_frames > 0
-}
-
-func (p *Player) ApplyForce(f linear.Vec2) {
-	dv := f.Scale(1 / p.Mass())
-	p.Vx += dv.X
-	p.Vy += dv.Y
-}
-
-func (p *Player) ApplyDamage(d stats.Damage) {
-	p.Stats.ApplyDamage(d)
-}
-
-func (p *Player) Mass() float64 {
-	return p.Stats.Mass()
-}
-
-func (p *Player) Id() int {
-	return p.Gid
-}
-
-func (p *Player) SetId(id int) {
-	p.Gid = id
-}
-
-func (p *Player) Pos() linear.Vec2 {
-	return linear.Vec2{p.X, p.Y}
-}
-
-func (p *Player) Vel() linear.Vec2 {
-	return linear.Vec2{p.Vx, p.Vy}
-}
-
-func (p *Player) SetPos(pos linear.Vec2) {
-	p.X = pos.X
-	p.Y = pos.Y
-}
-
-func (p *Player) SetVel(vel linear.Vec2) {
-	p.X = vel.X
-	p.Y = vel.Y
-}
-
 func (p *Player) Draw(game *Game) {
-	if p.Exiled() {
-		return
-	}
 	var t *texture.Data
 	gl.Color4ub(255, 255, 255, 255)
 	if p.Id() == 1 {
@@ -219,7 +143,13 @@ func (p *Player) Draw(game *Game) {
 	} else {
 		t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
 	}
-	t.RenderAdvanced(p.X-float64(t.Dx())/2, p.Y-float64(t.Dy())/2, float64(t.Dx()), float64(t.Dy()), p.Angle, false)
+	t.RenderAdvanced(
+		p.Position.X-float64(t.Dx())/2,
+		p.Position.Y-float64(t.Dy())/2,
+		float64(t.Dx()),
+		float64(t.Dy()),
+		p.Angle,
+		false)
 
 	for _, proc := range p.Processes {
 		proc.Draw(p.Id(), game)
@@ -231,7 +161,7 @@ func (p *Player) Draw(game *Game) {
 
 	base.SetUniformF("status_bar", "frac", 1.0)
 	gl.Color4ub(125, 125, 125, 100)
-	texture.Render(p.X-100, p.Y-100, 200, 200)
+	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
 
 	health_frac := float32(p.Stats.HealthCur() / p.Stats.HealthMax())
 	if health_frac > 0.5 {
@@ -242,7 +172,7 @@ func (p *Player) Draw(game *Game) {
 		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
 	}
 	base.SetUniformF("status_bar", "frac", health_frac)
-	texture.Render(p.X-100, p.Y-100, 200, 200)
+	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
 	base.EnableShader("")
 }
 
@@ -253,135 +183,13 @@ func (p *Player) PreThink(g *Game) {
 }
 
 func (p *Player) Think(g *Game) {
-	if p.Exile_frames > 0 {
-		p.Exile_frames--
-		return
-	}
-
-	// This will clear out old conditions
-	p.Stats.Think()
-	var dead []int
-	for i, process := range p.Processes {
-		process.Think(g)
-		if process.Phase() == PhaseComplete {
-			dead = append(dead, i)
-		}
-	}
-	for _, i := range dead {
-		delete(p.Processes, i)
-	}
-	// And here we add back in all processes that are still alive.
-	for _, process := range p.Processes {
-		p.Stats.ApplyCondition(process)
-	}
-
-	if p.Delta.Speed > p.Stats.MaxAcc() {
-		p.Delta.Speed = p.Stats.MaxAcc()
-	}
-	if p.Delta.Speed < -p.Stats.MaxAcc() {
-		p.Delta.Speed = -p.Stats.MaxAcc()
-	}
-	if p.Delta.Angle < -p.Stats.MaxTurn() {
-		p.Delta.Angle = -p.Stats.MaxTurn()
-	}
-	if p.Delta.Angle > p.Stats.MaxTurn() {
-		p.Delta.Angle = p.Stats.MaxTurn()
-	}
-
-	in_lava := false
-	for _, lava := range g.Room.Lava {
-		if vecInsideConvexPoly(p.Pos(), lava) {
-			in_lava = true
-		}
-	}
-	if in_lava {
-		p.Stats.ApplyDamage(stats.Damage{stats.DamageFire, 5})
-	}
-
-	p.Vx += p.Delta.Speed * math.Cos(p.Angle)
-	p.Vy += p.Delta.Speed * math.Sin(p.Angle)
-	mangle := math.Atan2(p.Vy, p.Vx)
-	friction := g.Friction
-	if in_lava {
-		friction = g.Friction_lava
-	}
-	p.Vx *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
-	p.Vy *= math.Pow(friction, 1+3*math.Abs(math.Sin(p.Angle-mangle)))
-
-	// We pretend that the player is started from a little behind wherever they
-	// actually are.  This makes it a lot easier to get collisions to make sense
-	// from frame to frame.
-	epsilon := (linear.Vec2{p.Vx, p.Vy}).Norm().Scale(0.1)
-	move := linear.MakeSeg2(p.X-epsilon.X, p.Y-epsilon.Y, p.X+p.Vx, p.Y+p.Vy)
-	size := 12.0
-	px := p.X
-	py := p.Y
-	p.X += p.Vx
-	p.Y += p.Vy
-	for _, poly := range g.Room.Walls {
-		for i := range poly {
-			// First check against the leading vertex
-			{
-				v := poly[i]
-				dist := v.DistToLine(move)
-				if v.Sub(move.Q).Mag() < size {
-					dist = v.Sub(move.Q).Mag()
-					// Add a little extra here otherwise a player can sneak into geometry
-					// through the corners
-					ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
-					final := v.Add(ray)
-					move.Q.X = final.X
-					move.Q.Y = final.Y
-				} else if dist < size {
-					// TODO: This tries to prevent passthrough but has other problems
-					// cross := move.Ray().Cross()
-					// perp := linear.Seg2{v, cross.Sub(v)}
-					// if perp.Left(move.P) != perp.Left(move.Q) {
-					//   shift := perp.Ray().Norm().Scale(size - dist)
-					//   move.Q.X += shift.X
-					//   move.Q.Y += shift.Y
-					// }
-				}
-			}
-
-			// Now check against the segment itself
-			w := poly.Seg(i)
-			if w.Ray().Cross().Dot(move.Ray()) <= 0 {
-				shift := w.Ray().Cross().Norm().Scale(size)
-				col := linear.Seg2{shift.Add(w.P), shift.Add(w.Q)}
-				if move.DoesIsect(col) {
-					cross := col.Ray().Cross()
-					fix := linear.Seg2{move.Q, cross.Add(move.Q)}
-					isect := fix.Isect(col)
-					move.Q.X = isect.X
-					move.Q.Y = isect.Y
-				}
-			}
-		}
-	}
-	p.X = move.Q.X
-	p.Y = move.Q.Y
-	p.Vx = p.X - px
-	p.Vy = p.Y - py
-
-	p.Angle += p.Delta.Angle
-	if p.Angle < 0 {
-		p.Angle += math.Pi * 2
-	}
-	if p.Angle > math.Pi*2 {
-		p.Angle -= math.Pi * 2
-	}
-
-	// Now that we've set our position properly we can do los
+	p.BaseEnt.Think(g)
 	p.Los.Reset(p.Pos())
 	for _, poly := range g.Room.Walls {
 		for i := range poly {
 			p.Los.DrawSeg(poly.Seg(i))
 		}
 	}
-
-	p.Delta.Angle = 0
-	p.Delta.Speed = 0
 }
 
 func (p *Player) Supply(supply Mana) Mana {
@@ -394,7 +202,6 @@ func (p *Player) Supply(supply Mana) Mana {
 type Ent interface {
 	Draw(g *Game)
 	Alive() bool
-	Exiled() bool
 	PreThink(game *Game)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
@@ -513,8 +320,8 @@ func (g *Game) Merge(g2 *Game) {
 		if p2 == nil || !ok {
 			continue
 		}
-		p1.X = frac*p2.X + (1-frac)*p1.X
-		p1.Y = frac*p2.Y + (1-frac)*p1.Y
+		p1.Position.X = frac*p2.Position.X + (1-frac)*p1.Position.X
+		p1.Position.Y = frac*p2.Position.Y + (1-frac)*p1.Position.Y
 		p1.Angle = frac*p2.Angle + (1-frac)*p1.Angle
 	}
 }
@@ -576,8 +383,6 @@ func (g *Game) AddEnt(ent Ent) int {
 	return g.Ents[len(g.Ents)-1].Id()
 }
 
-func (g *Game) ThinkFirst() {}
-func (g *Game) ThinkFinal() {}
 func (g *Game) Think() {
 	g.GameThinks++
 
@@ -603,7 +408,7 @@ func (g *Game) Think() {
 	moved := make(map[int]bool)
 	for i := range g.Ents {
 		for j := range g.Ents {
-			if i == j || g.Ents[i].Exiled() || g.Ents[j].Exiled() {
+			if i == j {
 				continue
 			}
 			dist := g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Mag()

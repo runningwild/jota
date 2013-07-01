@@ -165,8 +165,8 @@ func (p *burstProcess) Draw(player_id int, g *game.Game) {
 	gl.Color4ub(255, 255, 255, 255)
 	radius := 40.0
 	texture.Render(
-		player.X-radius,
-		player.Y-radius,
+		player.Position.X-radius,
+		player.Position.Y-radius,
 		2*radius,
 		2*radius)
 	base.EnableShader("")
