@@ -273,12 +273,13 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.Pointer(&gw.nodeTextureData[0]))
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	for i, ent := range gw.game.Ents {
-		p := ent.Pos()
-		gw.nodeWarpingData[3*i+0] = byte(p.X / float64(gw.game.Dx) * 255)
-		gw.nodeWarpingData[3*i+1] = -byte(p.Y / float64(gw.game.Dy) * 255)
-		gw.nodeWarpingData[3*i+2] = 255
-	}
+	// TODO: Should probably extricate nodeWarpingData entirely
+	// for i, ent := range gw.game.Ents {
+	// 	p := ent.Pos()
+	// 	gw.nodeWarpingData[3*i+0] = byte(p.X / float64(gw.game.Dx) * 255)
+	// 	gw.nodeWarpingData[3*i+1] = -byte(p.Y / float64(gw.game.Dy) * 255)
+	// 	gw.nodeWarpingData[3*i+2] = 255
+	// }
 	gl.TexImage1D(
 		gl.TEXTURE_1D,
 		0,

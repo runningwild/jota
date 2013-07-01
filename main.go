@@ -11,6 +11,7 @@ import (
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
+	"github.com/runningwild/linear"
 	"time"
 	// "math"
 	"github.com/runningwild/cgf"
@@ -145,19 +146,24 @@ func main() {
       {
         "Base": {
           "Mass": 100,
-          "Health": 100
+          "Health": 300
         },
         "Dynamic": {
-          "Health": 100
+          "Health": 300
         }
       }
     `))).Decode(&pest.Stats)
 		if err != nil {
 			panic(err)
 		}
-		pest.P.X = 500
-		pest.P.Y = 400
-		g.Ents = append(g.Ents, &pest)
+		for x := 400.0; x <= 650; x += 20 {
+			for y := 100.0; y <= 300; y += 400 {
+				pest.SetPos(linear.Vec2{x, y})
+				base.Log().Printf("Appending: %v\n", pest)
+				p := pest
+				g.Ents = append(g.Ents, &p)
+			}
+		}
 		g.SetLocalData(sys)
 		d := sys.GetActiveDevices()
 		n := 0

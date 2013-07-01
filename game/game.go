@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/gob"
+	"runtime/debug"
 	//"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
@@ -216,6 +217,10 @@ type Ent interface {
 	Supply(mana Mana) Mana
 	Copy() Ent
 }
+
+type NonManaUser struct{}
+
+func (NonManaUser) Supply(mana Mana) Mana { return mana }
 
 type Game struct {
 	ManaSource ManaSource
@@ -525,6 +530,14 @@ func (g *Game) Region() gui.Region {
 }
 
 func (gw *GameWindow) Draw(region gui.Region) {
+	base.Log().Printf("In")
+	defer func() {
+		if r := recover(); r != nil {
+			base.Log().Printf("R: %v", r)
+			base.Log().Printf("Stack:\n%s", debug.Stack())
+			panic(r)
+		}
+	}()
 	gw.region = region
 	latest_region = region
 	gl.PushMatrix()

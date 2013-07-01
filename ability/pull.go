@@ -141,12 +141,11 @@ func (p *pullProcess) Think(g *game.Game) {
 	player := _player.(*game.Player)
 
 	base_force := p.Force * p.supplied / p.required
-	for _, _target := range g.Ents {
-		target, ok := _target.(*game.Player)
-		if !ok || target == player {
+	for _, ent := range g.Ents {
+		if ent == game.Ent(player) {
 			continue
 		}
-		target_pos := target.Pos()
+		target_pos := ent.Pos()
 		ray := target_pos.Sub(player.Pos())
 		target_angle := ray.Angle() - player.Angle
 		for target_angle < 0 {
@@ -158,11 +157,11 @@ func (p *pullProcess) Think(g *game.Game) {
 		if target_angle > p.Angle/2 && target_angle < math.Pi*2-p.Angle/2 {
 			continue
 		}
-		ray = player.Pos().Sub(target.Pos())
+		ray = player.Pos().Sub(ent.Pos())
 		// dist := ray.Mag()
 		ray = ray.Norm()
 		force := base_force // / math.Pow(dist, p.Angle/(2*math.Pi))
-		target.ApplyForce(ray.Scale(-force))
+		ent.ApplyForce(ray.Scale(-force))
 		player.ApplyForce(ray.Scale(force))
 	}
 }
