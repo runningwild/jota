@@ -141,11 +141,27 @@ func main() {
 		g.Ents[1].(*game.Player).X = 550
 		g.Ents[1].(*game.Player).Y = 300
 		g.Ents[1].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
+		var pest game.Pest
+		err = json.NewDecoder(bytes.NewBuffer([]byte(`
+      {
+        "Base": {
+          "Mass": 100,
+          "Health": 100
+        },
+        "Dynamic": {
+          "Health": 100
+        }
+      }
+    `))).Decode(&pest.Stats)
+		if err != nil {
+			panic(err)
+		}
+		pest.P.X = 500
+		pest.P.Y = 400
+		g.Ents = append(g.Ents, &pest)
 		g.SetLocalData(sys)
 		d := sys.GetActiveDevices()
-		base.Log().Printf("%v\n", d)
 		n := 0
-		base.Log().Printf("%v\n", d[gin.DeviceTypeController])
 		for _, index := range d[gin.DeviceTypeController] {
 			// panic("ASD")
 			g.SetLocalPlayer(g.Ents[n].(*game.Player), index)

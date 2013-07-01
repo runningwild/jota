@@ -538,13 +538,8 @@ func (g *Game) Copy() interface{} {
 	g2.Ents = make([]Ent, len(g.Ents))
 	g2.Ents = g2.Ents[0:0]
 	for _, ent := range g.Ents {
-		switch e := ent.(type) {
-		case *Player:
-			p := *e
-			g2.Ents = append(g2.Ents, &p)
-		}
+		g2.Ents = append(g2.Ents, ent.Copy())
 	}
-
 	return &g2
 }
 
@@ -561,11 +556,7 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 
 	g.Ents = g.Ents[0:0]
 	for _, ent := range g2.Ents {
-		switch e := ent.(type) {
-		case *Player:
-			p := e.Copy()
-			g.Ents = append(g.Ents, p)
-		}
+		g.Ents = append(g.Ents, ent.Copy())
 	}
 }
 
@@ -767,7 +758,6 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		if !ok {
 			continue
 		}
-		// p.Los.Render()
 		p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 		losCount++
 	}
