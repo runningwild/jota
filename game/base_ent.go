@@ -115,7 +115,10 @@ func (b *BaseEnt) Think(g *Game) {
 	// We pretend that the player is started from a little behind wherever they
 	// actually are.  This makes it a lot easier to get collisions to make sense
 	// from frame to frame.
-	epsilon := b.Velocity.Norm().Scale(0.1)
+	var epsilon linear.Vec2
+	if b.Velocity.Mag2() > 0 {
+		epsilon = b.Velocity.Norm().Scale(0.1)
+	}
 	move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
 	size := 12.0
 	prev := b.Position

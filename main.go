@@ -156,10 +156,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for x := 400.0; x <= 650; x += 20 {
-			for y := 100.0; y <= 300; y += 400 {
+		for x := 400.0; x <= 650; x += 10 {
+			for y := 100.0; y <= 150; y += 50 {
 				pest.SetPos(linear.Vec2{x, y})
-				base.Log().Printf("Appending: %v\n", pest)
 				p := pest
 				g.Ents = append(g.Ents, &p)
 			}

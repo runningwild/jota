@@ -323,6 +323,10 @@ type playerThinkData struct {
 	drain Mana
 }
 
+func (p playerThinkData) isValid() bool {
+	return p.minX != -1 && p.maxX != -1 && p.minY != -1 && p.maxY != -1
+}
+
 type thinkData struct {
 	nodeThinkData    [][]nodeThinkData
 	rawNodeThinkData []nodeThinkData // Underlying array for nodeThinkData
@@ -431,6 +435,9 @@ func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
 	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
 	for i, player := range players {
 		playerThinkData := &td.playerThinkData[i]
+		if !playerThinkData.isValid() {
+			continue
+		}
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
 				node := &ms.nodes[x][y]
@@ -458,6 +465,9 @@ func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
 func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 	for i := range td.playerThinkData {
 		playerThinkData := &td.playerThinkData[i]
+		if !playerThinkData.isValid() {
+			continue
+		}
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
 				node := &ms.nodes[x][y]
@@ -480,6 +490,9 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 func (ms *ManaSource) supplyPlayers(td *thinkData, players []Ent) {
 	for i, player := range players {
 		playerThinkData := &td.playerThinkData[i]
+		if !playerThinkData.isValid() {
+			continue
+		}
 		drainUsed := player.Supply(playerThinkData.drain)
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {

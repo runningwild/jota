@@ -389,6 +389,20 @@ func (g *Game) AddEnt(ent Ent) int {
 }
 
 func (g *Game) Think() {
+	defer func() {
+		if r := recover(); r != nil {
+			base.Error().Printf("Panic: %v", r)
+			base.Error().Printf("Stack:\n%s", debug.Stack())
+			panic(r)
+		}
+	}()
+	for i := range g.Ents {
+		p, ok := g.Ents[i].(*Player)
+		if !ok {
+			continue
+		}
+		base.Log().Printf("Player: %v", p.Pos())
+	}
 	g.GameThinks++
 
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
@@ -530,11 +544,10 @@ func (g *Game) Region() gui.Region {
 }
 
 func (gw *GameWindow) Draw(region gui.Region) {
-	base.Log().Printf("In")
 	defer func() {
 		if r := recover(); r != nil {
-			base.Log().Printf("R: %v", r)
-			base.Log().Printf("Stack:\n%s", debug.Stack())
+			base.Error().Printf("Panic: %v", r)
+			base.Error().Printf("Stack:\n%s", debug.Stack())
 			panic(r)
 		}
 	}()
