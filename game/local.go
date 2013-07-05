@@ -30,7 +30,7 @@ type localPlayer struct {
 	active_ability Ability
 }
 
-type localMasterData struct {
+type localArchitectData struct {
 	place linear.Poly
 }
 
@@ -40,8 +40,8 @@ type localData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
-	// true iff this is the computer playing the master side of the game
-	isMaster bool
+	// true iff this is the computer playing the architect side of the game
+	isArchitect bool
 
 	// All of the players controlled by humans on localhost.
 	players []*localPlayer
@@ -57,22 +57,22 @@ type localData struct {
 		texId      gl.Uint
 	}
 
-	sys    system.System
-	master localMasterData
+	sys       system.System
+	architect localArchitectData
 }
 
 var local localData
 
-func IsMaster() bool {
-	return local.isMaster
+func IsArchitect() bool {
+	return local.isArchitect
 }
 
-func SetLocalEngine(engine *cgf.Engine, sys system.System, isMaster bool) {
+func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	if local.engine != nil {
 		panic("Engine has already been set.")
 	}
 	local.engine = engine
-	local.isMaster = isMaster
+	local.isArchitect = isArchitect
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
 
@@ -168,10 +168,10 @@ func (g *Game) renderLosMask() {
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", LosResolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-	if local.isMaster {
-		base.SetUniformI("los", "master", 1)
+	if local.isArchitect {
+		base.SetUniformI("los", "architect", 1)
 	} else {
-		base.SetUniformI("los", "master", 0)
+		base.SetUniformI("los", "architect", 0)
 	}
 	var playerPos []linear.Vec2
 	for i := range g.Ents {
@@ -225,7 +225,7 @@ func (g *Game) isPolyPlaceable(poly linear.Poly) bool {
 	return true
 }
 
-func (g *Game) renderLocalMaster(region gui.Region) {
+func (g *Game) renderLocalArchitect(region gui.Region) {
 	g.renderLosMask()
 	gl.Disable(gl.TEXTURE_2D)
 	mx, my := local.sys.GetCursorPos()
@@ -245,7 +245,7 @@ func (g *Game) renderLocalMaster(region gui.Region) {
 	} else {
 		gl.Color4ub(255, 0, 0, 255)
 	}
-	local.master.place = poly
+	local.architect.place = poly
 	gl.Begin(gl.LINES)
 	for i := range poly {
 		seg := poly.Seg(i)
@@ -259,8 +259,8 @@ func (g *Game) renderLocalMaster(region gui.Region) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region gui.Region) {
-	if local.isMaster {
-		g.renderLocalMaster(region)
+	if local.isArchitect {
+		g.renderLocalArchitect(region)
 	} else {
 		g.renderLocalInvaders(region)
 	}
@@ -334,7 +334,7 @@ func (p PlacePoly) Apply(_g interface{}) {
 	g.Room.Walls = append(g.Room.Walls, p.Poly)
 }
 
-func localThinkMaster() {
+func localThinkArchitect() {
 	lmouse := gin.In().GetKey(gin.AnyMouseLButton)
 	if lmouse.FramePressCount() > 0 {
 		local.engine.ApplyEvent(PlacePoly{local.master.place})
@@ -376,8 +376,8 @@ func localThinkInvaders() {
 	}
 }
 func LocalThink() {
-	if local.isMaster {
-		localThinkMaster()
+	if local.isArchitect {
+		localThinkArchitect()
 	} else {
 		localThinkInvaders()
 	}

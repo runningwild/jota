@@ -179,7 +179,7 @@ func main() {
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
-	if game.IsMaster() {
+	if game.IsArchitect() {
 
 	} else {
 		d := sys.GetActiveDevices()

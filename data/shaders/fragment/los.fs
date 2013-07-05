@@ -2,7 +2,7 @@ uniform float losMaxDist;
 uniform float losResolution;
 uniform float losMaxPlayers;
 uniform int losNumPlayers;
-uniform int master;
+uniform int architect;
 uniform float dx;
 uniform float dy;
 uniform sampler2D tex0;
@@ -37,7 +37,7 @@ void main(void) {
       }
     }
   }
-  if (master == 1) {
+  if (architect == 1) {
     gl_FragColor = vec4(1.0, 0.0, 0.0, (1.0 - best) / 2.0);
   } else {
     gl_FragColor = vec4(0.0, 0.0, 0.0, best);
