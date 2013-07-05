@@ -35,8 +35,6 @@ type localMasterData struct {
 }
 
 type localData struct {
-	game *Game
-
 	region gui.Region
 
 	// The engine running this game, so that the game can apply events to itself.
@@ -65,13 +63,18 @@ type localData struct {
 
 var local localData
 
-func (g *Game) SetEngine(engine *cgf.Engine, isMaster bool) {
+func IsMaster() bool {
+	return local.isMaster
+}
+
+func SetLocalEngine(engine *cgf.Engine, sys system.System, isMaster bool) {
 	if local.engine != nil {
 		panic("Engine has already been set.")
 	}
 	local.engine = engine
 	local.isMaster = isMaster
-	gin.In().RegisterEventListener(&gameResponderWrapper{g})
+	local.sys = sys
+	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
 
 	local.los.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
 	local.los.texData = make([][]uint32, LosMaxPlayers)
@@ -263,12 +266,7 @@ func (g *Game) RenderLocal(region gui.Region) {
 	}
 }
 
-func (g *Game) SetLocalData(sys system.System) {
-	local.game = g
-	local.sys = sys
-}
-
-func (g *Game) SetLocalPlayer(player *Player, index gin.DeviceIndex) {
+func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	var lp localPlayer
 	lp.id = player.Id()
 	lp.device_index = index
@@ -288,13 +286,13 @@ func (g *Game) SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	local.players = append(local.players, &lp)
 }
 
-func (g *Game) ActivateAbility(player *localPlayer, n int) {
+func (l *localData) activateAbility(player *localPlayer, n int) {
 	active_ability := player.active_ability
 	player.active_ability = nil
 	if active_ability != nil {
 		events := active_ability.Deactivate(player.id)
 		for _, event := range events {
-			local.engine.ApplyEvent(event)
+			l.engine.ApplyEvent(event)
 		}
 		if active_ability == player.abilities[n] {
 			return
@@ -302,7 +300,7 @@ func (g *Game) ActivateAbility(player *localPlayer, n int) {
 	}
 	events, active := player.abilities[n].Activate(player.id)
 	for _, event := range events {
-		local.engine.ApplyEvent(event)
+		l.engine.ApplyEvent(event)
 	}
 	if active {
 		player.active_ability = player.abilities[n]
@@ -345,7 +343,7 @@ func localThinkMaster() {
 func localThinkInvaders() {
 	for _, player := range local.players {
 		if player.active_ability != nil {
-			events, die := player.active_ability.Think(player.id, local.game)
+			events, die := player.active_ability.Think(player.id, nil)
 			for _, event := range events {
 				local.engine.ApplyEvent(event)
 			}
@@ -385,16 +383,16 @@ func LocalThink() {
 	}
 }
 
-func (g *Game) HandleEventGroup(group gin.EventGroup) {
+func (l *localData) HandleEventGroup(group gin.EventGroup) {
 	for _, player := range local.players {
 		k0 := gin.In().GetKeyFlat(gin.KeyZ, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k1 := gin.In().GetKeyFlat(gin.KeyX, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
-			g.ActivateAbility(player, 0)
+			l.activateAbility(player, 0)
 			return
 		}
 		if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
-			g.ActivateAbility(player, 1)
+			l.activateAbility(player, 1)
 			return
 		}
 		if player.active_ability != nil {

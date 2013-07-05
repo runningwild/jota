@@ -163,40 +163,39 @@ func main() {
 				g.Ents = append(g.Ents, &p)
 			}
 		}
-		g.SetLocalData(sys)
-		d := sys.GetActiveDevices()
-		n := 0
-		for _, index := range d[gin.DeviceTypeController] {
-			// panic("ASD")
-			g.SetLocalPlayer(g.Ents[n].(*game.Player), index)
-			n++
-			if n > 2 {
-				break
-			}
-		}
-		if len(d[gin.DeviceTypeController]) == 0 {
-			g.SetLocalPlayer(g.Ents[0].(*game.Player), 0)
-		}
-		// g.Ents[0], g.Ents[(N*N)/2+(1-N%2)*N/2] = g.Ents[(N*N)/2+(1-N%2)*N/2], g.Ents[0]
 		g.Init()
-		// engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
 		engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
 		if err != nil {
 			panic(err.Error())
 		}
-		g.SetEngine(engine, false)
+		game.SetLocalEngine(engine, sys, true)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			panic(err.Error())
 		}
-		engine.CopyState().(*game.Game).SetLocalData(sys)
-		engine.CopyState().(*game.Game).SetEngine(engine, true)
+		game.SetLocalEngine(engine, sys, false)
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
+	if game.IsMaster() {
 
+	} else {
+		d := sys.GetActiveDevices()
+		n := 0
+		g := engine.CopyState().(*game.Game)
+		for _, index := range d[gin.DeviceTypeController] {
+			game.SetLocalPlayer(g.Ents[n].(*game.Player), index)
+			n++
+			if n > 2 {
+				break
+			}
+		}
+		if len(d[gin.DeviceTypeController]) == 0 {
+			game.SetLocalPlayer(g.Ents[0].(*game.Player), 0)
+		}
+	}
 	anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
 	ui.AddChild(anchor)
 	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})

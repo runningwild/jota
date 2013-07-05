@@ -270,11 +270,11 @@ func init() {
 }
 
 type gameResponderWrapper struct {
-	g *Game
+	l *localData
 }
 
 func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
-	grw.g.HandleEventGroup(group)
+	grw.l.HandleEventGroup(group)
 }
 
 func (grw *gameResponderWrapper) Think(int64) {}
