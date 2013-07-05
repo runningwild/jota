@@ -42,7 +42,7 @@ type localArchitectData struct {
 }
 
 type localData struct {
-	region gui.Region
+	regionPos linear.Vec2
 
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
@@ -210,8 +210,8 @@ func (g *Game) renderLosMask() {
 func (g *Game) renderLocalInvaders(region gui.Region) {
 	g.renderLosMask()
 	for _, p := range local.players {
-		for _, a := range p.abs.abilities {
-			a.Draw(p.id, g)
+		if p.abs.activeAbility != nil {
+			p.abs.activeAbility.Draw(p.id, g)
 		}
 	}
 }
@@ -242,8 +242,8 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 
 func (g *Game) renderLocalArchitect(region gui.Region) {
 	g.renderLosMask()
-	for _, a := range local.architect.abs.abilities {
-		a.Draw(0, g)
+	if local.architect.abs.activeAbility != nil {
+		local.architect.abs.activeAbility.Draw(0, g)
 	}
 	return
 	gl.Disable(gl.TEXTURE_2D)
@@ -278,6 +278,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region gui.Region) {
+	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	if local.isArchitect {
 		g.renderLocalArchitect(region)
 	} else {
@@ -326,6 +327,24 @@ func (l *localData) activateAbility(abs *personalAbilities, id int, n int) {
 		base.Log().Printf("Setting active ability to %v", abs.activeAbility)
 	}
 }
+func (l *localData) thinkAbility(g *Game, abs *personalAbilities, id int) {
+	if abs.activeAbility == nil {
+		return
+	}
+	mx, my := local.sys.GetCursorPos()
+	mouse := linear.Vec2{float64(mx), float64(my)}
+	events, die := abs.activeAbility.Think(id, g, mouse.Sub(l.regionPos))
+	for _, event := range events {
+		local.engine.ApplyEvent(event)
+	}
+	if die {
+		more_events := abs.activeAbility.Deactivate(id)
+		abs.activeAbility = nil
+		for _, event := range more_events {
+			local.engine.ApplyEvent(event)
+		}
+	}
+}
 
 func axisControl(v float64) float64 {
 	floor := 0.1
@@ -353,29 +372,12 @@ func (p PlacePoly) Apply(_g interface{}) {
 	g.Room.Walls = append(g.Room.Walls, p.Poly)
 }
 
-func localThinkArchitect() {
-	// lmouse := gin.In().GetKey(gin.AnyMouseLButton)
-	// if lmouse.FramePressCount() > 0 {
-	// 	local.engine.ApplyEvent(PlacePoly{local.architect.place})
-	// }
+func localThinkArchitect(g *Game) {
+	local.thinkAbility(g, &local.architect.abs, 0)
 }
-func localThinkInvaders() {
-	mx, my := local.sys.GetCursorPos()
-	mouse := linear.Vec2{float64(mx), float64(my)}
+func localThinkInvaders(g *Game) {
 	for _, player := range local.players {
-		if player.abs.activeAbility != nil {
-			events, die := player.abs.activeAbility.Think(player.id, nil, mouse)
-			for _, event := range events {
-				local.engine.ApplyEvent(event)
-			}
-			if die {
-				more_events := player.abs.activeAbility.Deactivate(player.id)
-				player.abs.activeAbility = nil
-				for _, event := range more_events {
-					local.engine.ApplyEvent(event)
-				}
-			}
-		}
+		local.thinkAbility(g, &player.abs, player.id)
 		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.deviceIndex)
 		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.deviceIndex)
 		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.deviceIndex)
@@ -396,16 +398,21 @@ func localThinkInvaders() {
 		}
 	}
 }
-func LocalThink() {
+func localThink(g *Game) {
 	if local.isArchitect {
-		localThinkArchitect()
+		localThinkArchitect(g)
 	} else {
-		localThinkInvaders()
+		localThinkInvaders(g)
 	}
 }
 
 func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
-
+	if found, event := group.FindEvent(gin.AnyKeyA); found && event.Type == gin.Press {
+		l.activateAbility(&l.architect.abs, 0, 0)
+	}
+	if l.architect.abs.activeAbility != nil {
+		l.architect.abs.activeAbility.Respond(0, group)
+	}
 }
 
 func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {

@@ -398,13 +398,6 @@ func (g *Game) Think() {
 			panic(r)
 		}
 	}()
-	for i := range g.Ents {
-		p, ok := g.Ents[i].(*Player)
-		if !ok {
-			continue
-		}
-		base.Log().Printf("Player: %v", p.Pos())
-	}
 	g.GameThinks++
 
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
@@ -448,6 +441,9 @@ func (g *Game) Think() {
 			moved[i] = true
 		}
 	}
+
+	// This must always be the very last thing
+	localThink(g)
 }
 
 func clamp(v, low, high float64) float64 {

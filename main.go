@@ -215,7 +215,6 @@ func main() {
 			sys.SwapBuffers()
 		})
 		render.Purge()
-		game.LocalThink()
 
 		// TODO: Replace the 'P' key with an appropriate keybind
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {

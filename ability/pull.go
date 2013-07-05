@@ -2,12 +2,9 @@ package ability
 
 import (
 	"encoding/gob"
-	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
-	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -181,9 +178,4 @@ func (p *pullProcess) Draw(player_id int, g *game.Game) {
 		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
 	}
 	gl.End()
-	s := fmt.Sprintf("%.2f", p.supplied)
-	base.Log().Printf("'%s'", s)
-	if true {
-		base.GetDictionary("luxisr").RenderString(s, 10, 10, 0, 50, gin.Left)
-	}
 }
