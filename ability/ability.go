@@ -3,6 +3,7 @@ package ability
 import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
+	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
 )
@@ -19,7 +20,7 @@ func (neverActive) Deactivate(player_id int) []cgf.Event { return nil }
 
 type nonThinker struct{}
 
-func (nonThinker) Think(player_id int, game *game.Game) ([]cgf.Event, bool) { return nil, false }
+func (nonThinker) Think(int, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
 
 type nonRendering struct{}
 

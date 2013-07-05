@@ -1,4 +1,4 @@
-// +build magnus
+// +build !client,!host
 
 package main
 

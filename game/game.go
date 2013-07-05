@@ -38,7 +38,7 @@ type Ability interface {
 	// Returns any number of events to apply, as well as a bool that is true iff
 	// this Ability should be deactivated.  Typically this will include an event
 	// that will add a Process to this player.
-	Think(player_id int, game *Game) ([]cgf.Event, bool)
+	Think(player_id int, game *Game, mouse linear.Vec2) ([]cgf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
 	Draw(player_id int, game *Game)
@@ -241,6 +241,8 @@ type Game struct {
 	Ents []Ent
 
 	GameThinks int
+
+	Architect architectData
 }
 
 func (g *Game) Init() {
@@ -412,6 +414,7 @@ func (g *Game) Think() {
 	}
 
 	g.ManaSource.Think(g.Ents)
+	g.Architect.Think(g)
 
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
@@ -598,12 +601,5 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		ent.Draw(gw.game)
 	}
 	gl.Disable(gl.TEXTURE_2D)
-
-	for _, player := range local.players {
-		if player.active_ability != nil {
-			player.active_ability.Draw(player.id, gw.game)
-		}
-	}
-	// base.GetDictionary("luxisr").RenderString("monkeys!!!", 10, 10, 0, float64(gw.game.Game_thinks), gin.Left)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

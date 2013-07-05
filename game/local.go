@@ -16,21 +16,28 @@ const LosResolution = 2048 * 2
 const LosMaxPlayers = 2
 const LosMaxDist = 1000
 
+type personalAbilities struct {
+	// All of the abilities that this player can activate.
+	abilities []Ability
+
+	// This player's active ability, if any.
+	activeAbility Ability
+}
+
 type localPlayer struct {
 	// This player's id
 	id int
 
 	// The device controlling this player.
-	device_index gin.DeviceIndex
+	deviceIndex gin.DeviceIndex
 
-	// All of the abilities that this player can activate.
-	abilities []Ability
-
-	// This player's active ability, if any.
-	active_ability Ability
+	abs personalAbilities
 }
 
 type localArchitectData struct {
+	abs personalAbilities
+
+	//DEPRECATED:
 	place linear.Poly
 }
 
@@ -73,6 +80,9 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	}
 	local.engine = engine
 	local.isArchitect = isArchitect
+	if isArchitect {
+		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["placePoly"](nil))
+	}
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
 
@@ -199,9 +209,14 @@ func (g *Game) renderLosMask() {
 
 func (g *Game) renderLocalInvaders(region gui.Region) {
 	g.renderLosMask()
+	for _, p := range local.players {
+		for _, a := range p.abs.abilities {
+			a.Draw(p.id, g)
+		}
+	}
 }
 
-func (g *Game) isPolyPlaceable(poly linear.Poly) bool {
+func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	// Not placeable it any player can see it
 	for _, ent := range g.Ents {
 		p, ok := ent.(*Player)
@@ -227,6 +242,10 @@ func (g *Game) isPolyPlaceable(poly linear.Poly) bool {
 
 func (g *Game) renderLocalArchitect(region gui.Region) {
 	g.renderLosMask()
+	for _, a := range local.architect.abs.abilities {
+		a.Draw(0, g)
+	}
+	return
 	gl.Disable(gl.TEXTURE_2D)
 	mx, my := local.sys.GetCursorPos()
 	mx -= region.X
@@ -239,7 +258,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 		linear.Vec2{x + dx, y + dy},
 		linear.Vec2{x + dx, y},
 	}
-	placeable := g.isPolyPlaceable(poly)
+	placeable := g.IsPolyPlaceable(poly)
 	if placeable {
 		gl.Color4ub(255, 255, 255, 255)
 	} else {
@@ -269,15 +288,15 @@ func (g *Game) RenderLocal(region gui.Region) {
 func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	var lp localPlayer
 	lp.id = player.Id()
-	lp.device_index = index
-	lp.abilities = append(
-		lp.abilities,
+	lp.deviceIndex = index
+	lp.abs.abilities = append(
+		lp.abs.abilities,
 		ability_makers["burst"](map[string]int{
 			"frames": 2,
 			"force":  200000,
 		}))
-	lp.abilities = append(
-		lp.abilities,
+	lp.abs.abilities = append(
+		lp.abs.abilities,
 		ability_makers["pull"](map[string]int{
 			"frames": 10,
 			"force":  250,
@@ -286,25 +305,25 @@ func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	local.players = append(local.players, &lp)
 }
 
-func (l *localData) activateAbility(player *localPlayer, n int) {
-	active_ability := player.active_ability
-	player.active_ability = nil
-	if active_ability != nil {
-		events := active_ability.Deactivate(player.id)
+func (l *localData) activateAbility(abs *personalAbilities, id int, n int) {
+	activeAbility := abs.activeAbility
+	abs.activeAbility = nil
+	if activeAbility != nil {
+		events := activeAbility.Deactivate(id)
 		for _, event := range events {
 			l.engine.ApplyEvent(event)
 		}
-		if active_ability == player.abilities[n] {
+		if activeAbility == abs.abilities[n] {
 			return
 		}
 	}
-	events, active := player.abilities[n].Activate(player.id)
+	events, active := abs.abilities[n].Activate(id)
 	for _, event := range events {
 		l.engine.ApplyEvent(event)
 	}
 	if active {
-		player.active_ability = player.abilities[n]
-		base.Log().Printf("Setting active ability to %v", player.active_ability)
+		abs.activeAbility = abs.abilities[n]
+		base.Log().Printf("Setting active ability to %v", abs.activeAbility)
 	}
 }
 
@@ -328,37 +347,39 @@ func init() {
 
 func (p PlacePoly) Apply(_g interface{}) {
 	g := _g.(*Game)
-	if !g.isPolyPlaceable(p.Poly) {
+	if !g.IsPolyPlaceable(p.Poly) {
 		return
 	}
 	g.Room.Walls = append(g.Room.Walls, p.Poly)
 }
 
 func localThinkArchitect() {
-	lmouse := gin.In().GetKey(gin.AnyMouseLButton)
-	if lmouse.FramePressCount() > 0 {
-		local.engine.ApplyEvent(PlacePoly{local.master.place})
-	}
+	// lmouse := gin.In().GetKey(gin.AnyMouseLButton)
+	// if lmouse.FramePressCount() > 0 {
+	// 	local.engine.ApplyEvent(PlacePoly{local.architect.place})
+	// }
 }
 func localThinkInvaders() {
+	mx, my := local.sys.GetCursorPos()
+	mouse := linear.Vec2{float64(mx), float64(my)}
 	for _, player := range local.players {
-		if player.active_ability != nil {
-			events, die := player.active_ability.Think(player.id, nil)
+		if player.abs.activeAbility != nil {
+			events, die := player.abs.activeAbility.Think(player.id, nil, mouse)
 			for _, event := range events {
 				local.engine.ApplyEvent(event)
 			}
 			if die {
-				more_events := player.active_ability.Deactivate(player.id)
-				player.active_ability = nil
+				more_events := player.abs.activeAbility.Deactivate(player.id)
+				player.abs.activeAbility = nil
 				for _, event := range more_events {
 					local.engine.ApplyEvent(event)
 				}
 			}
 		}
-		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.device_index)
-		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.device_index)
-		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.device_index)
-		left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, player.device_index)
+		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.deviceIndex)
+		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.deviceIndex)
+		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.deviceIndex)
+		left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, player.deviceIndex)
 		down_axis = gin.In().GetKeyFlat(gin.KeyS, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		up_axis = gin.In().GetKeyFlat(gin.KeyW, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		right_axis = gin.In().GetKeyFlat(gin.KeyD, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
@@ -383,22 +404,34 @@ func LocalThink() {
 	}
 }
 
-func (l *localData) HandleEventGroup(group gin.EventGroup) {
+func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
+
+}
+
+func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
 	for _, player := range local.players {
 		k0 := gin.In().GetKeyFlat(gin.KeyZ, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k1 := gin.In().GetKeyFlat(gin.KeyX, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
-			l.activateAbility(player, 0)
+			l.activateAbility(&player.abs, player.id, 0)
 			return
 		}
 		if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
-			l.activateAbility(player, 1)
+			l.activateAbility(&player.abs, player.id, 1)
 			return
 		}
-		if player.active_ability != nil {
-			if player.active_ability.Respond(player.id, group) {
+		if player.abs.activeAbility != nil {
+			if player.abs.activeAbility.Respond(player.id, group) {
 				return
 			}
 		}
+	}
+}
+
+func (l *localData) HandleEventGroup(group gin.EventGroup) {
+	if l.isArchitect {
+		l.handleEventGroupArchitect(group)
+	} else {
+		l.handleEventGroupInvaders(group)
 	}
 }
