@@ -81,6 +81,7 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	local.isArchitect = isArchitect
 	if isArchitect {
 		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["placePoly"](nil))
+		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["removePoly"](nil))
 	}
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
@@ -405,6 +406,9 @@ func localThink(g *Game) {
 func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
 		l.activateAbility(&l.architect.abs, 0, 0)
+	}
+	if found, event := group.FindEvent(gin.AnyKey2); found && event.Type == gin.Press {
+		l.activateAbility(&l.architect.abs, 0, 1)
 	}
 	if l.architect.abs.activeAbility != nil {
 		l.architect.abs.activeAbility.Respond(0, group)
