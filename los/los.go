@@ -10,6 +10,7 @@ import (
 
 type losInternal struct {
 	ZBuffer []float32
+	SBuffer []int
 	Rays    []linear.Seg2
 	Pos     linear.Vec2
 	Horizon float32
@@ -26,6 +27,10 @@ func Make(size int, Horizon float64) *Los {
 	for i := range l.in.ZBuffer {
 		l.in.ZBuffer[i] = l.in.Horizon
 	}
+	l.in.SBuffer = make([]int, size)
+	for i := range l.in.SBuffer {
+		l.in.SBuffer[i] = -1
+	}
 	l.in.Rays = make([]linear.Seg2, size)
 	for i := range l.in.Rays {
 		l.in.Rays[i] = linear.Seg2{
@@ -39,6 +44,8 @@ func (l *Los) Copy() *Los {
 	var l2 Los
 	l2.in.ZBuffer = make([]float32, len(l.in.ZBuffer))
 	copy(l2.in.ZBuffer, l.in.ZBuffer)
+	l2.in.SBuffer = make([]int, len(l.in.SBuffer))
+	copy(l2.in.SBuffer, l.in.SBuffer)
 	l2.in.Horizon = l.in.Horizon
 	l2.in.Pos = l.in.Pos
 
@@ -50,17 +57,27 @@ func (l *Los) Copy() *Los {
 func (l *Los) WriteDepthBuffer(dst []uint32, maxDist float32) {
 	for i := range dst {
 		dst[i] = uint32(math.Sqrt(float64(l.in.ZBuffer[i])) / float64(maxDist) * (1<<32 - 1))
-		// dst[i] = uint32(float32(l.in.ZBuffer[i]) / (maxDist * maxDist) * 4e9)
-		// dst[i] = float32(float32(i) / float32(len(dst)))
 	}
+}
+func (l *Los) CountSource(source int) float64 {
+	count := 0.0
+	for _, v := range l.in.SBuffer {
+		if v == source {
+			count += 1.0
+		}
+	}
+	return count / float64(len(l.in.SBuffer))
 }
 func (l *Los) Reset(Pos linear.Vec2) {
 	l.in.Pos = Pos
 	for i := range l.in.ZBuffer {
 		l.in.ZBuffer[i] = l.in.Horizon
 	}
+	for i := range l.in.SBuffer {
+		l.in.SBuffer[i] = -1
+	}
 }
-func (l *Los) DrawSeg(seg linear.Seg2) {
+func (l *Los) DrawSeg(seg linear.Seg2, source int) {
 	seg.P = seg.P.Sub(l.in.Pos)
 	seg.Q = seg.Q.Sub(l.in.Pos)
 	wrap := len(l.in.ZBuffer)
@@ -84,6 +101,7 @@ func (l *Los) DrawSeg(seg linear.Seg2) {
 
 		if dist2 < l.in.ZBuffer[i] {
 			l.in.ZBuffer[i] = dist2
+			l.in.SBuffer[i] = source
 		}
 	}
 }

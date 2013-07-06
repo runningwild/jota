@@ -186,9 +186,9 @@ func (p *Player) PreThink(g *Game) {
 func (p *Player) Think(g *Game) {
 	p.BaseEnt.Think(g)
 	p.Los.Reset(p.Pos())
-	for _, poly := range g.Room.Walls {
+	for polyIndex, poly := range g.Room.Walls {
 		for i := range poly {
-			p.Los.DrawSeg(poly.Seg(i))
+			p.Los.DrawSeg(poly.Seg(i), polyIndex)
 		}
 	}
 }
