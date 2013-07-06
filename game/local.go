@@ -216,6 +216,19 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	}
 }
 
+func (g *Game) IsExistingPolyVisible(polyIndex int) bool {
+	for _, ent := range g.Ents {
+		p, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		if p.Los.CountSource(polyIndex) > 0.0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	return g.IsPolyPlaceableIgnoring(poly, -1)
 }
