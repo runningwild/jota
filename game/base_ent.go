@@ -94,7 +94,7 @@ func (b *BaseEnt) Think(g *Game) {
 
 	in_lava := false
 	for _, lava := range g.Room.Lava {
-		if vecInsideConvexPoly(b.Pos(), lava) {
+		if linear.VecInsideConvexPoly(b.Pos(), lava) {
 			in_lava = true
 		}
 	}

@@ -217,6 +217,10 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 }
 
 func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
+	return g.IsPolyPlaceableIgnoring(poly, -1)
+}
+
+func (g *Game) IsPolyPlaceableIgnoring(poly linear.Poly, ignore int) bool {
 	// Not placeable it any player can see it
 	for _, ent := range g.Ents {
 		p, ok := ent.(*Player)
@@ -231,7 +235,10 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	}
 
 	// Not placeable if it intersects with any walls
-	for _, wall := range g.Room.Walls {
+	for i, wall := range g.Room.Walls {
+		if i == ignore {
+			continue
+		}
 		if linear.ConvexPolysOverlap(poly, wall) {
 			return false
 		}
@@ -407,7 +414,7 @@ func localThink(g *Game) {
 }
 
 func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
-	if found, event := group.FindEvent(gin.AnyKeyA); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
 		l.activateAbility(&l.architect.abs, 0, 0)
 	}
 	if l.architect.abs.activeAbility != nil {

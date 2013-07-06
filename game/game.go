@@ -281,16 +281,6 @@ func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
 
 func (grw *gameResponderWrapper) Think(int64) {}
 
-func vecInsideConvexPoly(v linear.Vec2, p linear.Poly) bool {
-	for i := range p {
-		seg := p.Seg(i)
-		if seg.Left(v) {
-			return false
-		}
-	}
-	return true
-}
-
 func invSquareDist(dist_sq float64) float64 {
 	return 1.0 / (dist_sq + 1)
 }

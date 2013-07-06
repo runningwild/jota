@@ -19,10 +19,10 @@ func init() {
 }
 
 type placePoly struct {
-	nonResponder
-	Placeable, Done bool
-	Poly            linear.Poly
-	Target          linear.Poly
+	Placeable bool
+	Done      bool
+	Poly      linear.Poly
+	Target    linear.Poly
 }
 
 func (p *placePoly) Activate(int) ([]cgf.Event, bool) {
