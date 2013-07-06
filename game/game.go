@@ -264,7 +264,7 @@ func (g *Game) Init() {
 		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
 	}
-	g.ManaSource.Init(&msOptions, g.Room.Walls, g.Room.Lava)
+	g.ManaSource.Init(&msOptions)
 }
 
 func init() {

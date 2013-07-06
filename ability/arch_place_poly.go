@@ -95,5 +95,5 @@ func (p placePolyEvent) Apply(_g interface{}) {
 	if !g.IsPolyPlaceable(p.Poly) {
 		return
 	}
-	g.Room.Walls = append(g.Room.Walls, p.Poly)
+	g.Room.AddWall(p.Poly)
 }

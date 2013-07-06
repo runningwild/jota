@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
@@ -216,7 +215,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	}
 }
 
-func (g *Game) IsExistingPolyVisible(polyIndex int) bool {
+func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
 	for _, ent := range g.Ents {
 		p, ok := ent.(*Player)
 		if !ok {
@@ -230,10 +229,6 @@ func (g *Game) IsExistingPolyVisible(polyIndex int) bool {
 }
 
 func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
-	return g.IsPolyPlaceableIgnoring(poly, -1)
-}
-
-func (g *Game) IsPolyPlaceableIgnoring(poly linear.Poly, ignore int) bool {
 	// Not placeable it any player can see it
 	for _, ent := range g.Ents {
 		p, ok := ent.(*Player)
@@ -248,10 +243,7 @@ func (g *Game) IsPolyPlaceableIgnoring(poly linear.Poly, ignore int) bool {
 	}
 
 	// Not placeable if it intersects with any walls
-	for i, wall := range g.Room.Walls {
-		if i == ignore {
-			continue
-		}
+	for _, wall := range g.Room.Walls {
 		if linear.ConvexPolysOverlap(poly, wall) {
 			return false
 		}
@@ -374,22 +366,6 @@ func axisControl(v float64) float64 {
 	v = (v - floor) / (1.0 - floor)
 	v *= v
 	return v
-}
-
-type PlacePoly struct {
-	Poly linear.Poly
-}
-
-func init() {
-	gob.Register(PlacePoly{})
-}
-
-func (p PlacePoly) Apply(_g interface{}) {
-	g := _g.(*Game)
-	if !g.IsPolyPlaceable(p.Poly) {
-		return
-	}
-	g.Room.Walls = append(g.Room.Walls, p.Poly)
 }
 
 func localThinkArchitect(g *Game) {

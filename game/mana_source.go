@@ -124,7 +124,7 @@ func normalizeWeights(desiredSum float64, weights []float64) {
 	}
 }
 
-func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava []linear.Poly) {
+func (ms *ManaSource) Init(options *ManaSourceOptions) {
 	ms.options = *options
 	if options.NumNodeCols < 2 || options.NumNodeRows < 2 {
 		panic(fmt.Sprintf("Invalid options: %v", options))
@@ -140,14 +140,6 @@ func (ms *ManaSource) Init(options *ManaSourceOptions, walls []linear.Poly, lava
 		seed.x = options.BoardLeft + r.Float64()*(options.BoardRight-options.BoardLeft)
 		seed.y = options.BoardTop + r.Float64()*(options.BoardBottom-options.BoardTop)
 		seed.color = r.Intn(3)
-	}
-
-	var allObstacles []linear.Poly
-	for _, p := range walls {
-		allObstacles = append(allObstacles, p)
-	}
-	for _, p := range lava {
-		allObstacles = append(allObstacles, p)
 	}
 
 	ms.rawNodes = make([]node, options.NumNodeCols*options.NumNodeRows)
