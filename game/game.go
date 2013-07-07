@@ -581,11 +581,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 		losCount++
 	}
-	gw.game.RenderLocal(region)
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range gw.game.Ents {
 		ent.Draw(gw.game)
 	}
 	gl.Disable(gl.TEXTURE_2D)
+	gw.game.RenderLocal(region)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}
