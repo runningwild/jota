@@ -530,6 +530,7 @@ func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 	if old_game != nil {
 		old_game.ReleaseResources()
 	}
+	base.Log().Printf("Thinks: %d", gw.game.GameThinks)
 	// gw.prev_game = gw.game.Copy().(*Game)
 	// } else {
 	// 	gw.Engine.UpdateState(gw.game)

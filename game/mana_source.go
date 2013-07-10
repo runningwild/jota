@@ -13,7 +13,68 @@ import (
 	"github.com/runningwild/magnus/texture"
 	"math"
 	"math/rand"
+	"sync"
 )
+
+type nodeCache struct {
+	cache [][]node
+	mutex sync.Mutex
+	count int
+	size  int
+}
+
+func (nc *nodeCache) newBuffer() []node {
+	nc.mutex.Lock()
+	defer nc.mutex.Unlock()
+	if len(nc.cache) == 0 {
+		nc.increaseBuffer(nc.count)
+		nc.count += len(nc.cache)
+	}
+	ret := nc.cache[len(nc.cache)-1]
+	nc.cache = nc.cache[0 : len(nc.cache)-1]
+	return ret
+}
+func (nc *nodeCache) deleteBuffer(nodes []node) {
+	nc.mutex.Lock()
+	defer nc.mutex.Unlock()
+	nc.cache = append(nc.cache, nodes)
+}
+func (nc *nodeCache) increaseBuffer(n int) {
+	for i := 0; i < n; i++ {
+		nc.cache = append(nc.cache, make([]node, nc.size))
+	}
+}
+func makeNodeCache(size int) *nodeCache {
+	var nc nodeCache
+	nc.size = size
+	nc.increaseBuffer(1)
+	nc.count = 1
+	return &nc
+}
+
+var nodeCaches map[int]*nodeCache
+var nodeCachesMutex sync.Mutex
+
+func init() {
+	nodeCaches = make(map[int]*nodeCache)
+}
+func newNodes(size int) []node {
+	nodeCachesMutex.Lock()
+	defer nodeCachesMutex.Unlock()
+	var nc *nodeCache
+	var ok bool
+	nc, ok = nodeCaches[size]
+	if !ok {
+		nc = makeNodeCache(size)
+		nodeCaches[size] = nc
+	}
+	return nc.newBuffer()
+}
+func deleteNodes(size int, nodes []node) {
+	nodeCachesMutex.Lock()
+	defer nodeCachesMutex.Unlock()
+	nodeCaches[size].deleteBuffer(nodes)
+}
 
 // One value for each color
 type ManaRequest [3]bool
@@ -142,7 +203,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 		seed.color = r.Intn(3)
 	}
 
-	ms.rawNodes = make([]node, options.NumNodeCols*options.NumNodeRows)
+	ms.rawNodes = newNodes(options.NumNodeCols * options.NumNodeRows)
+	// ms.rawNodes = make([]node, options.NumNodeCols*options.NumNodeRows)
 	ms.nodes = make([][]node, options.NumNodeCols)
 	for col := 0; col < options.NumNodeCols; col++ {
 		ms.nodes[col] = ms.rawNodes[col*options.NumNodeRows : (col+1)*options.NumNodeRows]
@@ -180,7 +242,8 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 func (src *ManaSource) Copy() ManaSource {
 	var dst ManaSource
 
-	dst.rawNodes = make([]node, len(src.rawNodes))
+	dst.rawNodes = newNodes(len(src.rawNodes))
+	// dst.rawNodes = make([]node, len(src.rawNodes))
 	dst.nodes = make([][]node, len(src.nodes))
 	for x := range src.nodes {
 		dst.nodes[x] = dst.rawNodes[x*len(src.nodes[x]) : (x+1)*len(src.nodes[x])]
