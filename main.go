@@ -127,7 +127,7 @@ func main() {
 				// p.Mass += float64(x+y) * 150
 				p.Processes = make(map[int]game.Process)
 				temp := p
-				temp.Los = los.Make(game.LosResolution, game.LosMaxDist)
+				temp.Los = los.Make(game.LosMaxDist)
 				ids = append(ids, g.AddEnt(&temp))
 
 				// p.Mass -= float64(x+y) * 150
@@ -137,10 +137,10 @@ func main() {
 		}
 		g.Ents[0].(*game.Player).Position.X = 500
 		g.Ents[0].(*game.Player).Position.Y = 300
-		g.Ents[0].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
+		g.Ents[0].(*game.Player).Los = los.Make(game.LosMaxDist)
 		g.Ents[1].(*game.Player).Position.X = 550
 		g.Ents[1].(*game.Player).Position.Y = 300
-		g.Ents[1].(*game.Player).Los = los.Make(game.LosResolution, game.LosMaxDist)
+		g.Ents[1].(*game.Player).Los = los.Make(game.LosMaxDist)
 		var pest game.Pest
 		err = json.NewDecoder(bytes.NewBuffer([]byte(`
       {
@@ -156,8 +156,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for x := 400.0; x <= 650; x += 10 {
-			for y := 100.0; y <= 150; y += 50 {
+		for x := 400.0; x <= 650; x += 150 {
+			for y := 100.0; y <= 150; y += 150 {
 				pest.SetPos(linear.Vec2{x, y})
 				p := pest
 				g.Ents = append(g.Ents, &p)

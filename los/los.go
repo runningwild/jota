@@ -8,6 +8,8 @@ import (
 	"math"
 )
 
+const Resolution = 4096
+
 type losInternal struct {
 	ZBuffer []float32
 	SBuffer []string
@@ -16,29 +18,38 @@ type losInternal struct {
 	Horizon float32
 }
 
+var rays []linear.Seg2
+
+func init() {
+	rays = make([]linear.Seg2, Resolution)
+	for i := range rays {
+		rays[i] = linear.Seg2{
+			linear.Vec2{0, 0},
+			(linear.Vec2{1, 0}).Rotate(2 * math.Pi * (float64(i)/Resolution - 0.5)),
+		}
+	}
+
+}
+
 type Los struct {
 	in losInternal
 }
 
-func Make(size int, Horizon float64) *Los {
+func Make(Horizon float64) *Los {
 	var l Los
 	l.in.Horizon = float32(Horizon * Horizon)
-	l.in.ZBuffer = make([]float32, size)
+	l.in.ZBuffer = make([]float32, Resolution)
 	for i := range l.in.ZBuffer {
 		l.in.ZBuffer[i] = l.in.Horizon
 	}
-	l.in.SBuffer = make([]string, size)
+	l.in.SBuffer = make([]string, Resolution)
 	for i := range l.in.SBuffer {
 		l.in.SBuffer[i] = ""
 	}
-	l.in.Rays = make([]linear.Seg2, size)
-	for i := range l.in.Rays {
-		l.in.Rays[i] = linear.Seg2{
-			linear.Vec2{0, 0},
-			(linear.Vec2{1, 0}).Rotate(2 * math.Pi * (float64(i)/float64(size) - 0.5)),
-		}
-	}
 	return &l
+}
+func (l *Los) ReleaseResources() {
+
 }
 func (l *Los) Copy() *Los {
 	var l2 Los
@@ -48,9 +59,6 @@ func (l *Los) Copy() *Los {
 	copy(l2.in.SBuffer, l.in.SBuffer)
 	l2.in.Horizon = l.in.Horizon
 	l2.in.Pos = l.in.Pos
-
-	// This doesn't change - so it's ok to just share it.
-	l2.in.Rays = l.in.Rays
 
 	return &l2
 }
@@ -95,9 +103,9 @@ func (l *Los) DrawSeg(seg linear.Seg2, source string) {
 	end := int(((a2 / (2 * math.Pi)) + 0.5) * float64(len(l.in.ZBuffer)))
 
 	for i := start % wrap; i != end%wrap; i = (i + 1) % wrap {
-		dist2 := float32(l.in.Rays[i].Isect(seg).Mag2())
+		dist2 := float32(rays[i].Isect(seg).Mag2())
 		// base.Log().Printf("%d: %v\n", i, math.Sqrt(dist2))
-		// dist = l.in.Rays[i].Isect(seg).Mag2()
+		// dist = rays[i].Isect(seg).Mag2()
 
 		if dist2 < l.in.ZBuffer[i] {
 			l.in.ZBuffer[i] = dist2
@@ -127,7 +135,7 @@ func (l *Los) TestSeg(seg linear.Seg2) float64 {
 	count := 0.0
 	visible := 0.0
 	for i := start % wrap; i != end%wrap; i = (i + 1) % wrap {
-		dist2 := float32(l.in.Rays[i].Isect(seg).Mag2())
+		dist2 := float32(rays[i].Isect(seg).Mag2())
 		if dist2 < l.in.ZBuffer[i] {
 			visible += 1.0
 		}

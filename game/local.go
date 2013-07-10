@@ -9,9 +9,9 @@ import (
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/los"
 )
 
-const LosResolution = 2048 * 2
 const LosMaxPlayers = 2
 const LosMaxDist = 1000
 
@@ -86,11 +86,11 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
 
-	local.los.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
+	local.los.texRawData = make([]uint32, los.Resolution*LosMaxPlayers)
 	local.los.texData = make([][]uint32, LosMaxPlayers)
 	for i := range local.los.texData {
-		start := i * LosResolution
-		end := (i + 1) * LosResolution
+		start := i * los.Resolution
+		end := (i + 1) * los.Resolution
 		local.los.texData[i] = local.los.texRawData[start:end]
 	}
 	render.Queue(func() {
@@ -105,7 +105,7 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 			gl.TEXTURE_2D,
 			0,
 			gl.ALPHA,
-			LosResolution,
+			los.Resolution,
 			LosMaxPlayers,
 			0,
 			gl.ALPHA,
@@ -113,11 +113,11 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 			gl.Pointer(&local.los.texRawData[0]))
 	})
 
-	local.back.texRawData = make([]uint32, LosResolution*LosMaxPlayers)
+	local.back.texRawData = make([]uint32, los.Resolution*LosMaxPlayers)
 	local.back.texData = make([][]uint32, LosMaxPlayers)
 	for i := range local.back.texData {
-		start := i * LosResolution
-		end := (i + 1) * LosResolution
+		start := i * los.Resolution
+		end := (i + 1) * los.Resolution
 		local.back.texData[i] = local.back.texRawData[start:end]
 	}
 	render.Queue(func() {
@@ -167,7 +167,7 @@ func (g *Game) renderLosMask() {
 		0,
 		0,
 		0,
-		LosResolution,
+		los.Resolution,
 		LosMaxPlayers,
 		gl.ALPHA,
 		gl.UNSIGNED_INT,
@@ -176,7 +176,7 @@ func (g *Game) renderLosMask() {
 	base.SetUniformF("los", "dx", 900)
 	base.SetUniformF("los", "dy", 600)
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
-	base.SetUniformF("los", "losResolution", LosResolution)
+	base.SetUniformF("los", "losResolution", los.Resolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
 	if local.isArchitect {
 		base.SetUniformI("los", "architect", 1)

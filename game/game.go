@@ -134,6 +134,10 @@ func init() {
 	gob.Register(&Player{})
 }
 
+func (p *Player) ReleaseResources() {
+	p.Los.ReleaseResources()
+}
+
 func (p *Player) Draw(game *Game) {
 	var t *texture.Data
 	gl.Color4ub(255, 255, 255, 255)
@@ -269,6 +273,14 @@ func (g *Game) Init() {
 
 func init() {
 	gob.Register(&Game{})
+}
+
+func (g *Game) ReleaseResources() {
+	for _, e := range g.Ents {
+		if p, ok := e.(*Player); ok {
+			p.ReleaseResources()
+		}
+	}
 }
 
 type gameResponderWrapper struct {
@@ -512,14 +524,18 @@ func (gw *GameWindow) Rendered() gui.Region {
 	return gw.region
 }
 func (gw *GameWindow) Think(g *gui.Gui, t int64) {
-	if gw.game == nil {
-		gw.game = gw.Engine.CopyState().(*Game)
-		gw.prev_game = gw.game.Copy().(*Game)
-	} else {
-		gw.Engine.UpdateState(gw.game)
-		gw.game.Merge(gw.prev_game)
-		gw.prev_game.OverwriteWith(gw.game)
+	// if gw.game == nil {
+	old_game := gw.game
+	gw.game = gw.Engine.CopyState().(*Game)
+	if old_game != nil {
+		old_game.ReleaseResources()
 	}
+	// gw.prev_game = gw.game.Copy().(*Game)
+	// } else {
+	// 	gw.Engine.UpdateState(gw.game)
+	// 	gw.game.Merge(gw.prev_game)
+	// 	gw.prev_game.OverwriteWith(gw.game)
+	// }
 }
 func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
 	return false
