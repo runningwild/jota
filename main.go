@@ -206,7 +206,12 @@ func main() {
 
 	base.LoadAllDictionaries()
 
-	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
+	ticker := time.Tick(time.Millisecond * 17)
+	for {
+		<-ticker
+		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
+			return
+		}
 		sys.Think()
 		render.Queue(func() {
 			ui.Draw()
