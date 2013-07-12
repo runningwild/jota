@@ -13,6 +13,7 @@ import (
 
 func makeBurst(params map[string]int) game.Ability {
 	var b burst
+	b.id = nextAbilityId()
 	b.force = params["force"]
 	b.frames = params["frames"]
 	return &b
@@ -28,12 +29,14 @@ type burst struct {
 	nonThinker
 	nonRendering
 
+	id            int
 	force, frames int
 }
 
 func (b *burst) Activate(player_id int) ([]cgf.Event, bool) {
 	event := addBurstEvent{
 		Player_id: player_id,
+		Id:        b.id,
 		Frames:    b.frames,
 		Force:     b.force,
 	}
@@ -42,6 +45,7 @@ func (b *burst) Activate(player_id int) ([]cgf.Event, bool) {
 
 type addBurstEvent struct {
 	Player_id int
+	Id        int
 	Frames    int
 	Force     int
 }
@@ -54,7 +58,7 @@ func (e addBurstEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
 	player := g.GetEnt(e.Player_id).(*game.Player)
 	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
-	player.Processes[10] = &burstProcess{
+	player.Processes[100+e.Id] = &burstProcess{
 		Frames:            int32(e.Frames),
 		Force:             float64(e.Force),
 		Initial:           initial,

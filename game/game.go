@@ -188,13 +188,17 @@ func (p *Player) PreThink(g *Game) {
 }
 
 func (p *Player) Think(g *Game) {
-	p.BaseEnt.Think(g)
 	p.Los.Reset(p.Pos())
 	for polyIndex, poly := range g.Room.Walls {
 		for i := range poly {
 			p.Los.DrawSeg(poly.Seg(i), polyIndex)
 		}
 	}
+	r := p.Los.RawAccess()
+	for i := range r {
+		r[i] = 0
+	}
+	p.BaseEnt.Think(g)
 }
 
 func (p *Player) Supply(supply Mana) Mana {

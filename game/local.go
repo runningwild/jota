@@ -316,6 +316,12 @@ func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 			"force":  250,
 			"angle":  30,
 		}))
+	lp.abs.abilities = append(
+		lp.abs.abilities,
+		ability_makers["vision"](map[string]int{
+			"range":   300 * 300,
+			"squeeze": 80,
+		}))
 	local.players = append(local.players, &lp)
 }
 
@@ -417,14 +423,19 @@ func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 
 func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
 	for _, player := range local.players {
-		k0 := gin.In().GetKeyFlat(gin.KeyZ, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		k1 := gin.In().GetKeyFlat(gin.KeyX, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+		k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+		k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+		k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
 			l.activateAbility(&player.abs, player.id, 0)
 			return
 		}
 		if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
 			l.activateAbility(&player.abs, player.id, 1)
+			return
+		}
+		if found, event := group.FindEvent(k2.Id()); found && event.Type == gin.Press {
+			l.activateAbility(&player.abs, player.id, 2)
 			return
 		}
 		if player.abs.activeAbility != nil {

@@ -196,6 +196,10 @@ func (l *Los) Render() {
 	gl.End()
 }
 
+func (l Los) RawAccess() []float32 {
+	return l.in.Buffer.ZBuffer
+}
+
 func (l Los) GobEncode() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)

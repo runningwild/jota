@@ -5,18 +5,16 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
+	// "github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
 
-var pull_id int
-
 func makePull(params map[string]int) game.Ability {
 	var b pull
-	b.id = pull_id
+	b.id = nextAbilityId()
 	b.force = float64(params["force"])
 	b.angle = float64(params["angle"]) / 180 * 3.14159
-	pull_id++
 	return &b
 }
 
@@ -43,7 +41,7 @@ func (p *pull) Activate(player_id int) ([]cgf.Event, bool) {
 			Angle:     p.angle,
 		},
 	}
-	return ret, true
+	return ret, false
 }
 
 func (p *pull) Deactivate(player_id int) []cgf.Event {

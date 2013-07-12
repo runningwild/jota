@@ -6,7 +6,18 @@ import (
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
+	"sync"
 )
+
+var abilityId int
+var abilityIdMutex sync.Mutex
+
+func nextAbilityId() int {
+	abilityIdMutex.Lock()
+	defer abilityIdMutex.Unlock()
+	abilityId++
+	return abilityId
+}
 
 type nonResponder struct{}
 
@@ -25,18 +36,6 @@ func (nonThinker) Think(int, *game.Game, linear.Vec2) ([]cgf.Event, bool) { retu
 type nonRendering struct{}
 
 func (nonRendering) Draw(player_id int, game *game.Game) {}
-
-type deactivateOnKeyUp struct{}
-
-func (deactivateOnKeyUp) DeactivateOnKeyUp() bool {
-	return true
-}
-
-type stayActiveOnKeyUp struct{}
-
-func (stayActiveOnKeyUp) DeactivateOnKeyUp() bool {
-	return true
-}
 
 type BasicPhases struct {
 	The_phase game.Phase
