@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 )
 
@@ -47,6 +48,14 @@ func (p *Pest) Draw(g *Game) {
 func (p *Pest) Alive() bool {
 	return p.Stats.HealthCur() > 0
 }
+func (p *Pest) OnDeath(g *Game) {
+	for _, ent := range g.Ents {
+		d := ent.Pos().Sub(p.Pos()).Mag2()
+		if d < 100*100 {
+			ent.ApplyDamage(stats.Damage{stats.DamageFire, 400})
+		}
+	}
+}
 func (p *Pest) PreThink(g *Game) {}
 func (p *Pest) Think(g *Game) {
 	p.BaseEnt.Think(g)
@@ -65,6 +74,9 @@ func (p *Pest) Think(g *Game) {
 	}
 	if target == nil {
 		return
+	}
+	if dist < 50*50 {
+		p.ApplyDamage(stats.Damage{stats.DamageFire, 1})
 	}
 	dir := target.Pos().Sub(p.Pos()).Norm().Scale(1.0)
 	p.ApplyForce(dir.Scale(10.0))

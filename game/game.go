@@ -209,6 +209,7 @@ func (p *Player) Supply(supply Mana) Mana {
 type Ent interface {
 	Draw(g *Game)
 	Alive() bool
+	OnDeath(g *Game)
 	PreThink(game *Game)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
@@ -404,6 +405,11 @@ func (g *Game) Think() {
 	}()
 	g.GameThinks++
 
+	for i := range g.Ents {
+		if !g.Ents[i].Alive() {
+			g.Ents[i].OnDeath(g)
+		}
+	}
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
 
 	for i := range g.Ents {
@@ -532,7 +538,6 @@ func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 	if old_game != nil {
 		old_game.ReleaseResources()
 	}
-	base.Log().Printf("Thinks: %d", gw.game.GameThinks)
 	// gw.prev_game = gw.game.Copy().(*Game)
 	// } else {
 	// 	gw.Engine.UpdateState(gw.game)

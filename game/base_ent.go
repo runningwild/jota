@@ -25,6 +25,9 @@ func (b *BaseEnt) Alive() bool {
 	return b.Stats.HealthCur() > 0
 }
 
+func (b *BaseEnt) OnDeath(g *Game) {
+}
+
 func (b *BaseEnt) ApplyForce(f linear.Vec2) {
 	b.Velocity = b.Velocity.Add(f.Scale(1 / b.Mass()))
 }
