@@ -13,7 +13,7 @@ import (
 )
 
 const LosMaxPlayers = 2
-const LosMaxDist = 1000
+const LosMaxDist = 600
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -325,7 +325,7 @@ func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	local.players = append(local.players, &lp)
 }
 
-func (l *localData) activateAbility(abs *personalAbilities, id int, n int) {
+func (l *localData) activateAbility(abs *personalAbilities, id int, n int, keyPress bool) {
 	activeAbility := abs.activeAbility
 	abs.activeAbility = nil
 	if activeAbility != nil {
@@ -337,7 +337,7 @@ func (l *localData) activateAbility(abs *personalAbilities, id int, n int) {
 			return
 		}
 	}
-	events, active := abs.abilities[n].Activate(id)
+	events, active := abs.abilities[n].Activate(id, keyPress)
 	for _, event := range events {
 		l.engine.ApplyEvent(event)
 	}
@@ -411,10 +411,10 @@ func localThink(g *Game) {
 
 func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, 0, 0)
+		l.activateAbility(&l.architect.abs, 0, 0, true)
 	}
 	if found, event := group.FindEvent(gin.AnyKey2); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, 0, 1)
+		l.activateAbility(&l.architect.abs, 0, 1, true)
 	}
 	if l.architect.abs.activeAbility != nil {
 		l.architect.abs.activeAbility.Respond(0, group)
@@ -426,16 +426,16 @@ func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
 		k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		if found, event := group.FindEvent(k0.Id()); found && event.Type == gin.Press {
-			l.activateAbility(&player.abs, player.id, 0)
+		if found, event := group.FindEvent(k0.Id()); found {
+			l.activateAbility(&player.abs, player.id, 0, event.Type == gin.Press)
 			return
 		}
-		if found, event := group.FindEvent(k1.Id()); found && event.Type == gin.Press {
-			l.activateAbility(&player.abs, player.id, 1)
+		if found, event := group.FindEvent(k1.Id()); found {
+			l.activateAbility(&player.abs, player.id, 1, event.Type == gin.Press)
 			return
 		}
-		if found, event := group.FindEvent(k2.Id()); found && event.Type == gin.Press {
-			l.activateAbility(&player.abs, player.id, 2)
+		if found, event := group.FindEvent(k2.Id()); found {
+			l.activateAbility(&player.abs, player.id, 2, event.Type == gin.Press)
 			return
 		}
 		if player.abs.activeAbility != nil {

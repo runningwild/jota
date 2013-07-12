@@ -33,7 +33,7 @@ type burst struct {
 	force, frames int
 }
 
-func (b *burst) Activate(player_id int) ([]cgf.Event, bool) {
+func (b *burst) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 	event := addBurstEvent{
 		Player_id: player_id,
 		Id:        b.id,

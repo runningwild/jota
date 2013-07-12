@@ -25,7 +25,7 @@ type placePoly struct {
 	Target    linear.Poly
 }
 
-func (p *placePoly) Activate(int) ([]cgf.Event, bool) {
+func (p *placePoly) Activate(int, bool) ([]cgf.Event, bool) {
 	p.Done = false
 	p.Poly = linear.Poly{
 		linear.Vec2{0, 0},

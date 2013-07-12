@@ -26,9 +26,11 @@ type Ability interface {
 	// Called when a player selects this Ability.  Returns any number of events to
 	// apply, as well as a bool that is true iff this Ability should become the
 	// active Ability.
-	Activate(player_id int) ([]cgf.Event, bool)
+	Activate(player_id int, keyPress bool) ([]cgf.Event, bool)
 
-	// Called when this Ability is deselected.
+	// Called when this Ability is deselected as a result of another ability being
+	// selected.  For some abilities this might not do anything, but certain
+	// abilities may want to
 	Deactivate(player_id int) []cgf.Event
 
 	// The active Ability will receive all of the events from the player.  It
@@ -193,10 +195,6 @@ func (p *Player) Think(g *Game) {
 		for i := range poly {
 			p.Los.DrawSeg(poly.Seg(i), polyIndex)
 		}
-	}
-	r := p.Los.RawAccess()
-	for i := range r {
-		r[i] = 0
 	}
 	p.BaseEnt.Think(g)
 }

@@ -2,10 +2,7 @@ package ability
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
-	// "github.com/runningwild/linear"
-	// "github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -32,13 +29,14 @@ type vision struct {
 	squeeze  float64
 }
 
-func (p *vision) Activate(player_id int) ([]cgf.Event, bool) {
+func (p *vision) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 	ret := []cgf.Event{
 		addVisionEvent{
 			Player_id: player_id,
 			Id:        p.id,
 			Distance:  p.distance,
 			Squeeze:   p.squeeze,
+			Press:     keyPress,
 		},
 	}
 	return ret, false
@@ -60,6 +58,7 @@ type addVisionEvent struct {
 	Id        int
 	Distance  float64
 	Squeeze   float64
+	Press     bool
 }
 
 func init() {
@@ -69,9 +68,11 @@ func init() {
 func (e addVisionEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
 	player := g.GetEnt(e.Player_id).(*game.Player)
-	if proc := player.Processes[100+e.Id]; proc != nil {
-		proc.Kill(g)
-		delete(player.Processes, 100+e.Id)
+	if !e.Press {
+		if proc := player.Processes[100+e.Id]; proc != nil {
+			proc.Kill(g)
+			delete(player.Processes, 100+e.Id)
+		}
 		return
 	}
 	player.Processes[100+e.Id] = &visionProcess{
@@ -158,9 +159,9 @@ func (p *visionProcess) Think(g *game.Game) {
 	for i := range zbuffer {
 		bufferAngle := float64(i) / float64(len(zbuffer)) * 2 * math.Pi
 		angle := player.Angle - bufferAngle - math.Pi/2
-		d := dist(angle, 0.02, 100)
-		if d > 300 {
-			d = 300
+		d := dist(angle, 0.01, 50)
+		if d > 500 {
+			d = 500
 		}
 		d = d * d
 		if float64(zbuffer[i]) < d {
@@ -170,12 +171,4 @@ func (p *visionProcess) Think(g *game.Game) {
 }
 
 func (p *visionProcess) Draw(player_id int, g *game.Game) {
-	gl.Color4d(1, 1, 1, 0.5)
-	gl.Disable(gl.TEXTURE_2D)
-	gl.Begin(gl.QUADS)
-	gl.Vertex2i(0, 0)
-	gl.Vertex2i(0, 100)
-	gl.Vertex2i(100, 100)
-	gl.Vertex2i(100, 0)
-	gl.End()
 }

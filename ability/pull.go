@@ -32,13 +32,14 @@ type pull struct {
 	angle float64
 }
 
-func (p *pull) Activate(player_id int) ([]cgf.Event, bool) {
+func (p *pull) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 	ret := []cgf.Event{
 		addPullEvent{
 			Player_id: player_id,
 			Id:        p.id,
 			Force:     p.force,
 			Angle:     p.angle,
+			Press:     keyPress,
 		},
 	}
 	return ret, false
@@ -59,6 +60,7 @@ type addPullEvent struct {
 	Id        int
 	Angle     float64
 	Force     float64
+	Press     bool
 }
 
 func init() {
@@ -68,6 +70,13 @@ func init() {
 func (e addPullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
 	player := g.GetEnt(e.Player_id).(*game.Player)
+	if !e.Press {
+		if proc := player.Processes[100+e.Id]; proc != nil {
+			proc.Kill(g)
+			delete(player.Processes, 100+e.Id)
+		}
+		return
+	}
 	player.Processes[100+e.Id] = &pullProcess{
 		BasicPhases: BasicPhases{game.PhaseRunning},
 		Id:          e.Id,

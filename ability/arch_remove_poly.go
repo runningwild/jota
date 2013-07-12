@@ -24,7 +24,7 @@ type removePoly struct {
 	Target string
 }
 
-func (r *removePoly) Activate(int) ([]cgf.Event, bool) {
+func (r *removePoly) Activate(int, bool) ([]cgf.Event, bool) {
 	r.Done = false
 	r.Target = ""
 	return nil, true
