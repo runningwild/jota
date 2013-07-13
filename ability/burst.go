@@ -132,9 +132,6 @@ func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 	return supply
 }
 
-func (p *burstProcess) PreThink(g *game.Game) {
-}
-
 func (p *burstProcess) Think(g *game.Game) {
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)

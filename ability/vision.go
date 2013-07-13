@@ -126,10 +126,6 @@ func (p *visionProcess) Copy() game.Process {
 
 const visionHorizon = 500
 
-func (p *visionProcess) PreThink(g *game.Game) {
-	p.required = manaCostFromMaxDist(p.Squeeze, p.Distance, visionHorizon)
-	p.supplied = 0
-}
 func (p *visionProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorGreen] > p.required-p.supplied {
 		supply[game.ColorGreen] -= p.required - p.supplied
@@ -190,7 +186,13 @@ func minDist(k, d float64) float64 {
 	return high
 }
 
+func (p *visionProcess) reset() {
+	p.required = manaCostFromMaxDist(p.Squeeze, p.Distance, visionHorizon)
+	p.supplied = 0
+}
+
 func (p *visionProcess) Think(g *game.Game) {
+	defer p.reset()
 	horizon := maxDistFromManaCost(p.Squeeze, p.Distance, p.supplied)
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)

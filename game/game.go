@@ -80,7 +80,6 @@ const (
 )
 
 type Thinker interface {
-	PreThink(game *Game)
 	Think(game *Game)
 
 	// Kills a process.  Any Killed process will return true on any future
@@ -183,12 +182,6 @@ func (p *Player) Draw(game *Game) {
 	base.EnableShader("")
 }
 
-func (p *Player) PreThink(g *Game) {
-	for _, proc := range p.Processes {
-		proc.PreThink(g)
-	}
-}
-
 func (p *Player) Think(g *Game) {
 	p.Los.Reset(p.Pos())
 	for polyIndex, poly := range g.Room.Walls {
@@ -208,19 +201,25 @@ func (p *Player) Supply(supply Mana) Mana {
 
 type Ent interface {
 	Draw(g *Game)
-	Alive() bool
-	OnDeath(g *Game)
-	PreThink(game *Game)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
+
+	// Stats based methods
+	Alive() bool
+	OnDeath(g *Game)
 	ApplyDamage(damage stats.Damage)
-	Mass() float64
+
 	SetId(int)
 	Id() int
 	Pos() linear.Vec2
+
+	// Need to have a SetPos method because we don't want ents moving through
+	// walls.
 	SetPos(pos linear.Vec2)
+
+	Mass() float64
 	Vel() linear.Vec2
-	SetVel(vel linear.Vec2)
+
 	Supply(mana Mana) Mana
 	Copy() Ent
 }
@@ -411,10 +410,6 @@ func (g *Game) Think() {
 		}
 	}
 	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
-
-	for i := range g.Ents {
-		g.Ents[i].PreThink(g)
-	}
 
 	g.ManaSource.Think(g.Ents)
 	g.Architect.Think(g)

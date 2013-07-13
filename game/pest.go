@@ -56,7 +56,6 @@ func (p *Pest) OnDeath(g *Game) {
 		}
 	}
 }
-func (p *Pest) PreThink(g *Game) {}
 func (p *Pest) Think(g *Game) {
 	p.BaseEnt.Think(g)
 	var target Ent

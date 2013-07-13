@@ -60,10 +60,6 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 	b.Position = pos
 }
 
-func (b *BaseEnt) SetVel(vel linear.Vec2) {
-	b.Velocity = vel
-}
-
 func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
 	b.Stats.Think()

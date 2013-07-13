@@ -126,10 +126,6 @@ func (p *pullProcess) Copy() game.Process {
 	return &p2
 }
 
-func (p *pullProcess) PreThink(g *game.Game) {
-	p.required = p.Force
-	p.supplied = 0
-}
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required-p.supplied {
 		supply[game.ColorBlue] -= p.required - p.supplied
@@ -140,7 +136,14 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	}
 	return supply
 }
+
+func (p *pullProcess) reset() {
+	p.required = p.Force
+	p.supplied = 0
+}
+
 func (p *pullProcess) Think(g *game.Game) {
+	defer p.reset()
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
 

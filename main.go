@@ -163,6 +163,24 @@ func main() {
 				g.Ents = append(g.Ents, &p)
 			}
 		}
+		var snare game.Snare
+		err = json.NewDecoder(bytes.NewBuffer([]byte(`
+      {
+        "Base": {
+          "Mass": 1000000000,
+          "Health": 10
+        },
+        "Dynamic": {
+          "Health": 10
+        }
+      }
+    `))).Decode(&snare.Stats)
+		if err != nil {
+			panic(err)
+		}
+		snare.SetPos(linear.Vec2{300, 200})
+		g.Ents = append(g.Ents, &snare)
+
 		g.Init()
 		engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
 		if err != nil {
