@@ -11,7 +11,7 @@ func makeVision(params map[string]int) game.Ability {
 	var b vision
 	b.id = nextAbilityId()
 	b.distance = float64(params["range"])
-	b.squeeze = float64(params["squeeze"]) / 100
+	b.squeeze = float64(params["squeeze"]) / 1000
 	return &b
 }
 
@@ -124,44 +124,83 @@ func (p *visionProcess) Copy() game.Process {
 	return &p2
 }
 
+const visionHorizon = 500
+
 func (p *visionProcess) PreThink(g *game.Game) {
-	p.required = p.Distance
+	p.required = manaCostFromMaxDist(p.Squeeze, p.Distance, visionHorizon)
 	p.supplied = 0
 }
 func (p *visionProcess) Supply(supply game.Mana) game.Mana {
+	if supply[game.ColorGreen] > p.required-p.supplied {
+		supply[game.ColorGreen] -= p.required - p.supplied
+		p.supplied = p.required
+	} else {
+		p.supplied += supply[game.ColorGreen]
+		supply[game.ColorGreen] = 0
+	}
 	return supply
-	// if supply[game.ColorBlue] > p.required-p.supplied {
-	// 	supply[game.ColorBlue] -= p.required - p.supplied
-	// 	p.supplied = p.required
-	// } else {
-	// 	p.supplied += supply[game.ColorBlue]
-	// 	supply[game.ColorBlue] = 0
-	// }
-	// return supply
+}
+
+const visionManaFactor = 0.001
+
+// Provides some estimate of how much mana should be required to cast vision
+// with parameters k, d, and maxDist
+func manaCostFromMaxDist(k, d, maxDist float64) float64 {
+	return math.Pi * maxDist * maxDist * math.Pow(1+d, -k) * visionManaFactor
+}
+
+// C = pi * M^2 * (1+d) ^ (-k)
+// M = sqrt(C/(pi * (1+d) ^ (-k)))
+func maxDistFromManaCost(k, d, manaCost float64) float64 {
+	return math.Sqrt(manaCost / (math.Pi * math.Pow(1+d, -k) * visionManaFactor))
 }
 
 // For parabola y=kx^2-d
 func dist(angle, k, d float64) float64 {
 	sin := math.Sin(angle)
 	cos := math.Cos(angle)
-	inner := sin*sin - 4*(k*cos*cos)*(-d)
+	cos2 := cos * cos
+	inner := sin*sin - 4*(k*cos2)*(-d)
 	if inner < 0 || cos == 0 {
 		return math.Inf(1)
 	}
-	v := (sin + math.Sqrt(inner)) / (2 * k * cos * cos)
+	v := (sin + math.Sqrt(inner)) / (2 * k * cos2)
 	return v
 }
 
+// Finds angle such that dist(angle, k, d) is minimized.
+func minDist(k, d float64) float64 {
+	// Ternary search on dist, this way we don't have to take a horrifying
+	// derivative just to do a binary search.
+	max := math.Pi/2 - 0.1 // good enough for any sensible values of k and d.
+	min := -math.Pi / 2
+	high := max - (max-min)/3
+	low := min + (max-min)/3
+	for high-low > 1e-5 {
+		rhigh := dist(high, k, d)
+		rlow := dist(low, k, d)
+		if rhigh < rlow {
+			min = low
+		} else {
+			max = high
+		}
+		high = max - (max-min)/3
+		low = min + (max-min)/3
+	}
+	return high
+}
+
 func (p *visionProcess) Think(g *game.Game) {
+	horizon := maxDistFromManaCost(p.Squeeze, p.Distance, p.supplied)
 	_player := g.GetEnt(p.Player_id)
 	player := _player.(*game.Player)
 	zbuffer := player.Los.RawAccess()
 	for i := range zbuffer {
 		bufferAngle := float64(i) / float64(len(zbuffer)) * 2 * math.Pi
 		angle := player.Angle - bufferAngle - math.Pi/2
-		d := dist(angle, 0.01, 50)
-		if d > 500 {
-			d = 500
+		d := dist(angle, p.Squeeze, p.Distance)
+		if d > horizon {
+			d = horizon
 		}
 		d = d * d
 		if float64(zbuffer[i]) < d {

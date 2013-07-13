@@ -319,8 +319,8 @@ func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	lp.abs.abilities = append(
 		lp.abs.abilities,
 		ability_makers["vision"](map[string]int{
-			"range":   300 * 300,
-			"squeeze": 80,
+			"range":   50,
+			"squeeze": 10, // 10 means 10 / 1000
 		}))
 	local.players = append(local.players, &lp)
 }
@@ -343,7 +343,6 @@ func (l *localData) activateAbility(abs *personalAbilities, id int, n int, keyPr
 	}
 	if active {
 		abs.activeAbility = abs.abilities[n]
-		base.Log().Printf("Setting active ability to %v", abs.activeAbility)
 	}
 }
 func (l *localData) thinkAbility(g *Game, abs *personalAbilities, id int) {
