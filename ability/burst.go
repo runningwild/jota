@@ -33,9 +33,9 @@ type burst struct {
 	force, frames int
 }
 
-func (b *burst) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
+func (b *burst) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 	event := addBurstEvent{
-		Player_id: player_id,
+		PlayerGid: gid,
 		Id:        b.id,
 		Frames:    b.frames,
 		Force:     b.force,
@@ -44,7 +44,7 @@ func (b *burst) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 }
 
 type addBurstEvent struct {
-	Player_id int
+	PlayerGid game.Gid
 	Id        int
 	Frames    int
 	Force     int
@@ -56,7 +56,7 @@ func init() {
 
 func (e addBurstEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.GetEnt(e.Player_id).(*game.Player)
+	player := g.Ents[e.PlayerGid].(*game.Player)
 	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
 	player.Processes[100+e.Id] = &burstProcess{
 		Frames:            int32(e.Frames),
@@ -64,7 +64,7 @@ func (e addBurstEvent) Apply(_g interface{}) {
 		Initial:           initial,
 		Remaining_initial: initial,
 		Continual:         game.Mana{float64(e.Force) / 50, 0, 0},
-		Player_id:         e.Player_id,
+		PlayerGid:         e.PlayerGid,
 	}
 }
 
@@ -88,7 +88,7 @@ type burstProcess struct {
 	Remaining_initial game.Mana
 	Continual         game.Mana
 	Killed            bool
-	Player_id         int
+	PlayerGid         game.Gid
 
 	// Counting how long to cast
 	count int
@@ -133,8 +133,7 @@ func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *burstProcess) Think(g *game.Game) {
-	_player := g.GetEnt(p.Player_id)
-	player := _player.(*game.Player)
+	player := g.Ents[p.PlayerGid].(*game.Player)
 	if p.Remaining_initial.Magnitude() == 0 {
 		if p.count > 0 {
 			p.count = -1
@@ -158,8 +157,8 @@ func (p *burstProcess) Think(g *game.Game) {
 	}
 }
 
-func (p *burstProcess) Draw(player_id int, g *game.Game) {
-	player := g.GetEnt(player_id).(*game.Player)
+func (p *burstProcess) Draw(gid game.Gid, g *game.Game) {
+	player := g.Ents[p.PlayerGid].(*game.Player)
 	base.EnableShader("circle")
 	prog := p.Remaining_initial.Magnitude() / p.Initial.Magnitude()
 	base.SetUniformF("circle", "progress", 1-float32(prog))

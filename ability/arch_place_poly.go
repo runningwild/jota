@@ -25,7 +25,7 @@ type placePoly struct {
 	Target    linear.Poly
 }
 
-func (p *placePoly) Activate(int, bool) ([]cgf.Event, bool) {
+func (p *placePoly) Activate(game.Gid, bool) ([]cgf.Event, bool) {
 	p.Done = false
 	p.Poly = linear.Poly{
 		linear.Vec2{0, 0},
@@ -36,10 +36,10 @@ func (p *placePoly) Activate(int, bool) ([]cgf.Event, bool) {
 	p.Target = nil
 	return nil, true
 }
-func (p *placePoly) Deactivate(player_id int) []cgf.Event {
+func (p *placePoly) Deactivate(gid game.Gid) []cgf.Event {
 	return nil
 }
-func (p *placePoly) Respond(player_id int, group gin.EventGroup) bool {
+func (p *placePoly) Respond(gid game.Gid, group gin.EventGroup) bool {
 	if !p.Placeable {
 		return false
 	}
@@ -49,7 +49,7 @@ func (p *placePoly) Respond(player_id int, group gin.EventGroup) bool {
 	}
 	return false
 }
-func (p *placePoly) Think(player_id int, game *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+func (p *placePoly) Think(gid game.Gid, game *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
 	if p.Done {
 		event := placePolyEvent{p.Target}
 		return []cgf.Event{&event}, true
@@ -65,7 +65,7 @@ func (p *placePoly) Think(player_id int, game *game.Game, mouse linear.Vec2) ([]
 	p.Placeable = game.IsPolyPlaceable(p.Target)
 	return nil, false
 }
-func (p *placePoly) Draw(player_id int, game *game.Game) {
+func (p *placePoly) Draw(gid game.Gid, game *game.Game) {
 	gl.Disable(gl.TEXTURE_2D)
 	placeable := game.IsPolyPlaceable(p.Target)
 	if placeable {

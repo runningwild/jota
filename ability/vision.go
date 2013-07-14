@@ -29,10 +29,10 @@ type vision struct {
 	squeeze  float64
 }
 
-func (p *vision) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
+func (p *vision) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 	ret := []cgf.Event{
 		addVisionEvent{
-			Player_id: player_id,
+			PlayerGid: gid,
 			Id:        p.id,
 			Distance:  p.distance,
 			Squeeze:   p.squeeze,
@@ -42,11 +42,11 @@ func (p *vision) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 	return ret, false
 }
 
-func (p *vision) Deactivate(player_id int) []cgf.Event {
+func (p *vision) Deactivate(gid game.Gid) []cgf.Event {
 	return nil
 	// ret := []cgf.Event{
 	// 	removeVisionEvent{
-	// 		Player_id: player_id,
+	// 		PlayerGid: gid,
 	// 		Id:        p.id,
 	// 	},
 	// }
@@ -54,7 +54,7 @@ func (p *vision) Deactivate(player_id int) []cgf.Event {
 }
 
 type addVisionEvent struct {
-	Player_id int
+	PlayerGid game.Gid
 	Id        int
 	Distance  float64
 	Squeeze   float64
@@ -67,7 +67,7 @@ func init() {
 
 func (e addVisionEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.GetEnt(e.Player_id).(*game.Player)
+	player := g.Ents[e.PlayerGid].(*game.Player)
 	if !e.Press {
 		if proc := player.Processes[100+e.Id]; proc != nil {
 			proc.Kill(g)
@@ -78,14 +78,14 @@ func (e addVisionEvent) Apply(_g interface{}) {
 	player.Processes[100+e.Id] = &visionProcess{
 		BasicPhases: BasicPhases{game.PhaseRunning},
 		Id:          e.Id,
-		Player_id:   e.Player_id,
+		PlayerGid:   e.PlayerGid,
 		Distance:    e.Distance,
 		Squeeze:     e.Squeeze,
 	}
 }
 
 type removeVisionEvent struct {
-	Player_id int
+	PlayerGid game.Gid
 	Id        int
 }
 
@@ -95,7 +95,7 @@ func init() {
 
 func (e removeVisionEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.GetEnt(e.Player_id).(*game.Player)
+	player := g.Ents[e.PlayerGid].(*game.Player)
 	proc := player.Processes[100+e.Id]
 	if proc != nil {
 		proc.Kill(g)
@@ -111,7 +111,7 @@ type visionProcess struct {
 	BasicPhases
 	NullCondition
 	Id        int
-	Player_id int
+	PlayerGid game.Gid
 	Distance  float64
 	Squeeze   float64
 
@@ -194,8 +194,7 @@ func (p *visionProcess) reset() {
 func (p *visionProcess) Think(g *game.Game) {
 	defer p.reset()
 	horizon := maxDistFromManaCost(p.Squeeze, p.Distance, p.supplied)
-	_player := g.GetEnt(p.Player_id)
-	player := _player.(*game.Player)
+	player := g.Ents[p.PlayerGid].(*game.Player)
 	zbuffer := player.Los.RawAccess()
 	for i := range zbuffer {
 		bufferAngle := float64(i) / float64(len(zbuffer)) * 2 * math.Pi
@@ -211,5 +210,5 @@ func (p *visionProcess) Think(g *game.Game) {
 	}
 }
 
-func (p *visionProcess) Draw(player_id int, g *game.Game) {
+func (p *visionProcess) Draw(gid game.Gid, g *game.Game) {
 }

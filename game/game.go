@@ -1,21 +1,22 @@
 package game
 
 import (
+	"bytes"
 	"encoding/gob"
-	"runtime/debug"
-	//"fmt"
+	"encoding/json"
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
-	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	"path/filepath"
+	"runtime/debug"
 )
 
 // type Ability func(game *Game, player *Player, params map[string]int) Process
@@ -26,24 +27,24 @@ type Ability interface {
 	// Called when a player selects this Ability.  Returns any number of events to
 	// apply, as well as a bool that is true iff this Ability should become the
 	// active Ability.
-	Activate(player_id int, keyPress bool) ([]cgf.Event, bool)
+	Activate(gid Gid, keyPress bool) ([]cgf.Event, bool)
 
 	// Called when this Ability is deselected as a result of another ability being
 	// selected.  For some abilities this might not do anything, but certain
 	// abilities may want to
-	Deactivate(player_id int) []cgf.Event
+	Deactivate(gid Gid) []cgf.Event
 
 	// The active Ability will receive all of the events from the player.  It
 	// should return true iff it consumes the event.
-	Respond(player_id int, group gin.EventGroup) bool
+	Respond(gid Gid, group gin.EventGroup) bool
 
 	// Returns any number of events to apply, as well as a bool that is true iff
 	// this Ability should be deactivated.  Typically this will include an event
 	// that will add a Process to this player.
-	Think(player_id int, game *Game, mouse linear.Vec2) ([]cgf.Event, bool)
+	Think(gid Gid, game *Game, mouse linear.Vec2) ([]cgf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
-	Draw(player_id int, game *Game)
+	Draw(gid Gid, game *Game)
 }
 
 type AbilityMaker func(params map[string]int) Ability
@@ -98,7 +99,7 @@ type Process interface {
 	Thinker
 	Responder
 	stats.Condition
-	Draw(player_id int, game *Game)
+	Draw(id Gid, game *Game)
 	Copy() Process
 }
 
@@ -116,6 +117,34 @@ func init() {
 type Player struct {
 	BaseEnt
 	Los *los.Los
+}
+
+func (g *Game) AddPlayer(pos linear.Vec2) Ent {
+	var p Player
+	err := json.NewDecoder(bytes.NewBuffer([]byte(`
+      {
+        "Base": {
+          "Max_turn": 0.07,
+          "Max_acc": 0.2,
+          "Mass": 750,
+          "Max_rate": 10,
+          "Influence": 75,
+          "Health": 1000
+        },
+        "Dynamic": {
+          "Health": 1000
+        }
+      }
+    `))).Decode(&p.BaseEnt.Stats)
+	if err != nil {
+		base.Log().Fatalf("%v", err)
+	}
+	p.Position = pos
+	p.Gid = g.NextGid()
+	p.Processes = make(map[int]Process)
+	p.Los = los.Make(LosMaxDist)
+	g.Ents[p.Gid] = &p
+	return &p
 }
 
 func (p *Player) Copy() Ent {
@@ -142,13 +171,13 @@ func (p *Player) ReleaseResources() {
 func (p *Player) Draw(game *Game) {
 	var t *texture.Data
 	gl.Color4ub(255, 255, 255, 255)
-	if p.Id() == 1 {
-		t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
-	} else if p.Id() == 2 {
-		t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
-	} else {
-		t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
-	}
+	// if p.Id() == 1 {
+	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+	// } else if p.Id() == 2 {
+	// 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
+	// } else {
+	// 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
+	// }
 	t.RenderAdvanced(
 		p.Position.X-float64(t.Dx())/2,
 		p.Position.Y-float64(t.Dy())/2,
@@ -209,8 +238,7 @@ type Ent interface {
 	OnDeath(g *Game)
 	ApplyDamage(damage stats.Damage)
 
-	SetId(int)
-	Id() int
+	Id() Gid
 	Pos() linear.Vec2
 
 	// Need to have a SetPos method because we don't want ents moving through
@@ -228,6 +256,8 @@ type NonManaUser struct{}
 
 func (NonManaUser) Supply(mana Mana) Mana { return mana }
 
+type Gid string
+
 type Game struct {
 	ManaSource ManaSource
 
@@ -242,13 +272,18 @@ type Game struct {
 	Friction_lava float64
 
 	// Last Id assigned to an entity
-	Next_id int
+	NextGidValue int
 
-	Ents []Ent
+	Ents map[Gid]Ent
 
 	GameThinks int
 
 	Architect architectData
+}
+
+func (g *Game) NextGid() Gid {
+	g.NextGidValue++
+	return Gid(fmt.Sprintf("%d", g.NextGidValue))
 }
 
 func (g *Game) Init() {
@@ -318,24 +353,24 @@ func getWeights(distance_squares []float64, value_sum float64, transform func(fl
 	return weights
 }
 
-func (g *Game) Merge(g2 *Game) {
-	frac := 0.0 // i.e. don't merge
-	for i := range g.Ents {
-		_p1 := g.Ents[i]
-		var p1 *Player
-		var ok bool
-		if p1, ok = _p1.(*Player); !ok {
-			continue
-		}
-		p2, ok := g2.GetEnt(p1.Id()).(*Player)
-		if p2 == nil || !ok {
-			continue
-		}
-		p1.Position.X = frac*p2.Position.X + (1-frac)*p1.Position.X
-		p1.Position.Y = frac*p2.Position.Y + (1-frac)*p1.Position.Y
-		p1.Angle = frac*p2.Angle + (1-frac)*p1.Angle
-	}
-}
+// func (g *Game) Merge(g2 *Game) {
+// 	frac := 0.0 // i.e. don't merge
+// 	for i := range g.Ents {
+// 		_p1 := g.Ents[i]
+// 		var p1 *Player
+// 		var ok bool
+// 		if p1, ok = _p1.(*Player); !ok {
+// 			continue
+// 		}
+// 		p2, ok := g2.GetEnt(p1.Id()).(*Player)
+// 		if p2 == nil || !ok {
+// 			continue
+// 		}
+// 		p1.Position.X = frac*p2.Position.X + (1-frac)*p1.Position.X
+// 		p1.Position.Y = frac*p2.Position.Y + (1-frac)*p1.Position.Y
+// 		p1.Angle = frac*p2.Angle + (1-frac)*p1.Angle
+// 	}
+// }
 
 func (g *Game) Copy() interface{} {
 	var g2 Game
@@ -350,13 +385,12 @@ func (g *Game) Copy() interface{} {
 	g2.Dy = g.Dy
 	g2.Friction = g.Friction
 	g2.Friction_lava = g.Friction_lava
-	g2.Next_id = g.Next_id
+	g2.NextGidValue = g.NextGidValue
 	g2.GameThinks = g.GameThinks
 
-	g2.Ents = make([]Ent, len(g.Ents))
-	g2.Ents = g2.Ents[0:0]
-	for _, ent := range g.Ents {
-		g2.Ents = append(g2.Ents, ent.Copy())
+	g2.Ents = make(map[Gid]Ent, len(g.Ents))
+	for gid, ent := range g.Ents {
+		g2.Ents[gid] = ent.Copy()
 	}
 	return &g2
 }
@@ -369,29 +403,13 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g.Dy = g2.Dy
 	g.Friction = g2.Friction
 	g.Room.Walls = g2.Room.Walls
-	g.Next_id = g2.Next_id
+	g.NextGidValue = g2.NextGidValue
 	g.GameThinks = g2.GameThinks
 
-	g.Ents = g.Ents[0:0]
-	for _, ent := range g2.Ents {
-		g.Ents = append(g.Ents, ent.Copy())
+	g.Ents = make(map[Gid]Ent, len(g2.Ents))
+	for gid, ent := range g2.Ents {
+		g.Ents[gid] = ent.Copy()
 	}
-}
-
-func (g *Game) GetEnt(id int) Ent {
-	for i := range g.Ents {
-		if g.Ents[i].Id() == id {
-			return g.Ents[i]
-		}
-	}
-	return nil
-}
-
-func (g *Game) AddEnt(ent Ent) int {
-	g.Next_id++
-	ent.SetId(g.Next_id)
-	g.Ents = append(g.Ents, ent)
-	return g.Ents[len(g.Ents)-1].Id()
 }
 
 func (g *Game) Think() {
@@ -409,7 +427,15 @@ func (g *Game) Think() {
 			g.Ents[i].OnDeath(g)
 		}
 	}
-	algorithm.Choose(&g.Ents, func(e Ent) bool { return e.Alive() })
+	var dead []Gid
+	for gid, ent := range g.Ents {
+		if !ent.Alive() {
+			dead = append(dead, gid)
+		}
+	}
+	for _, gid := range dead {
+		delete(g.Ents, gid)
+	}
 
 	g.ManaSource.Think(g.Ents)
 	g.Architect.Think(g)
@@ -425,7 +451,7 @@ func (g *Game) Think() {
 		pos.Y = clamp(pos.Y, 0, float64(g.Dy))
 		g.Ents[i].SetPos(pos)
 	}
-	moved := make(map[int]bool)
+	moved := make(map[Gid]bool)
 	for i := range g.Ents {
 		for j := range g.Ents {
 			if i == j {
@@ -462,8 +488,8 @@ func clamp(v, low, high float64) float64 {
 }
 
 type Turn struct {
-	Player_id int
-	Delta     float64
+	Gid   Gid
+	Delta float64
 }
 
 func init() {
@@ -472,17 +498,13 @@ func init() {
 
 func (t Turn) Apply(_g interface{}) {
 	g := _g.(*Game)
-	_player := g.GetEnt(t.Player_id)
-	if _player == nil {
-		return
-	}
-	player := _player.(*Player)
+	player := g.Ents[t.Gid].(*Player)
 	player.Delta.Angle = t.Delta
 }
 
 type Accelerate struct {
-	Player_id int
-	Delta     float64
+	Gid   Gid
+	Delta float64
 }
 
 func init() {
@@ -491,11 +513,7 @@ func init() {
 
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
-	_player := g.GetEnt(a.Player_id)
-	if _player == nil {
-		return
-	}
-	player := _player.(*Player)
+	player := g.Ents[a.Gid].(*Player)
 	player.Delta.Speed = a.Delta / 2
 }
 

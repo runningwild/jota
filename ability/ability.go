@@ -21,21 +21,21 @@ func nextAbilityId() int {
 
 type nonResponder struct{}
 
-func (nonResponder) Respond(player_id int, group gin.EventGroup) bool { return false }
+func (nonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
 
 type neverActive struct {
 	nonResponder
 }
 
-func (neverActive) Deactivate(player_id int) []cgf.Event { return nil }
+func (neverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
 
 type nonThinker struct{}
 
-func (nonThinker) Think(int, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
+func (nonThinker) Think(game.Gid, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
 
 type nonRendering struct{}
 
-func (nonRendering) Draw(player_id int, game *game.Game) {}
+func (nonRendering) Draw(gid game.Gid, game *game.Game) {}
 
 type BasicPhases struct {
 	The_phase game.Phase

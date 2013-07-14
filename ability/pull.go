@@ -32,10 +32,10 @@ type pull struct {
 	angle float64
 }
 
-func (p *pull) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
+func (p *pull) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 	ret := []cgf.Event{
 		addPullEvent{
-			Player_id: player_id,
+			PlayerGid: gid,
 			Id:        p.id,
 			Force:     p.force,
 			Angle:     p.angle,
@@ -45,10 +45,10 @@ func (p *pull) Activate(player_id int, keyPress bool) ([]cgf.Event, bool) {
 	return ret, false
 }
 
-func (p *pull) Deactivate(player_id int) []cgf.Event {
+func (p *pull) Deactivate(gid game.Gid) []cgf.Event {
 	ret := []cgf.Event{
 		removePullEvent{
-			Player_id: player_id,
+			PlayerGid: gid,
 			Id:        p.id,
 		},
 	}
@@ -56,7 +56,7 @@ func (p *pull) Deactivate(player_id int) []cgf.Event {
 }
 
 type addPullEvent struct {
-	Player_id int
+	PlayerGid game.Gid
 	Id        int
 	Angle     float64
 	Force     float64
@@ -69,7 +69,7 @@ func init() {
 
 func (e addPullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.GetEnt(e.Player_id).(*game.Player)
+	player := g.Ents[e.PlayerGid].(*game.Player)
 	if !e.Press {
 		if proc := player.Processes[100+e.Id]; proc != nil {
 			proc.Kill(g)
@@ -79,15 +79,15 @@ func (e addPullEvent) Apply(_g interface{}) {
 	}
 	player.Processes[100+e.Id] = &pullProcess{
 		BasicPhases: BasicPhases{game.PhaseRunning},
+		PlayerGid:   e.PlayerGid,
 		Id:          e.Id,
-		Player_id:   e.Player_id,
 		Angle:       e.Angle,
 		Force:       e.Force,
 	}
 }
 
 type removePullEvent struct {
-	Player_id int
+	PlayerGid game.Gid
 	Id        int
 }
 
@@ -97,7 +97,7 @@ func init() {
 
 func (e removePullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.GetEnt(e.Player_id).(*game.Player)
+	player := g.Ents[e.PlayerGid].(*game.Player)
 	proc := player.Processes[100+e.Id]
 	if proc != nil {
 		proc.Kill(g)
@@ -112,8 +112,8 @@ func init() {
 type pullProcess struct {
 	BasicPhases
 	NullCondition
+	PlayerGid game.Gid
 	Id        int
-	Player_id int
 	Angle     float64
 	Force     float64
 
@@ -144,8 +144,7 @@ func (p *pullProcess) reset() {
 
 func (p *pullProcess) Think(g *game.Game) {
 	defer p.reset()
-	_player := g.GetEnt(p.Player_id)
-	player := _player.(*game.Player)
+	player := g.Ents[p.PlayerGid].(*game.Player)
 
 	base_force := p.Force * p.supplied / p.required
 	for _, ent := range g.Ents {
@@ -173,10 +172,10 @@ func (p *pullProcess) Think(g *game.Game) {
 	}
 }
 
-func (p *pullProcess) Draw(player_id int, g *game.Game) {
+func (p *pullProcess) Draw(gid game.Gid, g *game.Game) {
 	gl.Color4d(1, 1, 1, 1)
 	gl.Disable(gl.TEXTURE_2D)
-	player := g.GetEnt(player_id).(*game.Player)
+	player := g.Ents[p.PlayerGid].(*game.Player)
 	v1 := player.Pos()
 	v2 := v1.Add(linear.Vec2{1000, 0})
 	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)

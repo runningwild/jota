@@ -24,15 +24,15 @@ type removePoly struct {
 	Target string
 }
 
-func (r *removePoly) Activate(int, bool) ([]cgf.Event, bool) {
+func (r *removePoly) Activate(game.Gid, bool) ([]cgf.Event, bool) {
 	r.Done = false
 	r.Target = ""
 	return nil, true
 }
-func (r *removePoly) Deactivate(player_id int) []cgf.Event {
+func (r *removePoly) Deactivate(gid game.Gid) []cgf.Event {
 	return nil
 }
-func (r *removePoly) Respond(player_id int, group gin.EventGroup) bool {
+func (r *removePoly) Respond(gid game.Gid, group gin.EventGroup) bool {
 	if r.Target == "" {
 		return false
 	}
@@ -42,7 +42,7 @@ func (r *removePoly) Respond(player_id int, group gin.EventGroup) bool {
 	}
 	return false
 }
-func (r *removePoly) Think(player_id int, game *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+func (r *removePoly) Think(gid game.Gid, game *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
 	if r.Done && r.Target != "" {
 		if _, ok := game.Room.Walls[r.Target]; ok && !game.IsExistingPolyVisible(r.Target) {
 			event := removePolyEvent{r.Target}
@@ -59,7 +59,7 @@ func (r *removePoly) Think(player_id int, game *game.Game, mouse linear.Vec2) ([
 	}
 	return nil, false
 }
-func (r *removePoly) Draw(player_id int, game *game.Game) {
+func (r *removePoly) Draw(gid game.Gid, game *game.Game) {
 	gl.Disable(gl.TEXTURE_2D)
 
 	visible := game.IsExistingPolyVisible(r.Target)

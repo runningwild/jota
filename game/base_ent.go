@@ -15,7 +15,7 @@ type BaseEnt struct {
 		Speed float64
 		Angle float64
 	}
-	Gid int
+	Gid Gid
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
@@ -40,12 +40,8 @@ func (b *BaseEnt) Mass() float64 {
 	return b.Stats.Mass()
 }
 
-func (b *BaseEnt) Id() int {
+func (b *BaseEnt) Id() Gid {
 	return b.Gid
-}
-
-func (b *BaseEnt) SetId(id int) {
-	b.Gid = id
 }
 
 func (b *BaseEnt) Pos() linear.Vec2 {
@@ -91,13 +87,13 @@ func (b *BaseEnt) Think(g *Game) {
 		b.Delta.Angle = b.Stats.MaxTurn()
 	}
 
-	in_lava := false
+	inLava := false
 	for _, lava := range g.Room.Lava {
 		if linear.VecInsideConvexPoly(b.Pos(), lava) {
-			in_lava = true
+			inLava = true
 		}
 	}
-	if in_lava {
+	if inLava {
 		b.Stats.ApplyDamage(stats.Damage{stats.DamageFire, 5})
 	}
 
@@ -105,7 +101,7 @@ func (b *BaseEnt) Think(g *Game) {
 	b.Velocity = b.Velocity.Add(delta)
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
-	if in_lava {
+	if inLava {
 		friction = g.Friction_lava
 	}
 	b.Velocity = b.Velocity.Scale(

@@ -451,8 +451,10 @@ func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
 	return distRatio * distRatio * ms.options.MaxDrainRate
 }
 
-func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
-	for i, player := range players {
+func (ms *ManaSource) getPlayerRanges(td *thinkData, players map[Gid]Ent) {
+	i := -1
+	for _, player := range players {
+		i++
 		playerThinkData := &td.playerThinkData[i]
 
 		playerThinkData.minX = -1
@@ -486,9 +488,11 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []Ent) {
 	}
 }
 
-func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
+func (ms *ManaSource) setPlayerControl(td *thinkData, players map[Gid]Ent) {
 	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
-	for i, player := range players {
+	i := -1
+	for _, player := range players {
+		i++
 		playerThinkData := &td.playerThinkData[i]
 		if !playerThinkData.isValid() {
 			continue
@@ -518,7 +522,9 @@ func (ms *ManaSource) setPlayerControl(td *thinkData, players []Ent) {
 }
 
 func (ms *ManaSource) setPlayerDrain(td *thinkData) {
-	for i := range td.playerThinkData {
+	i := -1
+	for _ = range td.playerThinkData {
+		i++
 		playerThinkData := &td.playerThinkData[i]
 		if !playerThinkData.isValid() {
 			continue
@@ -542,8 +548,10 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 	}
 }
 
-func (ms *ManaSource) supplyPlayers(td *thinkData, players []Ent) {
-	for i, player := range players {
+func (ms *ManaSource) supplyPlayers(td *thinkData, players map[Gid]Ent) {
+	i := -1
+	for _, player := range players {
+		i++
 		playerThinkData := &td.playerThinkData[i]
 		if !playerThinkData.isValid() {
 			continue
@@ -566,7 +574,7 @@ func (ms *ManaSource) supplyPlayers(td *thinkData, players []Ent) {
 
 var globalThinkData thinkData
 
-func (ms *ManaSource) Think(players []Ent) {
+func (ms *ManaSource) Think(players map[Gid]Ent) {
 	ms.regenerateMana()
 	ms.initThinkData(&globalThinkData, len(players))
 	ms.getPlayerRanges(&globalThinkData, players)

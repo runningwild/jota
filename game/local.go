@@ -24,8 +24,8 @@ type personalAbilities struct {
 }
 
 type localPlayer struct {
-	// This player's id
-	id int
+	// This player's gid
+	gid Gid
 
 	// The device controlling this player.
 	deviceIndex gin.DeviceIndex
@@ -46,7 +46,7 @@ type localData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
-	// true iff this is the computer playing the architect side of the game
+	// true iff this is the computer playing the architect sgide of the game
 	isArchitect bool
 
 	// All of the players controlled by humans on localhost.
@@ -211,7 +211,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	g.renderLosMask()
 	for _, p := range local.players {
 		if p.abs.activeAbility != nil {
-			p.abs.activeAbility.Draw(p.id, g)
+			p.abs.activeAbility.Draw(p.gid, g)
 		}
 	}
 }
@@ -256,7 +256,7 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 func (g *Game) renderLocalArchitect(region gui.Region) {
 	g.renderLosMask()
 	if local.architect.abs.activeAbility != nil {
-		local.architect.abs.activeAbility.Draw(0, g)
+		local.architect.abs.activeAbility.Draw("", g)
 	}
 	return
 	gl.Disable(gl.TEXTURE_2D)
@@ -301,7 +301,7 @@ func (g *Game) RenderLocal(region gui.Region) {
 
 func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	var lp localPlayer
-	lp.id = player.Id()
+	lp.gid = player.Id()
 	lp.deviceIndex = index
 	lp.abs.abilities = append(
 		lp.abs.abilities,
@@ -325,11 +325,11 @@ func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
 	local.players = append(local.players, &lp)
 }
 
-func (l *localData) activateAbility(abs *personalAbilities, id int, n int, keyPress bool) {
+func (l *localData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
 	activeAbility := abs.activeAbility
 	abs.activeAbility = nil
 	if activeAbility != nil {
-		events := activeAbility.Deactivate(id)
+		events := activeAbility.Deactivate(gid)
 		for _, event := range events {
 			l.engine.ApplyEvent(event)
 		}
@@ -337,7 +337,7 @@ func (l *localData) activateAbility(abs *personalAbilities, id int, n int, keyPr
 			return
 		}
 	}
-	events, active := abs.abilities[n].Activate(id, keyPress)
+	events, active := abs.abilities[n].Activate(gid, keyPress)
 	for _, event := range events {
 		l.engine.ApplyEvent(event)
 	}
@@ -345,18 +345,18 @@ func (l *localData) activateAbility(abs *personalAbilities, id int, n int, keyPr
 		abs.activeAbility = abs.abilities[n]
 	}
 }
-func (l *localData) thinkAbility(g *Game, abs *personalAbilities, id int) {
+func (l *localData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 	if abs.activeAbility == nil {
 		return
 	}
 	mx, my := local.sys.GetCursorPos()
 	mouse := linear.Vec2{float64(mx), float64(my)}
-	events, die := abs.activeAbility.Think(id, g, mouse.Sub(l.regionPos))
+	events, die := abs.activeAbility.Think(gid, g, mouse.Sub(l.regionPos))
 	for _, event := range events {
 		local.engine.ApplyEvent(event)
 	}
 	if die {
-		more_events := abs.activeAbility.Deactivate(id)
+		more_events := abs.activeAbility.Deactivate(gid)
 		abs.activeAbility = nil
 		for _, event := range more_events {
 			local.engine.ApplyEvent(event)
@@ -375,11 +375,11 @@ func axisControl(v float64) float64 {
 }
 
 func localThinkArchitect(g *Game) {
-	local.thinkAbility(g, &local.architect.abs, 0)
+	local.thinkAbility(g, &local.architect.abs, "")
 }
 func localThinkInvaders(g *Game) {
 	for _, player := range local.players {
-		local.thinkAbility(g, &player.abs, player.id)
+		local.thinkAbility(g, &player.abs, player.gid)
 		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.deviceIndex)
 		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.deviceIndex)
 		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.deviceIndex)
@@ -393,10 +393,10 @@ func localThinkInvaders(g *Game) {
 		left := axisControl(left_axis.CurPressAmt())
 		right := axisControl(right_axis.CurPressAmt())
 		if up-down != 0 {
-			local.engine.ApplyEvent(Accelerate{player.id, 2 * (up - down)})
+			local.engine.ApplyEvent(Accelerate{player.gid, 2 * (up - down)})
 		}
 		if left-right != 0 {
-			local.engine.ApplyEvent(Turn{player.id, (left - right)})
+			local.engine.ApplyEvent(Turn{player.gid, (left - right)})
 		}
 	}
 }
@@ -410,13 +410,13 @@ func localThink(g *Game) {
 
 func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, 0, 0, true)
+		l.activateAbility(&l.architect.abs, "", 0, true)
 	}
 	if found, event := group.FindEvent(gin.AnyKey2); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, 0, 1, true)
+		l.activateAbility(&l.architect.abs, "", 1, true)
 	}
 	if l.architect.abs.activeAbility != nil {
-		l.architect.abs.activeAbility.Respond(0, group)
+		l.architect.abs.activeAbility.Respond("", group)
 	}
 }
 
@@ -426,19 +426,19 @@ func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
 		k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		if found, event := group.FindEvent(k0.Id()); found {
-			l.activateAbility(&player.abs, player.id, 0, event.Type == gin.Press)
+			l.activateAbility(&player.abs, player.gid, 0, event.Type == gin.Press)
 			return
 		}
 		if found, event := group.FindEvent(k1.Id()); found {
-			l.activateAbility(&player.abs, player.id, 1, event.Type == gin.Press)
+			l.activateAbility(&player.abs, player.gid, 1, event.Type == gin.Press)
 			return
 		}
 		if found, event := group.FindEvent(k2.Id()); found {
-			l.activateAbility(&player.abs, player.id, 2, event.Type == gin.Press)
+			l.activateAbility(&player.abs, player.gid, 2, event.Type == gin.Press)
 			return
 		}
 		if player.abs.activeAbility != nil {
-			if player.abs.activeAbility.Respond(player.id, group) {
+			if player.abs.activeAbility.Respond(player.gid, group) {
 				return
 			}
 		}
