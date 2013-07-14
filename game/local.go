@@ -140,8 +140,8 @@ func (g *Game) copyBackbuffer() {
 		gl.RGBA,
 		0,
 		0,
-		900,
-		600,
+		gl.Sizei(g.Room.Dx),
+		gl.Sizei(g.Room.Dy),
 		0)
 	gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
 	gl.Color4d(1, 1, 1, 1)
@@ -173,8 +173,8 @@ func (g *Game) renderLosMask() {
 		gl.UNSIGNED_INT,
 		gl.Pointer(&local.los.texRawData[0]))
 	base.SetUniformI("los", "tex0", 0)
-	base.SetUniformF("los", "dx", 900)
-	base.SetUniformF("los", "dy", 600)
+	base.SetUniformF("los", "dx", float32(g.Room.Dx))
+	base.SetUniformF("los", "dy", float32(g.Room.Dy))
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", los.Resolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
@@ -198,11 +198,11 @@ func (g *Game) renderLosMask() {
 	gl.TexCoord2d(0, 1)
 	gl.Vertex2i(0, 0)
 	gl.TexCoord2d(0, 0)
-	gl.Vertex2i(0, 600)
+	gl.Vertex2i(0, gl.Int(g.Room.Dy))
 	gl.TexCoord2d(1, 0)
-	gl.Vertex2i(900, 600)
+	gl.Vertex2i(gl.Int(g.Room.Dx), gl.Int(g.Room.Dy))
 	gl.TexCoord2d(1, 1)
-	gl.Vertex2i(900, 0)
+	gl.Vertex2i(gl.Int(g.Room.Dx), 0)
 	gl.End()
 	base.EnableShader("")
 }

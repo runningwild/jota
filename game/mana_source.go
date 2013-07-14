@@ -355,7 +355,7 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
-	texture.RenderAdvanced(150, -150, dy, dx, 3.1415926535/2, true)
+	texture.RenderAdvanced(250, -250, dy, dx, 3.1415926535/2, true)
 	base.EnableShader("")
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Disable(gl.TEXTURE_1D)

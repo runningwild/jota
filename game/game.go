@@ -265,9 +265,6 @@ type Game struct {
 
 	Rng *cmwc.Cmwc
 
-	// Dimensions of the board
-	Dx, Dy int
-
 	Friction      float64
 	Friction_lava float64
 
@@ -289,13 +286,13 @@ func (g *Game) NextGid() Gid {
 func (g *Game) Init() {
 	msOptions := ManaSourceOptions{
 		NumSeeds:    20,
-		NumNodeRows: 60,
-		NumNodeCols: 90,
+		NumNodeRows: g.Room.Dy / 10,
+		NumNodeCols: g.Room.Dx / 10,
 
 		BoardLeft:   0,
 		BoardTop:    0,
-		BoardRight:  float64(g.Dx),
-		BoardBottom: float64(g.Dy),
+		BoardRight:  float64(g.Room.Dx),
+		BoardBottom: float64(g.Room.Dy),
 
 		MaxDrainDistance: 120.0,
 		MaxDrainRate:     5.0,
@@ -383,8 +380,6 @@ func (g *Game) Copy() interface{} {
 
 	g2.Rng = g.Rng.Copy()
 
-	g2.Dx = g.Dx
-	g2.Dy = g.Dy
 	g2.Friction = g.Friction
 	g2.Friction_lava = g.Friction_lava
 	g2.NextGidValue = g.NextGidValue
@@ -401,8 +396,6 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g2 := _g2.(*Game)
 	g.ManaSource.OverwriteWith(&g2.ManaSource)
 	g.Rng.OverwriteWith(g2.Rng)
-	g.Dx = g2.Dx
-	g.Dy = g2.Dy
 	g.Friction = g2.Friction
 	g.Room.Walls = g2.Room.Walls
 	g.NextGidValue = g2.NextGidValue
@@ -449,8 +442,8 @@ func (g *Game) Think() {
 		}
 		g.Ents[i].Think(g)
 		pos := g.Ents[i].Pos()
-		pos.X = clamp(pos.X, 0, float64(g.Dx))
-		pos.Y = clamp(pos.Y, 0, float64(g.Dy))
+		pos.X = clamp(pos.X, 0, float64(g.Room.Dx))
+		pos.Y = clamp(pos.Y, 0, float64(g.Room.Dy))
 		g.Ents[i].SetPos(pos)
 	}
 	moved := make(map[Gid]bool)
@@ -541,7 +534,7 @@ func (gw *GameWindow) Requested() gui.Dims {
 	if gw.game == nil {
 		return gui.Dims{}
 	}
-	return gui.Dims{gw.game.Dx, gw.game.Dy}
+	return gui.Dims{gw.game.Room.Dx, gw.game.Room.Dy}
 }
 func (gw *GameWindow) Rendered() gui.Region {
 	return gw.region
@@ -588,7 +581,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	gw.game.ManaSource.Draw(gw, float64(gw.game.Dx), float64(gw.game.Dy))
+	gw.game.ManaSource.Draw(gw, float64(gw.game.Room.Dx), float64(gw.game.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)

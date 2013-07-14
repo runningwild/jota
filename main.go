@@ -88,8 +88,6 @@ func main() {
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
 		g.Rng.SeedWithDevRand()
-		g.Dx = 900
-		g.Dy = 600
 		g.Ents = make(map[game.Gid]game.Ent)
 		g.Friction = 0.97
 		g.Friction_lava = 0.85

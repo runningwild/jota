@@ -14,6 +14,7 @@ type Room struct {
 	Walls  map[string]linear.Poly
 	Lava   map[string]linear.Poly
 	Doors  map[string]Door
+	Dx, Dy int
 	NextId int
 }
 
