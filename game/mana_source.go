@@ -101,6 +101,8 @@ type ManaSourceOptions struct {
 	NodeMagnitude     float64
 	MinNodeBrightness int
 	MaxNodeBrightness int
+
+	Rng *cmwc.Cmwc
 }
 
 type node struct {
@@ -191,9 +193,7 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 		panic(fmt.Sprintf("Invalid options: %v", options))
 	}
 
-	c := cmwc.MakeGoodCmwc()
-	c.SeedWithDevRand()
-	r := rand.New(c)
+	r := rand.New(options.Rng)
 
 	seeds := make([]nodeSeed, options.NumSeeds)
 	for i := range seeds {

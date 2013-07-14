@@ -304,6 +304,8 @@ func (g *Game) Init() {
 		NodeMagnitude:     100,
 		MinNodeBrightness: 20,
 		MaxNodeBrightness: 150,
+
+		Rng: g.Rng,
 	}
 	g.ManaSource.Init(&msOptions)
 }

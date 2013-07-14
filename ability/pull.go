@@ -5,7 +5,6 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
-	// "github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -117,7 +116,6 @@ type pullProcess struct {
 	Angle     float64
 	Force     float64
 
-	required float64
 	supplied float64
 }
 
@@ -127,9 +125,9 @@ func (p *pullProcess) Copy() game.Process {
 }
 
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
-	if supply[game.ColorBlue] > p.required-p.supplied {
-		supply[game.ColorBlue] -= p.required - p.supplied
-		p.supplied = p.required
+	if supply[game.ColorBlue] > p.required()-p.supplied {
+		supply[game.ColorBlue] -= p.required() - p.supplied
+		p.supplied = p.required()
 	} else {
 		p.supplied += supply[game.ColorBlue]
 		supply[game.ColorBlue] = 0
@@ -137,8 +135,11 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	return supply
 }
 
+func (p *pullProcess) required() float64 {
+	return p.Force
+}
+
 func (p *pullProcess) reset() {
-	p.required = p.Force
 	p.supplied = 0
 }
 
@@ -146,7 +147,7 @@ func (p *pullProcess) Think(g *game.Game) {
 	defer p.reset()
 	player := g.Ents[p.PlayerGid].(*game.Player)
 
-	base_force := p.Force * p.supplied / p.required
+	base_force := p.Force * p.supplied / p.required()
 	for _, ent := range g.Ents {
 		if ent == game.Ent(player) {
 			continue

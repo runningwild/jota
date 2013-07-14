@@ -115,7 +115,6 @@ type visionProcess struct {
 	Distance  float64
 	Squeeze   float64
 
-	required float64
 	supplied float64
 }
 
@@ -127,9 +126,9 @@ func (p *visionProcess) Copy() game.Process {
 const visionHorizon = 500
 
 func (p *visionProcess) Supply(supply game.Mana) game.Mana {
-	if supply[game.ColorGreen] > p.required-p.supplied {
-		supply[game.ColorGreen] -= p.required - p.supplied
-		p.supplied = p.required
+	if supply[game.ColorGreen] > p.required()-p.supplied {
+		supply[game.ColorGreen] -= p.required() - p.supplied
+		p.supplied = p.required()
 	} else {
 		p.supplied += supply[game.ColorGreen]
 		supply[game.ColorGreen] = 0
@@ -186,8 +185,11 @@ func minDist(k, d float64) float64 {
 	return high
 }
 
+func (p *visionProcess) required() float64 {
+	return manaCostFromMaxDist(p.Squeeze, p.Distance, visionHorizon)
+}
+
 func (p *visionProcess) reset() {
-	p.required = manaCostFromMaxDist(p.Squeeze, p.Distance, visionHorizon)
 	p.supplied = 0
 }
 
