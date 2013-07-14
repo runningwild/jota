@@ -63,6 +63,9 @@ type localData struct {
 		texId      gl.Uint
 	}
 
+	focus linear.Vec2
+	zoom  float64
+
 	sys       system.System
 	architect localArchitectData
 }
@@ -405,6 +408,14 @@ func localThink(g *Game) {
 		localThinkArchitect(g)
 	} else {
 		localThinkInvaders(g)
+	}
+	wheel := gin.In().GetKeyFlat(gin.MouseWheelVertical, gin.DeviceTypeMouse, gin.DeviceIndexAny)
+	local.zoom += wheel.CurPressAmt() / 200
+	if local.zoom > 1 {
+		local.zoom = 1
+	}
+	if local.zoom < -1 {
+		local.zoom = -1
 	}
 }
 
