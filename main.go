@@ -153,7 +153,7 @@ func main() {
 		for _, index := range d[gin.DeviceTypeController] {
 			game.SetLocalPlayer(g.Ents[players[n]].(*game.Player), index)
 			n++
-			if n > 2 {
+			if n > len(players) {
 				break
 			}
 		}
@@ -161,9 +161,9 @@ func main() {
 			game.SetLocalPlayer(g.Ents[players[0]].(*game.Player), 0)
 		}
 	}
-	anchor := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
+	anchor := gui.MakeAnchorBox(gui.Dims{wdx / 2, wdy / 2})
 	ui.AddChild(anchor)
-	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.5, 0.5, 0.5, 0.5})
+	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.2, 0.2, 0.2, 0.2})
 	var v float64
 	var profile_output *os.File
 	var num_mem_profiles int

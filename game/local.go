@@ -13,7 +13,8 @@ import (
 )
 
 const LosMaxPlayers = 2
-const LosMaxDist = 600
+const LosMaxDist = 1000
+const LosPlayerHorizon = 200
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -63,8 +64,9 @@ type localData struct {
 		texId      gl.Uint
 	}
 
-	focus linear.Vec2
-	zoom  float64
+	current, target struct {
+		mid, dims linear.Vec2
+	}
 
 	sys       system.System
 	architect localArchitectData
@@ -295,6 +297,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 // or use an ability, for example.
 func (g *Game) RenderLocal(region gui.Region) {
 	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
+	local.doPlayersFocusRegion(g)
 	if local.isArchitect {
 		g.renderLocalArchitect(region)
 	} else {
@@ -403,19 +406,67 @@ func localThinkInvaders(g *Game) {
 		}
 	}
 }
+
+func (l *localData) doPlayersFocusRegion(g *Game) {
+	min := linear.Vec2{1e9, 1e9}
+	max := linear.Vec2{-1e9, -1e9}
+	for _, _p := range g.Ents {
+		p, ok := _p.(*Player)
+		if !ok {
+			continue
+		}
+		pos := p.Pos()
+		if pos.X < min.X {
+			min.X = pos.X
+		}
+		if pos.Y < min.Y {
+			min.Y = pos.Y
+		}
+		if pos.X > max.X {
+			max.X = pos.X
+		}
+		if pos.Y > max.Y {
+			max.Y = pos.Y
+		}
+	}
+	min.X -= LosPlayerHorizon
+	min.Y -= LosPlayerHorizon
+	if min.X < 0 {
+		min.X = 0
+	}
+	if min.Y < 0 {
+		min.Y = 0
+	}
+	max.X += LosPlayerHorizon
+	max.Y += LosPlayerHorizon
+	if max.X > float64(g.Room.Dx) {
+		max.X = float64(g.Room.Dx)
+	}
+	if max.Y > float64(g.Room.Dy) {
+		max.Y = float64(g.Room.Dy)
+	}
+
+	mid := min.Add(max).Scale(0.5)
+	dims := max.Sub(min)
+	if dims.X/dims.Y < l.regionPos.X/l.regionPos.Y {
+		dims.X = dims.Y * l.regionPos.X / l.regionPos.Y
+	} else {
+		dims.Y = dims.X * l.regionPos.Y / l.regionPos.X
+	}
+	l.target.dims = dims
+	l.target.mid = mid
+
+	// speed is in (0, 1), the higher it is, the faster current approaches target.
+	speed := 0.1
+	l.current.dims = l.current.dims.Scale(1 - speed).Add(l.target.dims.Scale(speed))
+	l.current.mid = l.current.mid.Scale(1 - speed).Add(l.target.mid.Scale(speed))
+}
+
 func localThink(g *Game) {
 	if local.isArchitect {
 		localThinkArchitect(g)
 	} else {
 		localThinkInvaders(g)
-	}
-	wheel := gin.In().GetKeyFlat(gin.MouseWheelVertical, gin.DeviceTypeMouse, gin.DeviceIndexAny)
-	local.zoom += wheel.CurPressAmt() / 200
-	if local.zoom > 1 {
-		local.zoom = 1
-	}
-	if local.zoom < -1 {
-		local.zoom = -1
 	}
 }
 

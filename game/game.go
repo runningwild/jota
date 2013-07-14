@@ -143,7 +143,7 @@ func (g *Game) AddPlayer(pos linear.Vec2) Ent {
 	p.Position = pos
 	p.Gid = g.NextGid()
 	p.Processes = make(map[int]Process)
-	p.Los = los.Make(LosMaxDist)
+	p.Los = los.Make(LosPlayerHorizon)
 	g.Ents[p.Gid] = &p
 	return &p
 }
@@ -535,7 +535,7 @@ func (gw *GameWindow) Requested() gui.Dims {
 	if gw.game == nil {
 		return gui.Dims{}
 	}
-	return gui.Dims{gw.game.Room.Dx, gw.game.Room.Dy}
+	return gui.Dims{800, 600}
 }
 func (gw *GameWindow) Rendered() gui.Region {
 	return gw.region
@@ -560,47 +560,6 @@ func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
 
 var latest_region gui.Region
 
-func (g *Game) playerFocusRegion() (min, max linear.Vec2) {
-	min = linear.Vec2{1e9, 1e9}
-	max = linear.Vec2{-1e9, -1e9}
-	for _, _p := range g.Ents {
-		p, ok := _p.(*Player)
-		if !ok {
-			continue
-		}
-		pos := p.Pos()
-		if pos.X < min.X {
-			min.X = pos.X
-		}
-		if pos.Y < min.Y {
-			min.Y = pos.Y
-		}
-		if pos.X > max.X {
-			max.X = pos.X
-		}
-		if pos.Y > max.Y {
-			max.Y = pos.Y
-		}
-	}
-	min.X -= LosMaxDist
-	min.Y -= LosMaxDist
-	if min.X < 0 {
-		min.X = 0
-	}
-	if min.Y < 0 {
-		min.Y = 0
-	}
-	max.X += LosMaxDist
-	max.Y += LosMaxDist
-	if max.X > float64(g.Room.Dx) {
-		max.X = float64(g.Room.Dx)
-	}
-	if max.Y > float64(g.Room.Dy) {
-		max.Y = float64(g.Room.Dy)
-	}
-	return min, max
-}
-
 // Returns the most recent region used when rendering the game.
 func (g *Game) Region() gui.Region {
 	return latest_region
@@ -617,14 +576,47 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	gw.region = region
 	latest_region = region
 	gl.PushMatrix()
+	defer func() {
+		// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
+		gl.Disable(gl.TEXTURE_2D)
+		gl.Color4ub(255, 255, 255, 255)
+		gl.LineWidth(3)
+		gl.Begin(gl.LINES)
+		bx, by := gl.Int(region.X), gl.Int(region.Y)
+		bdx, bdy := gl.Int(region.Dx), gl.Int(region.Dy)
+		gl.Vertex2i(bx, by)
+		gl.Vertex2i(bx, by+bdy)
+		gl.Vertex2i(bx, by+bdy)
+		gl.Vertex2i(bx+bdx, by+bdy)
+		gl.Vertex2i(bx+bdx, by+bdy)
+		gl.Vertex2i(bx+bdx, by)
+		gl.Vertex2i(bx+bdx, by)
+		gl.Vertex2i(bx, by)
+		gl.End()
+		gl.LineWidth(1)
+	}()
 	defer gl.PopMatrix()
-	gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
-	gl.Translated(gl.Double(gw.region.Dx/2), gl.Double(gw.region.Dy/2), 0)
-	min, max := gw.game.playerFocusRegion()
-	mid := min.Add(max).Scale(0.5)
-	scale := math.Pow(2, local.zoom)
-	gl.Scaled(gl.Double(scale), gl.Double(scale), 0)
-	gl.Translated(gl.Double(-mid.X), gl.Double(-mid.Y), 0)
+	math.Sin(3)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.LoadIdentity()
+
+	gl.Ortho(
+		gl.Double(local.current.mid.X-local.current.dims.X/2),
+		gl.Double(local.current.mid.X+local.current.dims.X/2),
+		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
+		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
+		gl.Double(1000),
+		gl.Double(-1000),
+	)
+	gl.MatrixMode(gl.MODELVIEW)
+	// base.Log().Printf("mid, dims: %v , %v", mid, dims)
+	// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
+	// gl.Translated(gl.Double(gw.region.Dx/2), gl.Double(gw.region.Dy/2), 0)
+	// min, max := gw.game.playerFocusRegion()
+	// mid := min.Add(max).Scale(0.5)
+	// scale := math.Pow(2, local.zoom)
+	// gl.Scaled(gl.Double(scale), gl.Double(scale), 0)
+	// gl.Translated(gl.Double(-mid.X), gl.Double(-mid.Y), 0)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
