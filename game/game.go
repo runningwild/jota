@@ -598,7 +598,16 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	defer gl.PopMatrix()
 	math.Sin(3)
 	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
 	gl.LoadIdentity()
+
+	// Set the viewport so that we only render into the region that we're supposed
+	// to render to.
+	// TODO: Check if this works on all graphics cards - I've heard that the opengl
+	// spec doesn't actually require that viewport does any clipping.
+	gl.PushAttrib(gl.VIEWPORT_BIT)
+	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
+	defer gl.PopAttrib()
 
 	gl.Ortho(
 		gl.Double(local.current.mid.X-local.current.dims.X/2),
@@ -608,6 +617,11 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		gl.Double(1000),
 		gl.Double(-1000),
 	)
+	defer func() {
+		gl.MatrixMode(gl.PROJECTION)
+		gl.PopMatrix()
+		gl.MatrixMode(gl.MODELVIEW)
+	}()
 	gl.MatrixMode(gl.MODELVIEW)
 	// base.Log().Printf("mid, dims: %v , %v", mid, dims)
 	// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)

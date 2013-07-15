@@ -161,9 +161,9 @@ func main() {
 			game.SetLocalPlayer(g.Ents[players[0]].(*game.Player), 0)
 		}
 	}
-	anchor := gui.MakeAnchorBox(gui.Dims{wdx / 2, wdy / 2})
+	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
 	ui.AddChild(anchor)
-	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.2, 0.2, 0.2, 0.2})
+	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.1, 0.5, 0.1, 0.5})
 	var v float64
 	var profile_output *os.File
 	var num_mem_profiles int

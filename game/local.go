@@ -42,7 +42,8 @@ type localArchitectData struct {
 }
 
 type localData struct {
-	regionPos linear.Vec2
+	regionPos  linear.Vec2
+	regionDims linear.Vec2
 
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
@@ -297,6 +298,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 // or use an ability, for example.
 func (g *Game) RenderLocal(region gui.Region) {
 	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
+	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	local.doPlayersFocusRegion(g)
 	if local.isArchitect {
 		g.renderLocalArchitect(region)
@@ -448,10 +450,10 @@ func (l *localData) doPlayersFocusRegion(g *Game) {
 
 	mid := min.Add(max).Scale(0.5)
 	dims := max.Sub(min)
-	if dims.X/dims.Y < l.regionPos.X/l.regionPos.Y {
-		dims.X = dims.Y * l.regionPos.X / l.regionPos.Y
+	if dims.X/dims.Y < l.regionDims.X/l.regionDims.Y {
+		dims.X = dims.Y * l.regionDims.X / l.regionDims.Y
 	} else {
-		dims.Y = dims.X * l.regionPos.Y / l.regionPos.X
+		dims.Y = dims.X * l.regionDims.Y / l.regionDims.X
 	}
 	l.target.dims = dims
 	l.target.mid = mid
