@@ -40,6 +40,16 @@ func init() {
 	wdx = 1024
 	wdy = 768
 
+	fStdout, err := os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.stdout")
+	if err != nil {
+		panic(err)
+	}
+	fStderr, err := os.Create("/Users/jwills/code/src/github.com/runningwild/magnus/log.stderr")
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = fStdout
+	os.Stderr = fStderr
 	var key_binds base.KeyBinds
 	base.LoadJson(filepath.Join(datadir, "key_binds.json"), &key_binds)
 	fmt.Printf("Prething: %v\n", key_binds)
@@ -94,7 +104,7 @@ func main() {
 		g.Room = room
 
 		players = append(players, g.AddPlayer(linear.Vec2{500, 300}).Id())
-		players = append(players, g.AddPlayer(linear.Vec2{550, 300}).Id())
+		// players = append(players, g.AddPlayer(linear.Vec2{550, 300}).Id())
 		// var pest game.Pest
 		// err = json.NewDecoder(bytes.NewBuffer([]byte(`
 		//     {
