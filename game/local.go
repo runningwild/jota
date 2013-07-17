@@ -14,7 +14,7 @@ import (
 
 const LosMaxPlayers = 2
 const LosMaxDist = 1000
-const LosPlayerHorizon = 200
+const LosPlayerHorizon = 400
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -458,10 +458,18 @@ func (l *localData) doPlayersFocusRegion(g *Game) {
 	l.target.dims = dims
 	l.target.mid = mid
 
-	// speed is in (0, 1), the higher it is, the faster current approaches target.
-	speed := 0.1
-	l.current.dims = l.current.dims.Scale(1 - speed).Add(l.target.dims.Scale(speed))
-	l.current.mid = l.current.mid.Scale(1 - speed).Add(l.target.mid.Scale(speed))
+	if l.current.mid.X == 0 && l.current.mid.Y == 0 {
+		// On the very first frame the current midpoint will be (0,0), which should
+		// never happen after the game begins.  In this one case we'll immediately
+		// set current to target so we don't start off by approaching it from the
+		// origin.
+		l.current = l.target
+	} else {
+		// speed is in (0, 1), the higher it is, the faster current approaches target.
+		speed := 0.1
+		l.current.dims = l.current.dims.Scale(1 - speed).Add(l.target.dims.Scale(speed))
+		l.current.mid = l.current.mid.Scale(1 - speed).Add(l.target.mid.Scale(speed))
+	}
 }
 
 func localThink(g *Game) {
