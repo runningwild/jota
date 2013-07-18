@@ -70,10 +70,11 @@ func newNodes(size int) []node {
 	}
 	return nc.newBuffer()
 }
-func deleteNodes(size int, nodes []node) {
+
+func deleteNodes(nodes []node) {
 	nodeCachesMutex.Lock()
 	defer nodeCachesMutex.Unlock()
-	nodeCaches[size].deleteBuffer(nodes)
+	nodeCaches[len(nodes)].deleteBuffer(nodes)
 }
 
 // One value for each color
@@ -238,7 +239,9 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 		}
 	}
 }
-
+func (src *ManaSource) ReleaseResources() {
+	deleteNodes(src.rawNodes)
+}
 func (src *ManaSource) Copy() ManaSource {
 	var dst ManaSource
 
