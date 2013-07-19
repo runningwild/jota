@@ -52,30 +52,30 @@ func (p *Pest) Alive() bool {
 	return p.Stats().HealthCur() > 0
 }
 func (p *Pest) OnDeath(g *Game) {
-	for _, ent := range g.Ents {
+	g.DoForEnts(func(gid Gid, ent Ent) {
 		d := ent.Pos().Sub(p.Pos()).Mag2()
 		if d < 100*100 {
 			ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 400})
 			var s Sludge = 400
 			ent.Stats().ApplyCondition(&s)
 		}
-	}
+	})
 }
 func (p *Pest) Think(g *Game) {
 	p.BaseEnt.Think(g)
 	var target Ent
 	dist := 1.0e9
-	for _, ent := range g.Ents {
+	g.DoForEnts(func(gid Gid, ent Ent) {
 		player, ok := ent.(*Player)
 		if !ok {
-			continue
+			return
 		}
 		d := player.Pos().Sub(p.Pos()).Mag2()
 		if d < dist {
 			dist = d
 			target = player
 		}
-	}
+	})
 	if target == nil {
 		return
 	}

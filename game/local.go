@@ -190,13 +190,11 @@ func (g *Game) renderLosMask() {
 		base.SetUniformI("los", "architect", 0)
 	}
 	var playerPos []linear.Vec2
-	for i := range g.Ents {
-		_, ok := g.Ents[i].(*Player)
-		if !ok {
-			continue
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if _, ok := ent.(*Player); ok {
+			playerPos = append(playerPos, ent.Pos())
 		}
-		playerPos = append(playerPos, g.Ents[i].Pos())
-	}
+	})
 	base.SetUniformV2Array("los", "playerPos", playerPos)
 	base.SetUniformI("los", "losNumPlayers", len(playerPos))
 	gl.Color4d(0, 0, 1, 1)
@@ -225,30 +223,31 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 }
 
 func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
-	for _, ent := range g.Ents {
-		p, ok := ent.(*Player)
-		if !ok {
-			continue
+	visible := false
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if player, ok := ent.(*Player); ok {
+			if player.Los.CountSource(polyIndex) > 0.0 {
+				visible = true
+			}
 		}
-		if p.Los.CountSource(polyIndex) > 0.0 {
-			return true
-		}
-	}
-	return false
+	})
+	return visible
 }
 
 func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
+	placeable := true
 	// Not placeable it any player can see it
-	for _, ent := range g.Ents {
-		p, ok := ent.(*Player)
-		if !ok {
-			continue
-		}
-		for i := 0; i < len(poly); i++ {
-			if p.Los.TestSeg(poly.Seg(i)) > 0.0 {
-				return false
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if player, ok := ent.(*Player); ok {
+			for i := 0; i < len(poly); i++ {
+				if player.Los.TestSeg(poly.Seg(i)) > 0.0 {
+					placeable = false
+				}
 			}
 		}
+	})
+	if !placeable {
+		return false
 	}
 
 	// Not placeable if it intersects with any walls
@@ -414,25 +413,23 @@ func localThinkInvaders(g *Game) {
 func (l *localData) doPlayersFocusRegion(g *Game) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
-	for _, _p := range g.Ents {
-		p, ok := _p.(*Player)
-		if !ok {
-			continue
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if player, ok := ent.(*Player); ok {
+			pos := player.Pos()
+			if pos.X < min.X {
+				min.X = pos.X
+			}
+			if pos.Y < min.Y {
+				min.Y = pos.Y
+			}
+			if pos.X > max.X {
+				max.X = pos.X
+			}
+			if pos.Y > max.Y {
+				max.Y = pos.Y
+			}
 		}
-		pos := p.Pos()
-		if pos.X < min.X {
-			min.X = pos.X
-		}
-		if pos.Y < min.Y {
-			min.Y = pos.Y
-		}
-		if pos.X > max.X {
-			max.X = pos.X
-		}
-		if pos.Y > max.Y {
-			max.Y = pos.Y
-		}
-	}
+	})
 	min.X -= LosPlayerHorizon
 	min.Y -= LosPlayerHorizon
 	if min.X < 0 {

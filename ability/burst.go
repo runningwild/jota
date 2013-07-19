@@ -142,10 +142,9 @@ func (p *burstProcess) Think(g *game.Game) {
 		if p.Frames <= 0 {
 			p.The_phase = game.PhaseComplete
 		}
-		for i := range g.Ents {
-			other := g.Ents[i]
+		g.DoForEnts(func(gid game.Gid, other game.Ent) {
 			if other == player {
-				continue
+				return
 			}
 			dist := other.Pos().Sub(player.Pos()).Mag()
 			if dist < 1 {
@@ -153,7 +152,7 @@ func (p *burstProcess) Think(g *game.Game) {
 			}
 			force := p.Force / dist
 			other.ApplyForce(other.Pos().Sub(player.Pos()).Norm().Scale(force))
-		}
+		})
 	}
 }
 

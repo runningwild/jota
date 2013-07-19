@@ -18,6 +18,7 @@ import (
 	"math"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 )
 
 // type Ability func(game *Game, player *Player, params map[string]int) Process
@@ -306,11 +307,11 @@ func init() {
 }
 
 func (g *Game) ReleaseResources() {
-	for _, e := range g.Ents {
-		if p, ok := e.(*Player); ok {
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if p, ok := ent.(*Player); ok {
 			p.ReleaseResources()
 		}
-	}
+	})
 	g.ManaSource.ReleaseResources()
 }
 
@@ -398,9 +399,40 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g.GameThinks = g2.GameThinks
 
 	g.Ents = make(map[Gid]Ent, len(g2.Ents))
-	for gid, ent := range g2.Ents {
-		g.Ents[gid] = ent.Copy()
+	g2ids := g2.sortedGids()
+	for _, g2id := range g2ids {
+		g.Ents[g2id] = g2.Ents[g2id].Copy()
 	}
+}
+
+func (g *Game) sortedGids() []Gid {
+	_gids := make([]string, len(g.Ents))[0:0]
+	for gid := range g.Ents {
+		_gids = append(_gids, string(gid))
+	}
+	sort.Strings(_gids)
+	gids := make([]Gid, len(_gids))
+	for i := range gids {
+		gids[i] = Gid(_gids[i])
+	}
+	return gids
+}
+
+func (g *Game) DoForEnts(f func(gid Gid, ent Ent)) {
+	for _, _gid := range g.sortedGids() {
+		gid := Gid(_gid)
+		f(gid, g.Ents[gid])
+	}
+}
+
+func (g *Game) RemoveEnt(gid Gid) {
+	delete(g.Ents, gid)
+}
+
+func (g *Game) AddEnt(ent Ent) Gid {
+	gid := g.NextGid()
+	g.Ents[gid] = ent
+	return gid
 }
 
 func (g *Game) Think() {
@@ -415,16 +447,12 @@ func (g *Game) Think() {
 	// if g.GameThinks%10 == 0 {
 	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
 	// }
-	var dead []Gid
-	for gid, _ := range g.Ents {
-		if g.Ents[gid].Stats().HealthCur() <= 0 {
-			dead = append(dead, gid)
-			g.Ents[gid].OnDeath(g)
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if ent.Stats().HealthCur() <= 0 {
+			ent.OnDeath(g)
+			g.RemoveEnt(gid)
 		}
-	}
-	for _, gid := range dead {
-		delete(g.Ents, gid)
-	}
+	})
 
 	g.ManaSource.Think(g.Ents)
 	g.Architect.Think(g)
@@ -432,16 +460,17 @@ func (g *Game) Think() {
 	// Advance players, check for collisions, add segments
 	// TODO: VERY IMPORTANT - any iteration through ents or traps
 	// must be done in a deterministic order.
-	for i := range g.Ents {
-		g.Ents[i].Think(g)
-		pos := g.Ents[i].Pos()
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		ent.Think(g)
+		pos := ent.Pos()
 		pos.X = clamp(pos.X, 0, float64(g.Room.Dx))
 		pos.Y = clamp(pos.Y, 0, float64(g.Room.Dy))
-		g.Ents[i].SetPos(pos)
-	}
+		ent.SetPos(pos)
+	})
 	moved := make(map[Gid]bool)
-	for i := range g.Ents {
-		for j := range g.Ents {
+	gids := g.sortedGids()
+	for _, i := range gids {
+		for _, j := range gids {
 			if i == j {
 				continue
 			}
@@ -651,18 +680,15 @@ func (gw *GameWindow) Draw(region gui.Region) {
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
-	for _, ent := range gw.game.Ents {
-		p, ok := ent.(*Player)
-		if !ok {
-			continue
+	gw.game.DoForEnts(func(gid Gid, ent Ent) {
+		if p, ok := ent.(*Player); ok {
+			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 		}
-		p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
-		losCount++
-	}
+	})
 	gl.Color4d(1, 1, 1, 1)
-	for _, ent := range gw.game.Ents {
+	gw.game.DoForEnts(func(gid Gid, ent Ent) {
 		ent.Draw(gw.game)
-	}
+	})
 	gl.Disable(gl.TEXTURE_2D)
 	gw.game.RenderLocal(region)
 }
