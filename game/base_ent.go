@@ -2,16 +2,17 @@ package game
 
 import (
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
 )
 
 type BaseEnt struct {
-	Stats    stats.Inst
-	Position linear.Vec2
-	Velocity linear.Vec2
-	Angle    float64
-	Delta    struct {
+	StatsInst stats.Inst
+	Position  linear.Vec2
+	Velocity  linear.Vec2
+	Angle     float64
+	Delta     struct {
 		Speed float64
 		Angle float64
 	}
@@ -21,10 +22,6 @@ type BaseEnt struct {
 	Processes map[int]Process
 }
 
-func (b *BaseEnt) Alive() bool {
-	return b.Stats.HealthCur() > 0
-}
-
 func (b *BaseEnt) OnDeath(g *Game) {
 }
 
@@ -32,12 +29,12 @@ func (b *BaseEnt) ApplyForce(f linear.Vec2) {
 	b.Velocity = b.Velocity.Add(f.Scale(1 / b.Mass()))
 }
 
-func (b *BaseEnt) ApplyDamage(d stats.Damage) {
-	b.Stats.ApplyDamage(d)
+func (b *BaseEnt) Stats() *stats.Inst {
+	return &b.StatsInst
 }
 
 func (b *BaseEnt) Mass() float64 {
-	return b.Stats.Mass()
+	return b.StatsInst.Mass()
 }
 
 func (b *BaseEnt) Id() Gid {
@@ -58,7 +55,7 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 
 func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
-	b.Stats.Think()
+	b.StatsInst.Think()
 	var dead []int
 	for i, process := range b.Processes {
 		process.Think(g)
@@ -71,20 +68,21 @@ func (b *BaseEnt) Think(g *Game) {
 	}
 	// And here we add back in all processes that are still alive.
 	for _, process := range b.Processes {
-		b.Stats.ApplyCondition(process)
+		b.StatsInst.ApplyCondition(process)
 	}
 
-	if b.Delta.Speed > b.Stats.MaxAcc() {
-		b.Delta.Speed = b.Stats.MaxAcc()
+	base.Log().Printf("MaxAcc() = %v", b.StatsInst.MaxAcc())
+	if b.Delta.Speed > b.StatsInst.MaxAcc() {
+		b.Delta.Speed = b.StatsInst.MaxAcc()
 	}
-	if b.Delta.Speed < -b.Stats.MaxAcc() {
-		b.Delta.Speed = -b.Stats.MaxAcc()
+	if b.Delta.Speed < -b.StatsInst.MaxAcc() {
+		b.Delta.Speed = -b.StatsInst.MaxAcc()
 	}
-	if b.Delta.Angle < -b.Stats.MaxTurn() {
-		b.Delta.Angle = -b.Stats.MaxTurn()
+	if b.Delta.Angle < -b.StatsInst.MaxTurn() {
+		b.Delta.Angle = -b.StatsInst.MaxTurn()
 	}
-	if b.Delta.Angle > b.Stats.MaxTurn() {
-		b.Delta.Angle = b.Stats.MaxTurn()
+	if b.Delta.Angle > b.StatsInst.MaxTurn() {
+		b.Delta.Angle = b.StatsInst.MaxTurn()
 	}
 
 	inLava := false
@@ -94,7 +92,7 @@ func (b *BaseEnt) Think(g *Game) {
 		}
 	}
 	if inLava {
-		b.Stats.ApplyDamage(stats.Damage{stats.DamageFire, 5})
+		b.StatsInst.ApplyDamage(stats.Damage{stats.DamageFire, 5})
 	}
 
 	delta := (linear.Vec2{1, 0}).Rotate(b.Angle).Scale(b.Delta.Speed)

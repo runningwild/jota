@@ -104,6 +104,7 @@ func main() {
 		g.Room = room
 
 		players = append(players, g.AddPlayer(linear.Vec2{500, 300}).Id())
+		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 		// players = append(players, g.AddPlayer(linear.Vec2{550, 300}).Id())
 		// var pest game.Pest
 		// err = json.NewDecoder(bytes.NewBuffer([]byte(`

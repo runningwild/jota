@@ -136,7 +136,7 @@ func (g *Game) AddPlayer(pos linear.Vec2) Ent {
           "Health": 1000
         }
       }
-    `))).Decode(&p.BaseEnt.Stats)
+    `))).Decode(&p.BaseEnt.StatsInst)
 	if err != nil {
 		base.Log().Fatalf("%v", err)
 	}
@@ -158,6 +158,7 @@ func (p *Player) Copy() Ent {
 		}
 	}
 	p2.Los = p.Los.Copy()
+	// NEXT: must copy conditions as well
 	return &p2
 }
 
@@ -199,7 +200,7 @@ func (p *Player) Draw(game *Game) {
 	gl.Color4ub(125, 125, 125, 100)
 	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
 
-	health_frac := float32(p.Stats.HealthCur() / p.Stats.HealthMax())
+	health_frac := float32(p.Stats().HealthCur() / p.Stats().HealthMax())
 	if health_frac > 0.5 {
 		color_frac := 1.0 - (health_frac-0.5)*2.0
 		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
@@ -235,9 +236,8 @@ type Ent interface {
 	ApplyForce(force linear.Vec2)
 
 	// Stats based methods
-	Alive() bool
 	OnDeath(g *Game)
-	ApplyDamage(damage stats.Damage)
+	Stats() *stats.Inst
 
 	Id() Gid
 	Pos() linear.Vec2
@@ -378,6 +378,7 @@ func (g *Game) Copy() interface{} {
 
 	g2.ManaSource = g.ManaSource.Copy()
 
+	// NEXT: This needs to be an actual Copy()
 	g2.Room = g.Room
 
 	g2.Rng = g.Rng.Copy()
@@ -419,15 +420,11 @@ func (g *Game) Think() {
 	}()
 	g.GameThinks++
 
-	for i := range g.Ents {
-		if !g.Ents[i].Alive() {
-			g.Ents[i].OnDeath(g)
-		}
-	}
 	var dead []Gid
-	for gid, ent := range g.Ents {
-		if !ent.Alive() {
+	for gid, _ := range g.Ents {
+		if g.Ents[gid].Stats().HealthCur() <= 0 {
 			dead = append(dead, gid)
+			g.Ents[gid].OnDeath(g)
 		}
 	}
 	for _, gid := range dead {
@@ -439,9 +436,6 @@ func (g *Game) Think() {
 
 	// Advance players, check for collisions, add segments
 	for i := range g.Ents {
-		if !g.Ents[i].Alive() {
-			continue
-		}
 		g.Ents[i].Think(g)
 		pos := g.Ents[i].Pos()
 		pos.X = clamp(pos.X, 0, float64(g.Room.Dx))
