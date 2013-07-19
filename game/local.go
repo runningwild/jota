@@ -214,12 +214,14 @@ func (g *Game) renderLosMask() {
 }
 
 func (g *Game) renderLocalInvaders(region gui.Region) {
+	base.GetDictionary("luxisr").RenderString("darthur is nub", 30, 10, 0, 100, gui.Left)
 	g.renderLosMask()
 	for _, p := range local.players {
 		if p.abs.activeAbility != nil {
 			p.abs.activeAbility.Draw(p.gid, g)
 		}
 	}
+	gl.Color4ub(0, 0, 255, 200)
 }
 
 func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
