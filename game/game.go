@@ -150,15 +150,8 @@ func (g *Game) AddPlayer(pos linear.Vec2) Ent {
 
 func (p *Player) Copy() Ent {
 	p2 := *p
-	p2.Processes = make(map[int]Process)
-	for k, v := range p.Processes {
-		p2.Processes[k] = v.Copy()
-		if v == nil {
-			panic("ASDF")
-		}
-	}
 	p2.Los = p.Los.Copy()
-	// NEXT: must copy conditions as well
+	p2.BaseEnt = *p.BaseEnt.Copy()
 	return &p2
 }
 
@@ -419,9 +412,9 @@ func (g *Game) Think() {
 		}
 	}()
 	g.GameThinks++
-	if g.GameThinks%10 == 0 {
-		g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
-	}
+	// if g.GameThinks%10 == 0 {
+	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
+	// }
 	var dead []Gid
 	for gid, _ := range g.Ents {
 		if g.Ents[gid].Stats().HealthCur() <= 0 {
@@ -437,6 +430,8 @@ func (g *Game) Think() {
 	g.Architect.Think(g)
 
 	// Advance players, check for collisions, add segments
+	// TODO: VERY IMPORTANT - any iteration through ents or traps
+	// must be done in a deterministic order.
 	for i := range g.Ents {
 		g.Ents[i].Think(g)
 		pos := g.Ents[i].Pos()

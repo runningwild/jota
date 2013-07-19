@@ -92,12 +92,5 @@ func (r removePolyEvent) Apply(_g interface{}) {
 		base.Warn().Printf("Tried to do a removePolyEvent with a visible target: %d", r.Target)
 		return
 	}
-	// NEXT: We're storing the index, but what if the index changes between
-	// when the event is enqueued and the event is applied?  We might try to
-	// remove a different polygon.  So what are the options to avoid this:
-	// 1. Store the poly itself and check that - maybe
-	// 2. Best idea I think is to store g.Room.Walls as a map[int]linear.Poly
-	//    and that way there is never any confusion.  This would require a
-	//    method on game that inserts polys with unique ids, no big deal.
 	delete(g.Room.Walls, r.Target)
 }

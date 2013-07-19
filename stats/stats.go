@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"github.com/runningwild/magnus/base"
 )
 
 type Dynamic struct {
@@ -135,4 +136,18 @@ func (si *Inst) GobDecode(data []byte) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	err := dec.Decode(&si.inst)
 	return err
+}
+
+func (si *Inst) Copy() *Inst {
+	data, err := si.GobEncode()
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	var si2 Inst
+	err = si2.GobDecode(data)
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	base.Log().Printf("Conditions %d %d", len(si.inst.Conditions), len(si2.inst.Conditions))
+	return &si2
 }

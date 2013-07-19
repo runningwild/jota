@@ -88,6 +88,11 @@ func (p *Pest) Think(g *Game) {
 
 type Sludge int
 
+func init() {
+	var s Sludge
+	gob.Register(&s)
+}
+
 func (*Sludge) ModifyBase(b stats.Base) stats.Base {
 	b.Max_acc /= 2
 	return b

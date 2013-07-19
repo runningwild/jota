@@ -21,6 +21,19 @@ type BaseEnt struct {
 	Processes map[int]Process
 }
 
+func (b *BaseEnt) Copy() *BaseEnt {
+	b2 := *b
+	b2.Processes = make(map[int]Process)
+	for k, v := range b.Processes {
+		b2.Processes[k] = v.Copy()
+		if v == nil {
+			panic("ASDF")
+		}
+	}
+	b2.StatsInst = *b.StatsInst.Copy()
+	return &b2
+}
+
 func (b *BaseEnt) OnDeath(g *Game) {
 }
 
