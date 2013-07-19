@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	xbase "github.com/runningwild/magnus/base"
 )
 
 type Dynamic struct {
@@ -69,11 +68,9 @@ func (s Inst) HealthCur() float64 {
 }
 
 func (s Inst) ModifyBase(base Base) Base {
-	xbase.Log().Printf("Before: %v", base)
 	for _, condition := range s.inst.Conditions {
 		base = condition.ModifyBase(base)
 	}
-	xbase.Log().Printf("After: %v", base)
 	return base
 }
 func (s Inst) HealthMax() float64 {
@@ -107,7 +104,6 @@ func (s *Inst) ApplyDamage(damage Damage) {
 	}
 }
 func (s *Inst) ApplyCondition(condition Condition) {
-	xbase.Log().Printf("Applied %T to %v", condition, s)
 	s.inst.Conditions = append(s.inst.Conditions, condition)
 }
 func (s *Inst) Think() {

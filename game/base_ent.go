@@ -2,7 +2,6 @@ package game
 
 import (
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
 )
@@ -71,7 +70,6 @@ func (b *BaseEnt) Think(g *Game) {
 		b.StatsInst.ApplyCondition(process)
 	}
 
-	base.Log().Printf("MaxAcc() = %v", b.StatsInst.MaxAcc())
 	if b.Delta.Speed > b.StatsInst.MaxAcc() {
 		b.Delta.Speed = b.StatsInst.MaxAcc()
 	}
@@ -114,22 +112,27 @@ func (b *BaseEnt) Think(g *Game) {
 	}
 	move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
 	size := 12.0
+	sizeSq := size * size
 	prev := b.Position
 	b.Position = b.Position.Add(b.Velocity)
 	for _, poly := range g.Room.Walls {
 		for i := range poly {
+			// Don't bother with back-facing segments
+			if poly.Seg(i).Right(b.Position) {
+				continue
+			}
 			// First check against the leading vertex
 			{
 				v := poly[i]
-				dist := v.DistToLine(move)
-				if v.Sub(move.Q).Mag() < size {
-					dist = v.Sub(move.Q).Mag()
+				distSq := v.DistSquaredToLine(move)
+				if v.Sub(move.Q).Mag2() < sizeSq {
+					distSq = v.Sub(move.Q).Mag2()
 					// Add a little extra here otherwise a player can sneak into geometry
 					// through the corners
 					ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
 					final := v.Add(ray)
 					move.Q = final
-				} else if dist < size {
+				} else if distSq < sizeSq {
 					// TODO: This tries to prevent passthrough but has other problems
 					// cross := move.Ray().Cross()
 					// perp := linear.Seg2{v, cross.Sub(v)}
@@ -157,6 +160,9 @@ func (b *BaseEnt) Think(g *Game) {
 	}
 	b.Position = move.Q
 	b.Velocity = b.Position.Sub(prev)
+
+	b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
+	b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
 
 	b.Angle += b.Delta.Angle
 	if b.Angle < 0 {
