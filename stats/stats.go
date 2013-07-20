@@ -148,6 +148,5 @@ func (si *Inst) Copy() *Inst {
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
-	base.Log().Printf("Conditions %d %d", len(si.inst.Conditions), len(si2.inst.Conditions))
 	return &si2
 }

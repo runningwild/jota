@@ -13,6 +13,8 @@ type Door struct {
 type Room struct {
 	Walls  map[string]linear.Poly
 	Lava   map[string]linear.Poly
+	Start  linear.Vec2
+	End    linear.Vec2
 	Doors  map[string]Door
 	Dx, Dy int
 	NextId int

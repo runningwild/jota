@@ -92,7 +92,7 @@ func main() {
 		g.Friction_lava = 0.85
 		g.Room = room
 
-		players = append(players, g.AddPlayer(linear.Vec2{500, 300}).Id())
+		players = g.AddPlayers(1)
 		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
@@ -100,14 +100,14 @@ func main() {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, true)
+		game.SetLocalEngine(engine, sys, false)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, false)
+		game.SetLocalEngine(engine, sys, true)
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}

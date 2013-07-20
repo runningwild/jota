@@ -225,6 +225,11 @@ func (g *Game) renderLosMask() {
 
 func (g *Game) renderLocalInvaders(region gui.Region) {
 	local.doInvadersFocusRegion(g)
+	if g.InvadersWin {
+		gl.Disable(gl.TEXTURE_2D)
+		gl.Color4ub(255, 255, 0, 255)
+		defer base.GetDictionary("luxisr").RenderString("WINNER!", 600, 400, 0, 200, gui.Center)
+	}
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -275,6 +280,10 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 		}
 		gl.End()
 	}
+
+	gl.Color4ub(0, 255, 0, 255)
+	base.GetDictionary("luxisr").RenderString("Start!", g.Room.Start.X, g.Room.Start.Y, 0, 100, gui.Center)
+	base.GetDictionary("luxisr").RenderString("End!", g.Room.End.X, g.Room.End.Y, 0, 100, gui.Center)
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
@@ -389,6 +398,11 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 
 func (g *Game) renderLocalArchitect(region gui.Region) {
 	local.doArchitectFocusRegion(g)
+	if g.InvadersWin {
+		gl.Disable(gl.TEXTURE_2D)
+		gl.Color4ub(255, 255, 0, 255)
+		defer base.GetDictionary("luxisr").RenderString("LOSER!", float64(region.X/2), float64(region.Y/2-100), 0, 200, gui.Center)
+	}
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -439,6 +453,10 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 		}
 		gl.End()
 	}
+
+	gl.Color4ub(0, 255, 0, 255)
+	base.GetDictionary("luxisr").RenderString("Start!", g.Room.Start.X, g.Room.Start.Y-25, 0, 50, gui.Center)
+	base.GetDictionary("luxisr").RenderString("End!", g.Room.End.X, g.Room.End.Y-25, 0, 50, gui.Center)
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0

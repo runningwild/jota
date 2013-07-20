@@ -120,38 +120,47 @@ type Player struct {
 	Los *los.Los
 }
 
-func (g *Game) AddPlayer(pos linear.Vec2) Ent {
-	var p Player
-	err := json.NewDecoder(bytes.NewBuffer([]byte(`
-      {
-        "Base": {
-          "Max_turn": 0.07,
-          "Max_acc": 0.2,
-          "Mass": 750,
-          "Max_rate": 10,
-          "Influence": 75,
-          "Health": 1000
-        },
-        "Dynamic": {
-          "Health": 1000
-        }
-      }
-    `))).Decode(&p.BaseEnt.StatsInst)
-	if err != nil {
-		base.Log().Fatalf("%v", err)
+func (g *Game) AddPlayers(numPlayers int) []Gid {
+	var gids []Gid
+	for i := 0; i < numPlayers; i++ {
+		var p Player
+		err := json.NewDecoder(bytes.NewBuffer([]byte(`
+	      {
+	        "Base": {
+	          "Max_turn": 0.07,
+	          "Max_acc": 0.2,
+	          "Mass": 750,
+	          "Max_rate": 10,
+	          "Influence": 75,
+	          "Health": 1000
+	        },
+	        "Dynamic": {
+	          "Health": 1000
+	        }
+	      }
+	    `))).Decode(&p.BaseEnt.StatsInst)
+		if err != nil {
+			base.Log().Fatalf("%v", err)
+		}
+
+		// Evenly space the players on a circle around the starting position.
+		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 360.0 / float64(numPlayers))
+		p.Position = g.Room.Start.Add(rot)
+
+		p.Gid = g.NextGid()
+		p.Processes = make(map[int]Process)
+		p.Los = los.Make(LosPlayerHorizon)
+		g.Ents[p.Gid] = &p
+		gids = append(gids, p.Gid)
 	}
-	p.Position = pos
-	p.Gid = g.NextGid()
-	p.Processes = make(map[int]Process)
-	p.Los = los.Make(LosPlayerHorizon)
-	g.Ents[p.Gid] = &p
-	return &p
+	return gids
 }
 
 func (p *Player) Copy() Ent {
 	p2 := *p
 	p2.Los = p.Los.Copy()
 	p2.BaseEnt = *p.BaseEnt.Copy()
+
 	return &p2
 }
 
@@ -285,6 +294,9 @@ type Game struct {
 
 	GameThinks int
 
+	// Set to true once the players are close enough to the goal
+	InvadersWin bool
+
 	Architect architectData
 }
 
@@ -386,6 +398,7 @@ func (g *Game) Copy() interface{} {
 	var g2 Game
 
 	g2.ManaSource = g.ManaSource.Copy()
+	g2.InvadersWin = g.InvadersWin
 
 	// NEXT: This needs to be an actual Copy()
 	g2.Room = g.Room
@@ -408,6 +421,7 @@ func (g *Game) OverwriteWith(_g2 interface{}) {
 	g2 := _g2.(*Game)
 	g.ManaSource.OverwriteWith(&g2.ManaSource)
 	g.Rng.OverwriteWith(g2.Rng)
+	g.InvadersWin = g2.InvadersWin
 	g.Friction = g2.Friction
 	g.Room.Walls = g2.Room.Walls
 	g.NextGidValue = g2.NextGidValue
@@ -458,6 +472,23 @@ func (g *Game) Think() {
 		}
 	}()
 	g.GameThinks++
+
+	// Check for player victory
+	victory := true
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if _, ok := ent.(*Player); ok {
+			base.Log().Printf("%v %v", ent.Pos(), g.Room.End)
+			base.Log().Printf("%v", ent.Pos().Sub(g.Room.End).Mag2())
+			if ent.Pos().Sub(g.Room.End).Mag2() > 100*100 {
+				victory = false
+			}
+		}
+	})
+	if victory {
+		g.InvadersWin = true
+		base.Log().Printf("VICTORY")
+	}
+
 	// if g.GameThinks%10 == 0 {
 	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
 	// }
