@@ -210,8 +210,24 @@ func (p *Player) Draw(game *Game) {
 func (p *Player) Think(g *Game) {
 	p.Los.Reset(p.Pos())
 	for polyIndex, poly := range g.Room.Walls {
+		// maxDistSq := 0.0
+		// for i := 1; i < len(poly); i++ {
+		// 	distSq := poly[i].Sub(poly[0]).Mag2()
+		// 	if distSq > maxDistSq {
+		// 		maxDistSq = distSq
+		// 	}
+		// }
+		// if
 		for i := range poly {
-			p.Los.DrawSeg(poly.Seg(i), polyIndex)
+			seg := poly.Seg(i)
+			if p.Position.Sub(seg.P).Mag2()-seg.Ray().Mag2() > 4*LosPlayerHorizon*LosPlayerHorizon {
+				continue
+			}
+			if seg.Right(p.Position) {
+				continue
+			}
+			p.Los.DrawSeg(seg, polyIndex)
+
 		}
 	}
 	p.BaseEnt.Think(g)
