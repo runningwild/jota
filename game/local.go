@@ -10,6 +10,7 @@ import (
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/los"
+	"math"
 )
 
 const LosMaxPlayers = 2
@@ -65,10 +66,14 @@ type localData struct {
 		texId      gl.Uint
 	}
 
-	// Camera positions
-	current, target struct {
+	// Camera positions.  target is used for the invaders so that the camera can
+	// follow the players without being too jerky.  limit is used by the architect
+	// so we have a constant reference point.
+	current, target, limit struct {
 		mid, dims linear.Vec2
 	}
+	zoom         float64
+	cursorHidden bool
 
 	sys       system.System
 	architect localArchitectData
@@ -219,96 +224,7 @@ func (g *Game) renderLosMask() {
 }
 
 func (g *Game) renderLocalInvaders(region gui.Region) {
-	base.GetDictionary("luxisr").RenderString("darthur is nub", 30, 10, 0, 100, gui.Left)
-	g.renderLosMask()
-	for _, p := range local.players {
-		if p.abs.activeAbility != nil {
-			p.abs.activeAbility.Draw(p.gid, g)
-		}
-	}
-	gl.Color4ub(0, 0, 255, 200)
-}
-
-func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
-	visible := false
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if player, ok := ent.(*Player); ok {
-			if player.Los.CountSource(polyIndex) > 0.0 {
-				visible = true
-			}
-		}
-	})
-	return visible
-}
-
-func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
-	placeable := true
-	// Not placeable it any player can see it
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if player, ok := ent.(*Player); ok {
-			for i := 0; i < len(poly); i++ {
-				if player.Los.TestSeg(poly.Seg(i)) > 0.0 {
-					placeable = false
-				}
-			}
-		}
-	})
-	if !placeable {
-		return false
-	}
-
-	// Not placeable if it intersects with any walls
-	for _, wall := range g.Room.Walls {
-		if linear.ConvexPolysOverlap(poly, wall) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (g *Game) renderLocalArchitect(region gui.Region) {
-	g.renderLosMask()
-	if local.architect.abs.activeAbility != nil {
-		local.architect.abs.activeAbility.Draw("", g)
-	}
-	return
-	gl.Disable(gl.TEXTURE_2D)
-	mx, my := local.sys.GetCursorPos()
-	mx -= region.X
-	my -= region.Y
-	dx, dy := float64(50), float64(50)
-	x, y := float64(int((float64(mx)-dx/2)/10)*10), float64(int((float64(my)-dy/2)/10)*10)
-	poly := linear.Poly{
-		linear.Vec2{x, y},
-		linear.Vec2{x, y + dy},
-		linear.Vec2{x + dx, y + dy},
-		linear.Vec2{x + dx, y},
-	}
-	placeable := g.IsPolyPlaceable(poly)
-	if placeable {
-		gl.Color4ub(255, 255, 255, 255)
-	} else {
-		gl.Color4ub(255, 0, 0, 255)
-	}
-	local.architect.place = poly
-	gl.Begin(gl.LINES)
-	for i := range poly {
-		seg := poly.Seg(i)
-		gl.Vertex2i(gl.Int(seg.P.X), gl.Int(seg.P.Y))
-		gl.Vertex2i(gl.Int(seg.Q.X), gl.Int(seg.Q.Y))
-	}
-	gl.End()
-}
-
-// Draws everything that is relevant to the players on a compute, but not the
-// players across the network.  Any ui used to determine how to place an object
-// or use an ability, for example.
-func (g *Game) RenderLocal(region gui.Region) {
-	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
-	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
-	local.doPlayersFocusRegion(g)
-
+	local.doInvadersFocusRegion(g)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -373,6 +289,182 @@ func (g *Game) RenderLocal(region gui.Region) {
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
+	base.GetDictionary("luxisr").RenderString("darthur is nub", 30, 10, 0, 100, gui.Left)
+	g.renderLosMask()
+	for _, p := range local.players {
+		if p.abs.activeAbility != nil {
+			p.abs.activeAbility.Draw(p.gid, g)
+		}
+	}
+	gl.Color4ub(0, 0, 255, 200)
+}
+
+func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
+	visible := false
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if player, ok := ent.(*Player); ok {
+			if player.Los.CountSource(polyIndex) > 0.0 {
+				visible = true
+			}
+		}
+	})
+	return visible
+}
+
+func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
+	placeable := true
+	// Not placeable it any player can see it
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if player, ok := ent.(*Player); ok {
+			for i := 0; i < len(poly); i++ {
+				if player.Los.TestSeg(poly.Seg(i)) > 0.0 {
+					placeable = false
+				}
+			}
+		}
+	})
+	if !placeable {
+		return false
+	}
+
+	// Not placeable if it intersects with any walls
+	for _, wall := range g.Room.Walls {
+		if linear.ConvexPolysOverlap(poly, wall) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (l *localData) doArchitectFocusRegion(g *Game) {
+	if l.limit.mid.X == 0 && l.limit.mid.Y == 0 {
+		// On the very first frame the limit midpoint will be (0,0), which should
+		// never happen after the game begins.  We use this as an opportunity to
+		// init the data now that we know the region we're working with.
+		if l.regionDims.X/l.regionDims.Y > float64(g.Room.Dx)/float64(g.Room.Dy) {
+			l.limit.dims.Y = float64(g.Room.Dy)
+			l.limit.dims.X = float64(g.Room.Dx) * l.regionDims.Y / l.regionDims.X
+		} else {
+			l.limit.dims.X = float64(g.Room.Dx)
+			l.limit.dims.Y = float64(g.Room.Dy) * l.regionDims.X / l.regionDims.Y
+		}
+		l.limit.mid.X = float64(g.Room.Dx / 2)
+		l.limit.mid.Y = float64(g.Room.Dy / 2)
+		l.current = l.limit
+		l.zoom = 0
+	}
+	wheel := gin.In().GetKeyFlat(gin.MouseWheelVertical, gin.DeviceTypeAny, gin.DeviceIndexAny)
+	l.zoom += wheel.FramePressAmt() / 500
+	if l.zoom < 0 {
+		l.zoom = 0
+	}
+	if l.zoom > 2 {
+		l.zoom = 2
+	}
+	zoom := 1 / math.Exp(l.zoom)
+	l.current.dims = l.limit.dims.Scale(zoom)
+	if gin.In().GetKey(gin.AnySpace).CurPressAmt() > 0 {
+		if !local.cursorHidden {
+			local.sys.HideCursor(true)
+			local.cursorHidden = true
+		}
+		x := gin.In().GetKey(gin.AnyMouseXAxis).FramePressAmt()
+		y := gin.In().GetKey(gin.AnyMouseYAxis).FramePressAmt()
+		l.current.mid.X -= float64(x) * 2
+		l.current.mid.Y += float64(y) * 2
+	} else {
+		if local.cursorHidden {
+			local.sys.HideCursor(false)
+			local.cursorHidden = false
+		}
+	}
+	// if l.current.mid.X-l.current.dims.X/2 < l.limit.mid.X-l.limit.dims.X/2 {
+	// 	l.current.mid.X = l.current.dims.X / 2
+	// }
+	// if l.current.mid.Y-l.current.dims.Y/2 < l.limit.mid.Y-l.limit.dims.Y/2 {
+	// 	l.current.mid.Y = l.limit.dims.Y / 2
+	// }
+}
+
+func (g *Game) renderLocalArchitect(region gui.Region) {
+	local.doArchitectFocusRegion(g)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	// Set the viewport so that we only render into the region that we're supposed
+	// to render to.
+	// TODO: Check if this works on all graphics cards - I've heard that the opengl
+	// spec doesn't actually require that viewport does any clipping.
+	gl.PushAttrib(gl.VIEWPORT_BIT)
+	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
+	defer gl.PopAttrib()
+
+	gl.Ortho(
+		gl.Double(local.current.mid.X-local.current.dims.X/2),
+		gl.Double(local.current.mid.X+local.current.dims.X/2),
+		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
+		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
+		gl.Double(1000),
+		gl.Double(-1000),
+	)
+	defer func() {
+		gl.MatrixMode(gl.PROJECTION)
+		gl.PopMatrix()
+		gl.MatrixMode(gl.MODELVIEW)
+	}()
+	gl.MatrixMode(gl.MODELVIEW)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	g.ManaSource.Draw(float64(g.Room.Dx), float64(g.Room.Dy))
+
+	gl.Begin(gl.LINES)
+	gl.Color4d(1, 1, 1, 1)
+	for _, poly := range g.Room.Walls {
+		for i := range poly {
+			seg := poly.Seg(i)
+			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
+			gl.Vertex2d(gl.Double(seg.Q.X), gl.Double(seg.Q.Y))
+		}
+	}
+	gl.End()
+
+	gl.Color4d(1, 0, 0, 1)
+	for _, poly := range g.Room.Lava {
+		gl.Begin(gl.TRIANGLE_FAN)
+		for _, v := range poly {
+			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		}
+		gl.End()
+	}
+
+	gl.Color4d(1, 1, 1, 1)
+	losCount := 0
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if p, ok := ent.(*Player); ok {
+			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
+		}
+	})
+	gl.Color4d(1, 1, 1, 1)
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		ent.Draw(g)
+	})
+	gl.Disable(gl.TEXTURE_2D)
+
+	g.renderLosMask()
+	if local.architect.abs.activeAbility != nil {
+		local.architect.abs.activeAbility.Draw("", g)
+	}
+}
+
+// Draws everything that is relevant to the players on a compute, but not the
+// players across the network.  Any ui used to determine how to place an object
+// or use an ability, for example.
+func (g *Game) RenderLocal(region gui.Region) {
+	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
+	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	if local.isArchitect {
 		g.renderLocalArchitect(region)
 	} else {
@@ -482,7 +574,7 @@ func localThinkInvaders(g *Game) {
 	}
 }
 
-func (l *localData) doPlayersFocusRegion(g *Game) {
+func (l *localData) doInvadersFocusRegion(g *Game) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
 	g.DoForEnts(func(gid Gid, ent Ent) {

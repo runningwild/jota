@@ -13,8 +13,8 @@ function doBuild {
 
 #doBuild 'magnus'
 doBuild 'host'
-open host.app
-false
+#open host.app
+#false
 doBuild 'client'
 
 open host.app
