@@ -472,13 +472,15 @@ func (g *Game) Think() {
 		}
 	}()
 	g.GameThinks++
-
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if _, ok := ent.(*Player); ok {
+			base.Log().Printf("Player: %v", ent.Pos())
+		}
+	})
 	// Check for player victory
 	victory := true
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if _, ok := ent.(*Player); ok {
-			base.Log().Printf("%v %v", ent.Pos(), g.Room.End)
-			base.Log().Printf("%v", ent.Pos().Sub(g.Room.End).Mag2())
 			if ent.Pos().Sub(g.Room.End).Mag2() > 100*100 {
 				victory = false
 			}
@@ -486,7 +488,6 @@ func (g *Game) Think() {
 	})
 	if victory {
 		g.InvadersWin = true
-		base.Log().Printf("VICTORY")
 	}
 
 	// if g.GameThinks%10 == 0 {

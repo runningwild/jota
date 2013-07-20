@@ -12,10 +12,12 @@ import (
 	"github.com/runningwild/linear"
 	"time"
 	// "math"
+	"encoding/json"
 	"github.com/runningwild/cgf"
 	_ "github.com/runningwild/magnus/ability"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/magnus/generator"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -77,7 +79,16 @@ func main() {
 
 	var engine *cgf.Engine
 	var room game.Room
-	err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
+	base.Log().Printf("RAWRAWR")
+	generated := generator.GenerateRoom(3000, 3000, 300, 50, 0)
+	base.Log().Printf("gen: %v", generated)
+	data, err := json.Marshal(generated)
+	base.Log().Printf("%s", data)
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	err = json.Unmarshal(data, &room)
+	// err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}

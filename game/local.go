@@ -388,12 +388,6 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 			local.cursorHidden = false
 		}
 	}
-	// if l.current.mid.X-l.current.dims.X/2 < l.limit.mid.X-l.limit.dims.X/2 {
-	// 	l.current.mid.X = l.current.dims.X / 2
-	// }
-	// if l.current.mid.Y-l.current.dims.Y/2 < l.limit.mid.Y-l.limit.dims.Y/2 {
-	// 	l.current.mid.Y = l.limit.dims.Y / 2
-	// }
 }
 
 func (g *Game) renderLocalArchitect(region gui.Region) {
@@ -401,7 +395,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
 		gl.Color4ub(255, 255, 0, 255)
-		defer base.GetDictionary("luxisr").RenderString("LOSER!", float64(region.X/2), float64(region.Y/2-100), 0, 200, gui.Center)
+		defer base.GetDictionary("luxisr").RenderString("LOSER!", 600, 400, 0, 200, gui.Center)
 	}
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
