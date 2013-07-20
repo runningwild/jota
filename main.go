@@ -51,7 +51,7 @@ func main() {
 	sys.Startup()
 	err := gl.Init()
 	if err != nil {
-		panic(err)
+		base.Error().Fatalf("%v", err)
 	}
 
 	render.Init()
@@ -60,14 +60,14 @@ func main() {
 		sys.EnableVSync(true)
 		err := gl.Init()
 		if err != nil {
-			panic(err)
+			base.Error().Fatalf("%v", err)
 		}
 	})
 	base.InitShaders()
 	runtime.GOMAXPROCS(2)
 	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
 	if err != nil {
-		panic(err)
+		base.Error().Fatalf("%v", err)
 	}
 	sys.Think()
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
@@ -79,7 +79,7 @@ func main() {
 	var room game.Room
 	err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
 	if err != nil {
-		panic(err)
+		base.Error().Fatalf("%v", err)
 	}
 	var players []game.Gid
 	if Version() == "host" {
@@ -94,51 +94,18 @@ func main() {
 
 		players = append(players, g.AddPlayer(linear.Vec2{500, 300}).Id())
 		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
-		// players = append(players, g.AddPlayer(linear.Vec2{550, 300}).Id())
-		// var pest game.Pest
-		// err = json.NewDecoder(bytes.NewBuffer([]byte(`
-		//     {
-		//       "Base": {
-		//         "Mass": 100,
-		//         "Health": 300
-		//       },
-		//       "Dynamic": {
-		//         "Health": 300
-		//       }
-		//     }
-		//   `))).Decode(&pest.Stats)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// var snare game.Snare
-		// err = json.NewDecoder(bytes.NewBuffer([]byte(`
-		//     {
-		//       "Base": {
-		//         "Mass": 1000000000,
-		//         "Health": 10
-		//       },
-		//       "Dynamic": {
-		//         "Health": 10
-		//       }
-		//     }
-		//   `))).Decode(&snare.Stats)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// snare.SetPos(linear.Vec2{300, 200})
-		// g.Ents = append(g.Ents, &snare)
 
 		g.Init()
 		engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
 		if err != nil {
-			panic(err.Error())
+			base.Error().Fatalf("%v", err.Error())
 		}
 		game.SetLocalEngine(engine, sys, false)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
-			panic(err.Error())
+			base.Error().Fatalf("%v", err.Error())
 		}
 		game.SetLocalEngine(engine, sys, true)
 	} else {

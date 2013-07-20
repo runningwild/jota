@@ -191,7 +191,7 @@ func normalizeWeights(desiredSum float64, weights []float64) {
 func (ms *ManaSource) Init(options *ManaSourceOptions) {
 	ms.options = *options
 	if options.NumNodeCols < 2 || options.NumNodeRows < 2 {
-		panic(fmt.Sprintf("Invalid options: %v", options))
+		base.Error().Fatalf(fmt.Sprintf("Invalid options: %v", options))
 	}
 
 	r := rand.New(options.Rng)
@@ -405,7 +405,7 @@ func (ms *ManaSource) regenerateMana() {
 			scale := (node.MaxMana[c] - node.Mana[c]) / node.MaxMana[c]
 			node.Mana[c] += scale * maxRecovery
 			if scale != scale || maxRecovery != maxRecovery {
-				panic("fd")
+				base.Error().Fatalf("NaN showed up somewhere!")
 			}
 		}
 	}

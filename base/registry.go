@@ -17,12 +17,12 @@ import (
 // Such that a Foo is something for which there can be multiple instances
 // (such as a hallway, or a couch), fooDef is the data that is constant between
 // all such instances, and FooInst is the data that makes each instance unique
-// (location, orientation, maybe textures, etc...)  
+// (location, orientation, maybe textures, etc...)
 //
 // With things in this format it is convenient to have a registry structured
 // like this:
 //   foo_registry map[string]*fooDef
-// so that a Foo can be made from a fooDef just by supplying the name of the 
+// so that a Foo can be made from a fooDef just by supplying the name of the
 // fooDef.  Given all of this the following functions are very common to all
 // registries:
 // GetAllFooNames() - Returns all keys in the foo_registry, in sorted order
@@ -34,7 +34,7 @@ import (
 // Tags:
 // The following tags can be used which will apply special processing to the
 // objects when registered:
-// 
+//
 // `registry:"autoload"` - If an object is tagged with this and it has a
 // method named Load() that takes zero inputs and zero outputs then its Load
 // method will be called after all of its data has been loaded.
@@ -229,8 +229,7 @@ func RegisterAllObjectsInDir(registry_name, dir, suffix, format string) {
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		_, filename := filepath.Split(path)
 		if err != nil {
-			Error().Printf("Error walking directory: %v", err)
-			panic(err)
+			Error().Fatalf("Error walking directory: %v", err)
 			return nil
 		}
 		if strings.HasPrefix(filename, ".") {

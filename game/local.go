@@ -93,7 +93,7 @@ func IsArchitect() bool {
 
 func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	if local.engine != nil {
-		panic("Engine has already been set.")
+		base.Error().Fatalf("Engine has already been set.")
 	}
 	local.engine = engine
 	local.isArchitect = isArchitect

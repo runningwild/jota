@@ -454,8 +454,7 @@ func (g *Game) Think() {
 	defer func() {
 		if r := recover(); r != nil {
 			base.Error().Printf("Panic: %v", r)
-			base.Error().Printf("Stack:\n%s", debug.Stack())
-			panic(r)
+			base.Error().Fatalf("Stack:\n%s", debug.Stack())
 		}
 	}()
 	g.GameThinks++
@@ -601,8 +600,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	defer func() {
 		if r := recover(); r != nil {
 			base.Error().Printf("Panic: %v", r)
-			base.Error().Printf("Stack:\n%s", debug.Stack())
-			panic(r)
+			base.Error().Fatalf("Stack:\n%s", debug.Stack())
 		}
 	}()
 	gw.region = region

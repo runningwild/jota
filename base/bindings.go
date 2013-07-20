@@ -75,7 +75,7 @@ func getKeysFromString(str string) []gin.KeyId {
 		default:
 			key := gin.In().GetKeyByName(part)
 			if key == nil {
-				panic(fmt.Sprintf("Unknown key '%s'", part))
+				Error().Fatalf("Unknown key '%s'", part)
 			}
 			kid = key.Id()
 		}

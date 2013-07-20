@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
 )
@@ -27,7 +28,7 @@ func (b *BaseEnt) Copy() *BaseEnt {
 	for k, v := range b.Processes {
 		b2.Processes[k] = v.Copy()
 		if v == nil {
-			panic("ASDF")
+			base.Error().Fatalf("No idea how this could happen...")
 		}
 	}
 	b2.StatsInst = *b.StatsInst.Copy()
