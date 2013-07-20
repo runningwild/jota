@@ -174,8 +174,8 @@ func (b *BaseEnt) Think(g *Game) {
 	b.Position = move.Q
 	b.Velocity = b.Position.Sub(prev)
 
-	b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
-	b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
+	// b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
+	// b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
 
 	b.Angle += b.Delta.Angle
 	if b.Angle < 0 {

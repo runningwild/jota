@@ -65,12 +65,19 @@ type localData struct {
 		texId      gl.Uint
 	}
 
+	// Camera positions
 	current, target struct {
 		mid, dims linear.Vec2
 	}
 
 	sys       system.System
 	architect localArchitectData
+
+	// For displaying the mana grid
+	nodeTextureId      gl.Uint
+	nodeTextureData    []byte
+	nodeWarpingTexture gl.Uint
+	nodeWarpingData    []byte
 }
 
 var local localData
@@ -301,6 +308,71 @@ func (g *Game) RenderLocal(region gui.Region) {
 	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	local.doPlayersFocusRegion(g)
+
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	// Set the viewport so that we only render into the region that we're supposed
+	// to render to.
+	// TODO: Check if this works on all graphics cards - I've heard that the opengl
+	// spec doesn't actually require that viewport does any clipping.
+	gl.PushAttrib(gl.VIEWPORT_BIT)
+	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
+	defer gl.PopAttrib()
+
+	gl.Ortho(
+		gl.Double(local.current.mid.X-local.current.dims.X/2),
+		gl.Double(local.current.mid.X+local.current.dims.X/2),
+		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
+		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
+		gl.Double(1000),
+		gl.Double(-1000),
+	)
+	defer func() {
+		gl.MatrixMode(gl.PROJECTION)
+		gl.PopMatrix()
+		gl.MatrixMode(gl.MODELVIEW)
+	}()
+	gl.MatrixMode(gl.MODELVIEW)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	g.ManaSource.Draw(float64(g.Room.Dx), float64(g.Room.Dy))
+
+	gl.Begin(gl.LINES)
+	gl.Color4d(1, 1, 1, 1)
+	for _, poly := range g.Room.Walls {
+		for i := range poly {
+			seg := poly.Seg(i)
+			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
+			gl.Vertex2d(gl.Double(seg.Q.X), gl.Double(seg.Q.Y))
+		}
+	}
+	gl.End()
+
+	gl.Color4d(1, 0, 0, 1)
+	for _, poly := range g.Room.Lava {
+		gl.Begin(gl.TRIANGLE_FAN)
+		for _, v := range poly {
+			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		}
+		gl.End()
+	}
+
+	gl.Color4d(1, 1, 1, 1)
+	losCount := 0
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		if p, ok := ent.(*Player); ok {
+			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
+		}
+	})
+	gl.Color4d(1, 1, 1, 1)
+	g.DoForEnts(func(gid Gid, ent Ent) {
+		ent.Draw(g)
+	})
+	gl.Disable(gl.TEXTURE_2D)
+
 	if local.isArchitect {
 		g.renderLocalArchitect(region)
 	} else {

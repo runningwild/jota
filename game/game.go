@@ -15,7 +15,6 @@ import (
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	"math"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
@@ -555,11 +554,6 @@ type GameWindow struct {
 	game      *Game
 	prev_game *Game
 	region    gui.Region
-
-	nodeTextureId      gl.Uint
-	nodeTextureData    []byte
-	nodeWarpingTexture gl.Uint
-	nodeWarpingData    []byte
 }
 
 func (gw *GameWindow) String() string {
@@ -613,7 +607,6 @@ func (gw *GameWindow) Draw(region gui.Region) {
 	}()
 	gw.region = region
 	latest_region = region
-	gl.PushMatrix()
 	defer func() {
 		// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
 		gl.Disable(gl.TEXTURE_2D)
@@ -633,79 +626,7 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		gl.End()
 		gl.LineWidth(1)
 	}()
-	defer gl.PopMatrix()
-	math.Sin(3)
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PushMatrix()
-	gl.LoadIdentity()
 
-	// Set the viewport so that we only render into the region that we're supposed
-	// to render to.
-	// TODO: Check if this works on all graphics cards - I've heard that the opengl
-	// spec doesn't actually require that viewport does any clipping.
-	gl.PushAttrib(gl.VIEWPORT_BIT)
-	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
-	defer gl.PopAttrib()
-
-	gl.Ortho(
-		gl.Double(local.current.mid.X-local.current.dims.X/2),
-		gl.Double(local.current.mid.X+local.current.dims.X/2),
-		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
-		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
-		gl.Double(1000),
-		gl.Double(-1000),
-	)
-	defer func() {
-		gl.MatrixMode(gl.PROJECTION)
-		gl.PopMatrix()
-		gl.MatrixMode(gl.MODELVIEW)
-	}()
-	gl.MatrixMode(gl.MODELVIEW)
-	// base.Log().Printf("mid, dims: %v , %v", mid, dims)
-	// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
-	// gl.Translated(gl.Double(gw.region.Dx/2), gl.Double(gw.region.Dy/2), 0)
-	// min, max := gw.game.playerFocusRegion()
-	// mid := min.Add(max).Scale(0.5)
-	// scale := math.Pow(2, local.zoom)
-	// gl.Scaled(gl.Double(scale), gl.Double(scale), 0)
-	// gl.Translated(gl.Double(-mid.X), gl.Double(-mid.Y), 0)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	gw.game.ManaSource.Draw(gw, float64(gw.game.Room.Dx), float64(gw.game.Room.Dy))
-
-	gl.Begin(gl.LINES)
-	gl.Color4d(1, 1, 1, 1)
-	for _, poly := range gw.game.Room.Walls {
-		for i := range poly {
-			seg := poly.Seg(i)
-			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
-			gl.Vertex2d(gl.Double(seg.Q.X), gl.Double(seg.Q.Y))
-		}
-	}
-	gl.End()
-
-	gl.Color4d(1, 0, 0, 1)
-	for _, poly := range gw.game.Room.Lava {
-		gl.Begin(gl.TRIANGLE_FAN)
-		for _, v := range poly {
-			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		}
-		gl.End()
-	}
-
-	gl.Color4d(1, 1, 1, 1)
-	losCount := 0
-	gw.game.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok {
-			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
-		}
-	})
-	gl.Color4d(1, 1, 1, 1)
-	gw.game.DoForEnts(func(gid Gid, ent Ent) {
-		ent.Draw(gw.game)
-	})
-	gl.Disable(gl.TEXTURE_2D)
 	gw.game.RenderLocal(region)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

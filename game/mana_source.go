@@ -266,12 +266,12 @@ func (dst *ManaSource) OverwriteWith(src *ManaSource) {
 	dst.options = src.options
 }
 
-func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
-	if gw.nodeTextureData == nil {
+func (ms *ManaSource) Draw(dx float64, dy float64) {
+	if local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)
-		gw.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
-		gl.GenTextures(1, &gw.nodeTextureId)
-		gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
+		local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
+		gl.GenTextures(1, &local.nodeTextureId)
+		gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -286,39 +286,39 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 			0,
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
-			gl.Pointer(&gw.nodeTextureData[0]))
+			gl.Pointer(&local.nodeTextureData[0]))
 
 		//		gl.ActiveTexture(gl.TEXTURE1)
-		gl.GenTextures(1, &gw.nodeWarpingTexture)
-		gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
+		gl.GenTextures(1, &local.nodeWarpingTexture)
+		gl.BindTexture(gl.TEXTURE_1D, local.nodeWarpingTexture)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
 		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gw.nodeWarpingData = make([]byte, 4*10)
+		local.nodeWarpingData = make([]byte, 4*10)
 		gl.TexImage1D(
 			gl.TEXTURE_1D,
 			0,
 			gl.RGBA,
-			gl.Sizei(len(gw.nodeWarpingData)/4),
+			gl.Sizei(len(local.nodeWarpingData)/4),
 			0,
 			gl.RGBA,
 			gl.UNSIGNED_BYTE,
-			gl.Pointer(&gw.nodeWarpingData[0]))
+			gl.Pointer(&local.nodeWarpingData[0]))
 	}
 	for i := range ms.rawNodes {
 		for c := 0; c < 3; c++ {
 			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
 			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-			gw.nodeTextureData[i*3+c] = byte(
+			local.nodeTextureData[i*3+c] = byte(
 				color_frac*color_range + float64(ms.options.MinNodeBrightness))
 		}
 	}
 	gl.Enable(gl.TEXTURE_1D)
 	gl.Enable(gl.TEXTURE_2D)
 	//gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
+	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
 	gl.TexSubImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -328,25 +328,25 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 		gl.Sizei(ms.options.NumNodeCols),
 		gl.RGB,
 		gl.UNSIGNED_BYTE,
-		gl.Pointer(&gw.nodeTextureData[0]))
+		gl.Pointer(&local.nodeTextureData[0]))
 
 	gl.ActiveTexture(gl.TEXTURE1)
 	// TODO: Should probably extricate nodeWarpingData entirely
-	// for i, ent := range gw.game.Ents {
+	// for i, ent := range local.game.Ents {
 	// 	p := ent.Pos()
-	// 	gw.nodeWarpingData[3*i+0] = byte(p.X / float64(gw.game.Dx) * 255)
-	// 	gw.nodeWarpingData[3*i+1] = -byte(p.Y / float64(gw.game.Dy) * 255)
-	// 	gw.nodeWarpingData[3*i+2] = 255
+	// 	local.nodeWarpingData[3*i+0] = byte(p.X / float64(local.game.Dx) * 255)
+	// 	local.nodeWarpingData[3*i+1] = -byte(p.Y / float64(local.game.Dy) * 255)
+	// 	local.nodeWarpingData[3*i+2] = 255
 	// }
 	gl.TexImage1D(
 		gl.TEXTURE_1D,
 		0,
 		gl.RGBA,
-		gl.Sizei(len(gw.nodeWarpingData)/4),
+		gl.Sizei(len(local.nodeWarpingData)/4),
 		0,
 		gl.RGBA,
 		gl.UNSIGNED_BYTE,
-		gl.Pointer(&gw.nodeWarpingData[0]))
+		gl.Pointer(&local.nodeWarpingData[0]))
 
 	base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", ms.options.NumNodeRows)
@@ -355,9 +355,9 @@ func (ms *ManaSource) Draw(gw *GameWindow, dx float64, dy float64) {
 	base.SetUniformI("nodes", "tex0", 0)
 	base.SetUniformI("nodes", "tex1", 1)
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_1D, gw.nodeWarpingTexture)
+	gl.BindTexture(gl.TEXTURE_1D, local.nodeWarpingTexture)
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, gw.nodeTextureId)
+	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
 
 	// I have no idea why this value for move works, but it does.  So, hooray.
 	move := (dx - dy) / 2
