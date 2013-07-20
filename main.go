@@ -100,14 +100,14 @@ func main() {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, false)
+		game.SetLocalEngine(engine, sys, true)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, true)
+		game.SetLocalEngine(engine, sys, false)
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
