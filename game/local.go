@@ -495,9 +495,9 @@ func (g *Game) RenderLocal(region gui.Region) {
 	}
 }
 
-func SetLocalPlayer(player *Player, index gin.DeviceIndex) {
+func SetLocalPlayer(gid Gid, index gin.DeviceIndex) {
 	var lp localPlayer
-	lp.gid = player.Id()
+	lp.gid = gid
 	lp.deviceIndex = index
 	lp.abs.abilities = append(
 		lp.abs.abilities,

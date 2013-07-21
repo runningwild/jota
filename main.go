@@ -105,18 +105,24 @@ func main() {
 		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
-		engine, err = cgf.NewHostEngine(&g, 17, "", 1231, base.Log())
+		engine, err = cgf.NewHostEngine(&g, 17, "", 50001, base.Log())
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
 		game.SetLocalEngine(engine, sys, true)
 	} else if Version() == "client" {
-		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
+		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
 		game.SetLocalEngine(engine, sys, false)
+		g := engine.CopyState().(*game.Game)
+		for _, ent := range g.Ents {
+			if _, ok := ent.(*game.Player); ok {
+				players = append(players, ent.Id())
+			}
+		}
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
@@ -125,16 +131,15 @@ func main() {
 	} else {
 		d := sys.GetActiveDevices()
 		n := 0
-		g := engine.CopyState().(*game.Game)
 		for _, index := range d[gin.DeviceTypeController] {
-			game.SetLocalPlayer(g.Ents[players[n]].(*game.Player), index)
+			game.SetLocalPlayer(players[n], index)
 			n++
 			if n > len(players) {
 				break
 			}
 		}
 		if len(d[gin.DeviceTypeController]) == 0 {
-			game.SetLocalPlayer(g.Ents[players[0]].(*game.Player), 0)
+			game.SetLocalPlayer(players[0], 0)
 		}
 	}
 	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
