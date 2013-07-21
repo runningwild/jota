@@ -353,13 +353,15 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 		// init the data now that we know the region we're working with.
 		if l.regionDims.X/l.regionDims.Y > float64(g.Room.Dx)/float64(g.Room.Dy) {
 			l.limit.dims.Y = float64(g.Room.Dy)
-			l.limit.dims.X = float64(g.Room.Dx) * l.regionDims.Y / l.regionDims.X
+			l.limit.dims.X = float64(g.Room.Dx) * float64(g.Room.Dy) / l.regionDims.Y
 		} else {
 			l.limit.dims.X = float64(g.Room.Dx)
-			l.limit.dims.Y = float64(g.Room.Dy) * l.regionDims.X / l.regionDims.Y
+			l.limit.dims.Y = float64(g.Room.Dy) * float64(g.Room.Dx) / l.regionDims.X
 		}
 		l.limit.mid.X = float64(g.Room.Dx / 2)
 		l.limit.mid.Y = float64(g.Room.Dy / 2)
+		base.Log().Printf("region: %v", l.regionDims)
+		base.Log().Printf("limit: %v", l.limit)
 		l.current = l.limit
 		l.zoom = 0
 	}
