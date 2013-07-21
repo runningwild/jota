@@ -89,6 +89,7 @@ func main() {
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
+	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
 	if Version() == "host" {
 		sys.Think()

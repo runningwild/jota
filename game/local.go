@@ -534,9 +534,20 @@ func (l *localData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 	if abs.activeAbility == nil {
 		return
 	}
-	mx, my := local.sys.GetCursorPos()
-	mouse := linear.Vec2{float64(mx), float64(my)}
-	events, die := abs.activeAbility.Think(gid, g, mouse.Sub(l.regionPos))
+	var mouse linear.Vec2
+	if l.isArchitect {
+		mx, my := local.sys.GetCursorPos()
+		mouse.X = float64(mx)
+		mouse.Y = float64(my)
+		mouse = mouse.Sub(l.regionPos)
+		mouse.X /= l.regionDims.X
+		mouse.Y /= l.regionDims.Y
+		mouse.X *= l.current.dims.X
+		mouse.Y *= l.current.dims.Y
+		mouse = mouse.Sub(l.current.dims.Scale(0.5))
+		mouse = mouse.Add(l.current.mid)
+	}
+	events, die := abs.activeAbility.Think(gid, g, mouse)
 	for _, event := range events {
 		local.engine.ApplyEvent(event)
 	}
