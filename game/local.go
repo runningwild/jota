@@ -98,7 +98,18 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 	local.engine = engine
 	local.isArchitect = isArchitect
 	if isArchitect {
-		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["placePoly"](nil))
+		local.architect.abs.abilities =
+			append(
+				local.architect.abs.abilities,
+				ability_makers["placePoly"](map[string]int{"wall": 1}))
+		local.architect.abs.abilities =
+			append(
+				local.architect.abs.abilities,
+				ability_makers["placePoly"](map[string]int{"lava": 1}))
+		local.architect.abs.abilities =
+			append(
+				local.architect.abs.abilities,
+				ability_makers["placePoly"](map[string]int{"pests": 1}))
 		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["removePoly"](nil))
 	}
 	local.sys = sys
@@ -672,6 +683,12 @@ func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 	}
 	if found, event := group.FindEvent(gin.AnyKey2); found && event.Type == gin.Press {
 		l.activateAbility(&l.architect.abs, "", 1, true)
+	}
+	if found, event := group.FindEvent(gin.AnyKey3); found && event.Type == gin.Press {
+		l.activateAbility(&l.architect.abs, "", 2, true)
+	}
+	if found, event := group.FindEvent(gin.AnyKey4); found && event.Type == gin.Press {
+		l.activateAbility(&l.architect.abs, "", 3, true)
 	}
 	if l.architect.abs.activeAbility != nil {
 		l.architect.abs.activeAbility.Respond("", group)

@@ -55,9 +55,9 @@ func (p *Pest) OnDeath(g *Game) {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		d := ent.Pos().Sub(p.Pos()).Mag2()
 		if d < 100*100 {
-			ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 400})
-			var s Sludge = 400
-			ent.Stats().ApplyCondition(&s)
+			ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 100})
+			// var s Sludge = 400
+			// ent.Stats().ApplyCondition(&s)
 		}
 	})
 }

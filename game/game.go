@@ -144,7 +144,7 @@ func (g *Game) AddPlayers(numPlayers int) []Gid {
 		}
 
 		// Evenly space the players on a circle around the starting position.
-		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 360.0 / float64(numPlayers))
+		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(numPlayers))
 		p.Position = g.Room.Start.Add(rot)
 
 		p.Gid = g.NextGid()

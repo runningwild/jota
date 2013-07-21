@@ -24,3 +24,7 @@ func (r *Room) AddWall(wall linear.Poly) {
 	r.Walls[fmt.Sprintf("%d", r.NextId)] = wall
 	r.NextId++
 }
+func (r *Room) AddLava(lava linear.Poly) {
+	r.Lava[fmt.Sprintf("%d", r.NextId)] = lava
+	r.NextId++
+}
