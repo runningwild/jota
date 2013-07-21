@@ -48,30 +48,7 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-func main() {
-	fmt.Printf("%v\n", key_map)
-	sys.Startup()
-	err := gl.Init()
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-	}
-
-	render.Init()
-	render.Queue(func() {
-		sys.CreateWindow(10, 10, wdx, wdy)
-		sys.EnableVSync(true)
-		err := gl.Init()
-		if err != nil {
-			base.Error().Fatalf("%v", err)
-		}
-	})
-	base.InitShaders()
-	runtime.GOMAXPROCS(2)
-	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-	}
-	sys.Think()
+func debugHookup() *cgf.Engine {
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
 		sys.Think()
@@ -142,15 +119,18 @@ func main() {
 			game.SetLocalPlayer(players[0], 0)
 		}
 	}
+	base.Log().Printf("Engine Id: %v", engine.Id())
+	base.Log().Printf("All Ids: %v", engine.Ids())
 	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
 	ui.AddChild(anchor)
 	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.1, 0.5, 0.1, 0.5})
-	var v float64
+	return engine
+}
+
+func mainLoop(engine *cgf.Engine) {
 	var profile_output *os.File
 	var num_mem_profiles int
 	// ui.AddChild(base.MakeConsole())
-
-	base.LoadAllDictionaries()
 
 	ticker := time.Tick(time.Millisecond * 17)
 	for {
@@ -168,6 +148,7 @@ func main() {
 		render.Purge()
 
 		// TODO: Replace the 'P' key with an appropriate keybind
+		var err error
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {
 			if profile_output == nil {
 				profile_output, err = os.Create(filepath.Join(datadir, "cpu.prof"))
@@ -199,7 +180,48 @@ func main() {
 			f.Close()
 			num_mem_profiles++
 		}
-
-		v += 0.01
 	}
+}
+
+func standardHookup() *cgf.Engine {
+	// 1 Start with a title screen
+	// 2 Option to host or join
+	// 3a If host then wait for a connection
+	// 3b If join then ping and connect
+	// 4 Once joined up the 'game' will handle choosing sides and whatnot
+}
+
+func main() {
+	fmt.Printf("%v\n", key_map)
+	sys.Startup()
+	err := gl.Init()
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+
+	render.Init()
+	render.Queue(func() {
+		sys.CreateWindow(10, 10, wdx, wdy)
+		sys.EnableVSync(true)
+		err := gl.Init()
+		if err != nil {
+			base.Error().Fatalf("%v", err)
+		}
+	})
+	base.InitShaders()
+	runtime.GOMAXPROCS(2)
+	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	sys.Think()
+	base.LoadAllDictionaries()
+
+	var engine *cgf.Engine
+	if Version() != "standard" {
+		engine = debugHookup()
+	} else {
+		engine = standardHookup()
+	}
+	mainLoop(engine)
 }
