@@ -80,7 +80,7 @@ func main() {
 	var engine *cgf.Engine
 	var room game.Room
 	base.Log().Printf("RAWRAWR")
-	generated := generator.GenerateRoom(3000, 3000, 300, 50, 0)
+	generated := generator.GenerateRoom(1000, 700, 100, 50, 0)
 	base.Log().Printf("gen: %v", generated)
 	data, err := json.Marshal(generated)
 	base.Log().Printf("%s", data)
@@ -111,14 +111,14 @@ func main() {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, false)
+		game.SetLocalEngine(engine, sys, true)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 1231, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, true)
+		game.SetLocalEngine(engine, sys, false)
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
