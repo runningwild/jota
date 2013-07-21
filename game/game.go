@@ -472,11 +472,7 @@ func (g *Game) Think() {
 		}
 	}()
 	g.GameThinks++
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if _, ok := ent.(*Player); ok {
-			base.Log().Printf("Player: %v", ent.Pos())
-		}
-	})
+
 	// Check for player victory
 	victory := true
 	g.DoForEnts(func(gid Gid, ent Ent) {

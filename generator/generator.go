@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"math"
 	"math/rand"
 )
@@ -55,6 +56,10 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 	c := cmwc.MakeGoodCmwc()
 	if seed == 0 {
 		c.SeedWithDevRand()
+		n := c.Int63()
+		c = cmwc.MakeGoodCmwc()
+		base.Log().Printf("SEED: %v", n)
+		c.Seed(n)
 	} else {
 		c.Seed(seed)
 	}

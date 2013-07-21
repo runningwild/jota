@@ -360,8 +360,6 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 		}
 		l.limit.mid.X = float64(g.Room.Dx / 2)
 		l.limit.mid.Y = float64(g.Room.Dy / 2)
-		base.Log().Printf("region: %v", l.regionDims)
-		base.Log().Printf("limit: %v", l.limit)
 		l.current = l.limit
 		l.zoom = 0
 	}

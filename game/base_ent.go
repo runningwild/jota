@@ -141,6 +141,11 @@ func (b *BaseEnt) Think(g *Game) {
 				distSq := v.DistSquaredToLine(move)
 				if v.Sub(move.Q).Mag2() < sizeSq {
 					distSq = v.Sub(move.Q).Mag2()
+					// If for some dumb reason an ent is on a vertex this will asplode,
+					// so just ignore that case.
+					if distSq == 0 {
+						continue
+					}
 					// Add a little extra here otherwise a player can sneak into geometry
 					// through the corners
 					ray := move.Q.Sub(v).Norm().Scale(size + 0.1)

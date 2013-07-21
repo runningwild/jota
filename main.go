@@ -79,11 +79,8 @@ func main() {
 
 	var engine *cgf.Engine
 	var room game.Room
-	base.Log().Printf("RAWRAWR")
-	generated := generator.GenerateRoom(1000, 700, 100, 50, 0)
-	base.Log().Printf("gen: %v", generated)
+	generated := generator.GenerateRoom(2000, 700, 100, 50, 64522029961391019)
 	data, err := json.Marshal(generated)
-	base.Log().Printf("%s", data)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
