@@ -18,6 +18,9 @@ import (
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/generator"
+	"github.com/runningwild/magnus/texture"
+	_ "image/jpeg"
+	_ "image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -184,6 +187,26 @@ func mainLoop(engine *cgf.Engine) {
 }
 
 func standardHookup() *cgf.Engine {
+	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
+	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
+		sys.Think()
+		render.Queue(func() {
+			gl.ClearColor(0, 0, 0, 1)
+			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+			if true {
+				ratio := float64(wdx) / float64(wdy)
+				t.RenderAdvanced(-1+(1-1/ratio), -1, 2/ratio, 2, 0, false)
+			}
+			gl.Disable(gl.TEXTURE_2D)
+			base.GetDictionary("luxisr").RenderString("INvASioN!!!", 0, 0.5, 0, 0.03, gui.Center)
+		})
+		render.Queue(func() {
+			sys.SwapBuffers()
+		})
+		render.Purge()
+	}
+	return nil
+
 	// 1 Start with a title screen
 	// 2 Option to host or join
 	// 3a If host then wait for a connection

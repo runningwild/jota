@@ -3,5 +3,5 @@
 package main
 
 func Version() string {
-	return "magnus"
+	return "standard"
 }
