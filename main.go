@@ -10,6 +10,7 @@ import (
 	"github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
+	g2 "github.com/runningwild/magnus/gui"
 	"time"
 	// "math"
 	"encoding/json"
@@ -187,6 +188,9 @@ func mainLoop(engine *cgf.Engine) {
 }
 
 func standardHookup() *cgf.Engine {
+	g := g2.Make(0, 0, wdx, wdy)
+	base.Log().Printf("%d %d", wdx, wdy)
+	g.AddChild(&g2.Box{Color: [4]int{255, 255, 0, 255}, Dims: g2.Dims{100, 300}}, g2.AnchorDeadCenter)
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
 	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
 		sys.Think()
@@ -201,6 +205,7 @@ func standardHookup() *cgf.Engine {
 			base.GetDictionary("luxisr").RenderString("INvASioN!!!", 0, 0.5, 0, 0.03, gui.Center)
 		})
 		render.Queue(func() {
+			g.Draw()
 			sys.SwapBuffers()
 		})
 		render.Purge()

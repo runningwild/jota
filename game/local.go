@@ -309,7 +309,6 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
-	base.GetDictionary("luxisr").RenderString("darthur is nub", 30, 10, 0, 100, gui.Left)
 	g.renderLosMask()
 	for _, p := range local.players {
 		if p.abs.activeAbility != nil {

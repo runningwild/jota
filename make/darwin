@@ -11,12 +11,15 @@ function doBuild {
   cp -r data/* $1.app/Contents/
 }
 
-#doBuild 'magnus'
-doBuild 'host'
-open host.app
+doBuild 'standard'
+open standard.app
 false
+
+doBuild 'host'
+#open host.app
+#false
 doBuild 'client'
 
 open host.app
-sleep 0.3
+sleep 0.9
 open client.app
