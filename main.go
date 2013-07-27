@@ -90,14 +90,14 @@ func debugHookup() *cgf.Engine {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, true)
+		game.SetLocalEngine(engine, sys, false)
 	} else if Version() == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, false)
+		game.SetLocalEngine(engine, sys, true)
 		g := engine.CopyState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
@@ -190,7 +190,23 @@ func mainLoop(engine *cgf.Engine) {
 func standardHookup() *cgf.Engine {
 	g := g2.Make(0, 0, wdx, wdy)
 	base.Log().Printf("%d %d", wdx, wdy)
-	g.AddChild(&g2.Box{Color: [4]int{255, 255, 0, 255}, Dims: g2.Dims{100, 300}}, g2.AnchorDeadCenter)
+	rbox := g2.Box{Color: [4]int{255, 0, 0, 255}, Dims: g2.Dims{100, 300}}
+	gbox := g2.Box{Color: [4]int{0, 255, 0, 255}, Dims: g2.Dims{200, 300}}
+	bbox := g2.Box{Color: [4]int{0, 0, 255, 255}, Dims: g2.Dims{100, 300}}
+	button := g2.Button{Name: "Fooo"}
+	var vtable g2.VTable
+	vtable.Children = append(vtable.Children, &rbox)
+	vtable.Children = append(vtable.Children, &gbox)
+	vtable.Children = append(vtable.Children, &bbox)
+	vtable.Children = append(vtable.Children, &button)
+	g.AddChild(&vtable, g2.AnchorDeadCenter)
+
+	var blist g2.ButtonList
+	blist.Children = append(blist.Children, &g2.Button{Name: "Fudge"})
+	blist.Children = append(blist.Children, &g2.Button{Name: "Thunder"})
+	blist.Children = append(blist.Children, &g2.Button{Name: "Buttons!!!"})
+	g.AddChild(&blist, g2.AnchorUL)
+
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
 	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
 		sys.Think()

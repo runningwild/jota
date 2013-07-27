@@ -54,6 +54,9 @@ void main(void) {
   vec4 drain_data = texture1D(tex1, 0.05);
   drain_data.y = -drain_data.y;
   vec2 tpos = gl_TexCoord[0].xy;
+  // Sadly this was the easiest way to get the grid to render properly.
+  tpos.y = -tpos.y;
+
   vec2 pull = drain_data.xy;
   vec2 diff = tpos - pull;
   vec4 color = texture2D(tex0, tpos);

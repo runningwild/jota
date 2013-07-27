@@ -1,16 +1,98 @@
 package gui
 
 import (
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
+	"github.com/runningwild/glop/gos"
+	"github.com/runningwild/glop/gui"
+	"github.com/runningwild/glop/system"
 	"github.com/runningwild/magnus/base"
 )
 
 type Widget interface {
-	Think()
+	Think(gui *Gui)
 	Respond(eventGroup gin.EventGroup)
 	Draw(region Region)
 	RequestedDims() Dims
+}
+
+// Most widgets will embed a ParentWidget
+type ParentWidget struct {
+	Children []Widget
+}
+
+func (w *ParentWidget) Think(gui *Gui) {
+	for _, child := range w.Children {
+		child.Think(gui)
+	}
+}
+
+type ParentResponderWidget struct {
+	ParentWidget
+}
+
+func (w *ParentResponderWidget) Respond(eventGroup gin.EventGroup) {
+	for _, child := range w.Children {
+		child.Respond(eventGroup)
+	}
+}
+
+type PosWidget struct {
+	Size int
+	text string
+}
+
+func (p *PosWidget) Think(gui *Gui) {
+	x, y := gui.sys.GetCursorPos()
+	p.text = fmt.Sprintf("(%d, %d)", x, y)
+}
+func (p *PosWidget) Respond(eventGroup gin.EventGroup) {}
+func (p *PosWidget) Draw(region Region) {
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Color4ub(0, 255, 0, 255)
+	gl.Begin(gl.QUADS)
+	x := gl.Int(region.X)
+	y := gl.Int(region.Y)
+	dx := gl.Int(base.GetDictionary("luxisr").StringWidth(p.text, float64(p.Size)))
+	dy := gl.Int(p.Size)
+	gl.Vertex2i(x, y)
+	gl.Vertex2i(x, y+dy)
+	gl.Vertex2i(x+dx, y+dy)
+	gl.Vertex2i(x+dx, y)
+	gl.End()
+	base.Log().Printf("%v %v %v %v", x, y, dx, dy)
+	gl.Color4ub(255, 0, 255, 255)
+	base.GetDictionary("luxisr").RenderString(p.text, float64(region.X), float64(region.Y), 0, float64(p.Size), gui.Left)
+}
+func (p *PosWidget) RequestedDims() Dims {
+	return Dims{int(base.GetDictionary("luxisr").StringWidth(p.text, float64(p.Size))), p.Size}
+}
+
+type VTable struct {
+	ParentResponderWidget
+	maxWidth int
+}
+
+func (t *VTable) Think(gui *Gui) {
+	t.ParentWidget.Think(gui)
+	t.maxWidth = 0
+	for _, child := range t.Children {
+		dims := child.RequestedDims()
+		if dims.Dx > t.maxWidth {
+			t.maxWidth = dims.Dx
+		}
+	}
+}
+func (t *VTable) RequestedDims() Dims {
+	return Dims{t.maxWidth, 30 * len(t.Children)}
+}
+func (t *VTable) Draw(region Region) {
+	dims := Dims{t.maxWidth, 30}
+	for i, child := range t.Children {
+		pos := Pos{region.X, region.Y + 30*i}
+		child.Draw(Region{Pos: pos, Dims: dims})
+	}
 }
 
 type Dims struct {
@@ -29,6 +111,7 @@ type Region struct {
 type Gui struct {
 	root   *RootWidget
 	region Region
+	sys    system.System
 }
 
 type Anchor int
@@ -45,6 +128,7 @@ func Make(x, y, dx, dy int) *Gui {
 	var g Gui
 	g.region = Region{Pos{x, y}, Dims{dx, dy}}
 	g.root = &RootWidget{region: g.region}
+	g.sys = system.Make(gos.GetSystemInterface())
 	gin.In().RegisterEventListener(&g)
 	return &g
 }
@@ -61,7 +145,6 @@ func (g *Gui) AddChild(w Widget, anchor Anchor) {
 func (g *Gui) Draw() {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	base.Log().Printf("Ortho: %v", g.region)
 	gl.Ortho(gl.Double(g.region.X), gl.Double(g.region.X+g.region.Dx), gl.Double(g.region.Y+g.region.Dy), gl.Double(g.region.Y), 1000, -1000)
 	gl.ClearColor(0, 0, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -70,21 +153,27 @@ func (g *Gui) Draw() {
 	g.root.Draw(g.region)
 }
 func (g *Gui) Think(t int64) {
-	g.root.Think()
+	g.root.Think(g)
 }
-func (G *Gui) HandleEventGroup(eventGroup gin.EventGroup) {}
+func (g *Gui) HandleEventGroup(eventGroup gin.EventGroup) {
+	g.root.Respond(eventGroup)
+}
 
 type RootWidget struct {
 	region   Region
 	children []childPlacement
 }
 
-func (r *RootWidget) Think() {
+func (r *RootWidget) Think(gui *Gui) {
 	for _, cp := range r.children {
-		cp.child.Think()
+		cp.child.Think(gui)
 	}
 }
-func (r *RootWidget) Respond(eventGroup gin.EventGroup) {}
+func (r *RootWidget) Respond(eventGroup gin.EventGroup) {
+	for _, cp := range r.children {
+		cp.child.Respond(eventGroup)
+	}
+}
 func (r *RootWidget) Draw(region Region) {
 	for _, cp := range r.children {
 		dims := cp.child.RequestedDims()
@@ -109,13 +198,26 @@ func (r *RootWidget) RequestedDims() Dims {
 type Box struct {
 	Color [4]int
 	Dims  Dims
+	Last  Region
+	Hover bool
 }
 
-func (b *Box) Think()                            {}
+func (b *Box) Think(gui *Gui) {
+	x, y := gui.sys.GetCursorPos()
+	b.Hover = x >= b.Last.X && x < b.Last.X+b.Last.Dx &&
+		y >= b.Last.Y && y < b.Last.Y+b.Last.Dy
+}
 func (b *Box) Respond(eventGroup gin.EventGroup) {}
 func (b *Box) Draw(region Region) {
-	base.Log().Printf("Rendering %v", region)
-	gl.Color4ub(gl.Ubyte(b.Color[0]), gl.Ubyte(b.Color[1]), gl.Ubyte(b.Color[2]), gl.Ubyte(b.Color[3]))
+	b.Last = region
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.Disable(gl.TEXTURE_2D)
+	if b.Hover {
+		gl.Color4ub(gl.Ubyte(b.Color[0]), gl.Ubyte(b.Color[1]), gl.Ubyte(b.Color[2]), gl.Ubyte(b.Color[3]))
+	} else {
+		gl.Color4ub(gl.Ubyte(b.Color[0]), gl.Ubyte(b.Color[1]), gl.Ubyte(b.Color[2]), gl.Ubyte(b.Color[3])/2)
+	}
 	gl.Begin(gl.QUADS)
 	x := gl.Int(region.X)
 	y := gl.Int(region.Y)

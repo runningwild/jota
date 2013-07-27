@@ -255,8 +255,8 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	gl.Ortho(
 		gl.Double(local.current.mid.X-local.current.dims.X/2),
 		gl.Double(local.current.mid.X+local.current.dims.X/2),
-		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
 		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
+		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
 		gl.Double(1000),
 		gl.Double(-1000),
 	)
@@ -391,7 +391,7 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 		x := gin.In().GetKey(gin.AnyMouseXAxis).FramePressAmt()
 		y := gin.In().GetKey(gin.AnyMouseYAxis).FramePressAmt()
 		l.current.mid.X -= float64(x) * 2
-		l.current.mid.Y += float64(y) * 2
+		l.current.mid.Y -= float64(y) * 2
 	} else {
 		if local.cursorHidden {
 			local.sys.HideCursor(false)
@@ -421,8 +421,8 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 	gl.Ortho(
 		gl.Double(local.current.mid.X-local.current.dims.X/2),
 		gl.Double(local.current.mid.X+local.current.dims.X/2),
-		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
 		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
+		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
 		gl.Double(1000),
 		gl.Double(-1000),
 	)
@@ -602,7 +602,7 @@ func localThinkInvaders(g *Game) {
 			local.engine.ApplyEvent(Accelerate{player.gid, 2 * (up - down)})
 		}
 		if left-right != 0 {
-			local.engine.ApplyEvent(Turn{player.gid, (left - right)})
+			local.engine.ApplyEvent(Turn{player.gid, (right - left)})
 		}
 	}
 }

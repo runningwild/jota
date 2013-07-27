@@ -55,16 +55,16 @@ func setupTextureList() {
 			textureList = gl.GenLists(1)
 			gl.NewList(textureList, gl.COMPILE)
 			gl.Begin(gl.QUADS)
-			gl.TexCoord2d(0, 0)
+			gl.TexCoord2d(0, -1)
 			gl.Vertex2i(0, 0)
 
-			gl.TexCoord2d(0, -1)
+			gl.TexCoord2d(0, 0)
 			gl.Vertex2i(0, 1)
 
-			gl.TexCoord2d(1, -1)
+			gl.TexCoord2d(1, 0)
 			gl.Vertex2i(1, 1)
 
-			gl.TexCoord2d(1, 0)
+			gl.TexCoord2d(1, -1)
 			gl.Vertex2i(1, 0)
 			gl.End()
 			gl.EndList()
