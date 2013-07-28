@@ -190,21 +190,44 @@ func mainLoop(engine *cgf.Engine) {
 func standardHookup() *cgf.Engine {
 	g := g2.Make(0, 0, wdx, wdy)
 	base.Log().Printf("%d %d", wdx, wdy)
-	rbox := g2.Box{Color: [4]int{255, 0, 0, 255}, Dims: g2.Dims{100, 300}}
-	gbox := g2.Box{Color: [4]int{0, 255, 0, 255}, Dims: g2.Dims{200, 300}}
-	bbox := g2.Box{Color: [4]int{0, 0, 255, 255}, Dims: g2.Dims{100, 300}}
-	button := g2.Button{Name: "Fooo"}
-	var vtable g2.VTable
-	vtable.Children = append(vtable.Children, &rbox)
-	vtable.Children = append(vtable.Children, &gbox)
-	vtable.Children = append(vtable.Children, &bbox)
-	vtable.Children = append(vtable.Children, &button)
-	g.AddChild(&vtable, g2.AnchorDeadCenter)
+	var tm g2.ThunderMenu
+	tm.Subs = make(map[string]*g2.ThunderSubMenu)
+	var sm1 g2.ThunderSubMenu
+	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Foo", Callback: func() { tm.Push("bar") }})
+	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Bar"})
+	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Cake"})
+	tm.Subs[""] = &sm1
+
+	var sm2 g2.ThunderSubMenu
+	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
+	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Wingding", Callback: func() { tm.Push("wingding") }})
+	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Buttons"})
+	tm.Subs["bar"] = &sm2
+
+	var sm3 g2.ThunderSubMenu
+	sm3.Options = append(sm3.Options, &g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
+	sm3.Options = append(sm3.Options, &g2.Button{Size: 30, Name: "Block"})
+	sm3.Options = append(sm3.Options, &g2.Button{Size: 60, Name: "Wiggle"})
+	tm.Subs["wingding"] = &sm3
+
+	tm.Start(300)
+	g.AddChild(&tm, g2.AnchorDeadCenter)
+
+	// rbox := g2.Box{Color: [4]int{255, 0, 0, 255}, Dims: g2.Dims{100, 300}}
+	// gbox := g2.Box{Color: [4]int{0, 255, 0, 255}, Dims: g2.Dims{200, 300}}
+	// bbox := g2.Box{Color: [4]int{0, 0, 255, 255}, Dims: g2.Dims{100, 300}}
+	// button := g2.Button{Size: 30, Name: "Fooo"}
+	// var vtable g2.VTable
+	// vtable.Children = append(vtable.Children, &rbox)
+	// vtable.Children = append(vtable.Children, &gbox)
+	// vtable.Children = append(vtable.Children, &bbox)
+	// vtable.Children = append(vtable.Children, &button)
+	// g.AddChild(&vtable, g2.AnchorDeadCenter)
 
 	var blist g2.ButtonList
-	blist.Children = append(blist.Children, &g2.Button{Name: "Fudge"})
-	blist.Children = append(blist.Children, &g2.Button{Name: "Thunder"})
-	blist.Children = append(blist.Children, &g2.Button{Name: "Buttons!!!"})
+	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Fudge"})
+	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Thunder"})
+	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Buttons!!!"})
 	g.AddChild(&blist, g2.AnchorUL)
 
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))

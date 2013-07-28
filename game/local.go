@@ -238,7 +238,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	local.doInvadersFocusRegion(g)
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
-		gl.Color4ub(255, 255, 0, 255)
+		gui.SetFontColor(1, 1, 0, 1)
 		defer base.GetDictionary("luxisr").RenderString("WINNER!", 600, 400, 0, 200, gui.Center)
 	}
 	gl.MatrixMode(gl.PROJECTION)
@@ -292,7 +292,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 		gl.End()
 	}
 
-	gl.Color4ub(0, 255, 0, 255)
+	gui.SetFontColor(0, 255, 0, 255)
 	base.GetDictionary("luxisr").RenderString("Start!", g.Room.Start.X, g.Room.Start.Y, 0, 100, gui.Center)
 	base.GetDictionary("luxisr").RenderString("End!", g.Room.End.X, g.Room.End.Y, 0, 100, gui.Center)
 
