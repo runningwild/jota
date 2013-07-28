@@ -7,10 +7,10 @@ type ButtonList struct {
 	focusIndex int
 }
 
-func (b *ButtonList) Draw(region Region) {
+func (b *ButtonList) Draw(region Region, style StyleStack) {
 	region.Dy /= len(b.Children)
 	for _, child := range b.Children {
-		child.Draw(region)
+		child.Draw(region, style)
 		region.Y += region.Dy
 	}
 }

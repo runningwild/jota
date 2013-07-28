@@ -10,7 +10,7 @@ type ThunderSubMenu struct {
 	requests map[Widget]Dims
 }
 
-func (tsm *ThunderSubMenu) Draw(region Region) {
+func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
 	gl.Disable(gl.TEXTURE_2D)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.Enable(gl.BLEND)
@@ -26,7 +26,7 @@ func (tsm *ThunderSubMenu) Draw(region Region) {
 	gl.End()
 	for _, option := range tsm.Options {
 		region.Dy = tsm.requests[option].Dy
-		option.Draw(region)
+		option.Draw(region, style)
 		region.Y += tsm.requests[option].Dy
 	}
 }
@@ -40,7 +40,7 @@ type ThunderMenu struct {
 
 func (tm *ThunderMenu) Think(gui *Gui) {
 	if tm.inTransit != 0 {
-		tm.inTransit *= 0.6
+		tm.inTransit *= 0.7
 		threshold := 0.001
 		if tm.inTransit < threshold && tm.inTransit > -threshold {
 			if tm.inTransit < 0 {
@@ -81,7 +81,7 @@ func (tm *ThunderMenu) Respond(eventGroup gin.EventGroup) {
 	}
 }
 
-func (tm *ThunderMenu) Draw(region Region) {
+func (tm *ThunderMenu) Draw(region Region, style StyleStack) {
 	if tm.inTransit != 0 {
 		var shift float64
 		if tm.inTransit < 0 {
@@ -92,7 +92,7 @@ func (tm *ThunderMenu) Draw(region Region) {
 		prevRegion := region
 		prevRegion.X -= int(float64(prevRegion.Dx) * shift)
 		gl.Color4ub(255, 0, 0, 100)
-		tm.Subs[tm.menuStack[len(tm.menuStack)-2]].Draw(prevRegion)
+		tm.Subs[tm.menuStack[len(tm.menuStack)-2]].Draw(prevRegion, style)
 	}
 	var shift float64
 	if tm.inTransit < 0 {
@@ -102,7 +102,7 @@ func (tm *ThunderMenu) Draw(region Region) {
 	}
 	region.X += int(float64(region.Dx) * shift)
 	gl.Color4ub(0, 255, 0, 100)
-	tm.Subs[tm.menuStack[len(tm.menuStack)-1]].Draw(region)
+	tm.Subs[tm.menuStack[len(tm.menuStack)-1]].Draw(region, style)
 }
 
 func (tsm *ThunderSubMenu) RequestedDims() Dims {

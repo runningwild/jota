@@ -13,7 +13,7 @@ import (
 type Widget interface {
 	Think(gui *Gui)
 	Respond(eventGroup gin.EventGroup)
-	Draw(region Region)
+	Draw(region Region, style StyleStack)
 	RequestedDims() Dims
 }
 
@@ -48,7 +48,7 @@ func (p *PosWidget) Think(gui *Gui) {
 	p.text = fmt.Sprintf("(%d, %d)", x, y)
 }
 func (p *PosWidget) Respond(eventGroup gin.EventGroup) {}
-func (p *PosWidget) Draw(region Region) {
+func (p *PosWidget) Draw(region Region, style StyleStack) {
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4ub(0, 255, 0, 255)
 	gl.Begin(gl.QUADS)
@@ -87,11 +87,11 @@ func (t *VTable) Think(gui *Gui) {
 func (t *VTable) RequestedDims() Dims {
 	return Dims{t.maxWidth, 30 * len(t.Children)}
 }
-func (t *VTable) Draw(region Region) {
+func (t *VTable) Draw(region Region, style StyleStack) {
 	dims := Dims{t.maxWidth, 30}
 	for i, child := range t.Children {
 		pos := Pos{region.X, region.Y + 30*i}
-		child.Draw(Region{Pos: pos, Dims: dims})
+		child.Draw(Region{Pos: pos, Dims: dims}, style)
 	}
 }
 
@@ -150,7 +150,7 @@ func (g *Gui) Draw() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
-	g.root.Draw(g.region)
+	g.root.Draw(g.region, &styleStack{})
 }
 func (g *Gui) Think(t int64) {
 	g.root.Think(g)
@@ -174,20 +174,20 @@ func (r *RootWidget) Respond(eventGroup gin.EventGroup) {
 		cp.child.Respond(eventGroup)
 	}
 }
-func (r *RootWidget) Draw(region Region) {
+func (r *RootWidget) Draw(region Region, style StyleStack) {
 	for _, cp := range r.children {
 		dims := cp.child.RequestedDims()
 		switch cp.place {
 		case AnchorUL:
-			cp.child.Draw(Region{Pos: Pos{0, 0}, Dims: dims})
+			cp.child.Draw(Region{Pos: Pos{0, 0}, Dims: dims}, style)
 		case AnchorUR:
-			cp.child.Draw(Region{Pos: Pos{r.region.Dx - dims.Dx, 0}, Dims: dims})
+			cp.child.Draw(Region{Pos: Pos{r.region.Dx - dims.Dx, 0}, Dims: dims}, style)
 		case AnchorLL:
-			cp.child.Draw(Region{Pos: Pos{0, r.region.Dy - dims.Dy}, Dims: dims})
+			cp.child.Draw(Region{Pos: Pos{0, r.region.Dy - dims.Dy}, Dims: dims}, style)
 		case AnchorLR:
-			cp.child.Draw(Region{Pos: Pos{r.region.Dx - dims.Dx, r.region.Dy - dims.Dy}, Dims: dims})
+			cp.child.Draw(Region{Pos: Pos{r.region.Dx - dims.Dx, r.region.Dy - dims.Dy}, Dims: dims}, style)
 		case AnchorDeadCenter:
-			cp.child.Draw(Region{Pos: Pos{(r.region.Dx - dims.Dx) / 2, (r.region.Dy - dims.Dy) / 2}, Dims: dims})
+			cp.child.Draw(Region{Pos: Pos{(r.region.Dx - dims.Dx) / 2, (r.region.Dy - dims.Dy) / 2}, Dims: dims}, style)
 		}
 	}
 }
@@ -208,7 +208,7 @@ func (b *Box) Think(gui *Gui) {
 		y >= b.Last.Y && y < b.Last.Y+b.Last.Dy
 }
 func (b *Box) Respond(eventGroup gin.EventGroup) {}
-func (b *Box) Draw(region Region) {
+func (b *Box) Draw(region Region, style StyleStack) {
 	b.Last = region
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)

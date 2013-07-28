@@ -193,21 +193,39 @@ func standardHookup() *cgf.Engine {
 	var tm g2.ThunderMenu
 	tm.Subs = make(map[string]*g2.ThunderSubMenu)
 	var sm1 g2.ThunderSubMenu
-	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Foo", Callback: func() { tm.Push("bar") }})
-	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Bar"})
-	sm1.Options = append(sm1.Options, &g2.Button{Size: 30, Name: "Cake"})
+	sm1.Options = append(
+		sm1.Options,
+		&g2.Button{Size: 30, Name: "Foo", Callback: func() { tm.Push("bar") }})
+	sm1.Options = append(
+		sm1.Options,
+		&g2.Button{Size: 30, Name: "Bar"})
+	sm1.Options = append(
+		sm1.Options,
+		&g2.Button{Size: 30, Name: "Cake"})
 	tm.Subs[""] = &sm1
 
 	var sm2 g2.ThunderSubMenu
-	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
-	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Wingding", Callback: func() { tm.Push("wingding") }})
-	sm2.Options = append(sm2.Options, &g2.Button{Size: 30, Name: "Buttons"})
+	sm2.Options = append(
+		sm2.Options,
+		&g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
+	sm2.Options = append(
+		sm2.Options,
+		&g2.Button{Size: 30, Name: "Wingding", Callback: func() { tm.Push("wingding") }})
+	sm2.Options = append(
+		sm2.Options,
+		&g2.Button{Size: 30, Name: "Buttons"})
 	tm.Subs["bar"] = &sm2
 
 	var sm3 g2.ThunderSubMenu
-	sm3.Options = append(sm3.Options, &g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
-	sm3.Options = append(sm3.Options, &g2.Button{Size: 30, Name: "Block"})
-	sm3.Options = append(sm3.Options, &g2.Button{Size: 60, Name: "Wiggle"})
+	sm3.Options = append(
+		sm3.Options,
+		&g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
+	sm3.Options = append(
+		sm3.Options,
+		&g2.Button{Size: 30, Name: "Block"})
+	sm3.Options = append(
+		sm3.Options,
+		&g2.Button{Size: 60, Name: "Wiggle"})
 	tm.Subs["wingding"] = &sm3
 
 	tm.Start(300)

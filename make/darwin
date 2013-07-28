@@ -11,9 +11,9 @@ function doBuild {
   cp -r data/* $1.app/Contents/
 }
 
-doBuild 'host'
+#doBuild 'host'
 doBuild 'standard'
-open host.app
+open standard.app
 false
 
 doBuild 'host'
