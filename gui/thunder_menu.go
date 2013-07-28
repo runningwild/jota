@@ -3,11 +3,64 @@ package gui
 import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
+	// "github.com/runningwild/magnus/base"
 )
 
 type ThunderSubMenu struct {
 	Options  []Widget
 	requests map[Widget]Dims
+	selected int
+	downs    []gin.KeyIndex
+	ups      []gin.KeyIndex
+}
+
+func MakeThunderSubMenu(options []Widget) *ThunderSubMenu {
+	var tsm ThunderSubMenu
+	tsm.Options = make([]Widget, len(options))
+	copy(tsm.Options, options)
+	tsm.requests = make(map[Widget]Dims)
+	tsm.selected = -1
+	tsm.downs = []gin.KeyIndex{gin.Down, gin.ControllerHatSwitchDown}
+	tsm.ups = []gin.KeyIndex{gin.Up, gin.ControllerHatSwitchUp}
+	return &tsm
+}
+
+func (tsm *ThunderSubMenu) Respond(eventGroup gin.EventGroup) {
+	var up, down bool
+	for _, keyIndex := range tsm.downs {
+		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeController, gin.DeviceIndexAny).Id()
+		if found, event := eventGroup.FindEvent(id); found && event.Type == gin.Press {
+			down = true
+		}
+	}
+	for _, keyIndex := range tsm.ups {
+		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeController, gin.DeviceIndexAny).Id()
+		if found, event := eventGroup.FindEvent(id); found && event.Type == gin.Press {
+			up = true
+		}
+	}
+	if down {
+		tsm.selected++
+	}
+	if up {
+		if tsm.selected == -1 {
+			tsm.selected = len(tsm.Options) - 1
+		} else {
+			tsm.selected--
+		}
+	}
+	if tsm.selected >= len(tsm.Options) || tsm.selected < 0 {
+		tsm.selected = -1
+	}
+	if eventGroup.Events[0].Key.Id().Device.Type != gin.DeviceTypeMouse {
+		if tsm.selected >= 0 && tsm.selected < len(tsm.Options) {
+			tsm.Options[tsm.selected].Respond(eventGroup)
+		}
+	} else {
+		for _, option := range tsm.Options {
+			option.Respond(eventGroup)
+		}
+	}
 }
 
 func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
@@ -24,9 +77,15 @@ func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
 	gl.Vertex2i(x+dx, y+dy)
 	gl.Vertex2i(x+dx, y)
 	gl.End()
-	for _, option := range tsm.Options {
+	for i, option := range tsm.Options {
 		region.Dy = tsm.requests[option].Dy
+		if i == tsm.selected {
+			style.PushStyle(map[string]interface{}{"selected": true})
+		} else {
+			style.PushStyle(map[string]interface{}{"selected": false})
+		}
 		option.Draw(region, style)
+		style.Pop()
 		region.Y += tsm.requests[option].Dy
 	}
 }
@@ -75,10 +134,7 @@ func (tm *ThunderMenu) Respond(eventGroup gin.EventGroup) {
 	if tm.inTransit != 0 {
 		return
 	}
-	tsm := tm.Subs[tm.menuStack[len(tm.menuStack)-1]]
-	for _, option := range tsm.Options {
-		option.Respond(eventGroup)
-	}
+	tm.Subs[tm.menuStack[len(tm.menuStack)-1]].Respond(eventGroup)
 }
 
 func (tm *ThunderMenu) Draw(region Region, style StyleStack) {
@@ -106,9 +162,6 @@ func (tm *ThunderMenu) Draw(region Region, style StyleStack) {
 }
 
 func (tsm *ThunderSubMenu) RequestedDims() Dims {
-	if tsm.requests == nil {
-		tsm.requests = make(map[Widget]Dims)
-	}
 	var dims Dims
 	for _, option := range tsm.Options {
 		opDims := option.RequestedDims()

@@ -192,41 +192,29 @@ func standardHookup() *cgf.Engine {
 	base.Log().Printf("%d %d", wdx, wdy)
 	var tm g2.ThunderMenu
 	tm.Subs = make(map[string]*g2.ThunderSubMenu)
-	var sm1 g2.ThunderSubMenu
-	sm1.Options = append(
-		sm1.Options,
-		&g2.Button{Size: 30, Name: "Foo", Callback: func() { tm.Push("bar") }})
-	sm1.Options = append(
-		sm1.Options,
-		&g2.Button{Size: 30, Name: "Bar"})
-	sm1.Options = append(
-		sm1.Options,
-		&g2.Button{Size: 30, Name: "Cake"})
-	tm.Subs[""] = &sm1
+	triggers := map[gin.KeyId]struct{}{
+		gin.AnyReturn: struct{}{},
+		gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny).Id(): struct{}{},
+	}
+	tm.Subs[""] = g2.MakeThunderSubMenu(
+		[]g2.Widget{
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Foo", Callback: func() { tm.Push("bar") }},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Bar"},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Cake"},
+		})
 
-	var sm2 g2.ThunderSubMenu
-	sm2.Options = append(
-		sm2.Options,
-		&g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
-	sm2.Options = append(
-		sm2.Options,
-		&g2.Button{Size: 30, Name: "Wingding", Callback: func() { tm.Push("wingding") }})
-	sm2.Options = append(
-		sm2.Options,
-		&g2.Button{Size: 30, Name: "Buttons"})
-	tm.Subs["bar"] = &sm2
+	tm.Subs["bar"] = g2.MakeThunderSubMenu(
+		[]g2.Widget{
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Bar", Callback: func() { tm.Pop() }},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Wib", Callback: func() { tm.Push("wingding") }},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Monkey"},
+		})
 
-	var sm3 g2.ThunderSubMenu
-	sm3.Options = append(
-		sm3.Options,
-		&g2.Button{Size: 30, Name: "Back", Callback: func() { tm.Pop() }})
-	sm3.Options = append(
-		sm3.Options,
-		&g2.Button{Size: 30, Name: "Block"})
-	sm3.Options = append(
-		sm3.Options,
-		&g2.Button{Size: 60, Name: "Wiggle"})
-	tm.Subs["wingding"] = &sm3
+	tm.Subs["wingding"] = g2.MakeThunderSubMenu(
+		[]g2.Widget{
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Wingding", Callback: func() { tm.Pop() }},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Thundercake"},
+		})
 
 	tm.Start(300)
 	g.AddChild(&tm, g2.AnchorDeadCenter)
