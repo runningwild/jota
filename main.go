@@ -198,22 +198,18 @@ func standardHookup() *cgf.Engine {
 	}
 	tm.Subs[""] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Foo", Callback: func() { tm.Push("bar") }},
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Bar"},
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Cake"},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Bar", Callback: func() { tm.Push("bar0") }},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "Foo", Callback: func() { tm.Push("foo0") }},
 		})
 
-	tm.Subs["bar"] = g2.MakeThunderSubMenu(
+	tm.Subs["bar0"] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Bar", Callback: func() { tm.Pop() }},
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Wib", Callback: func() { tm.Push("wingding") }},
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Monkey"},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "BarBack", Callback: func() { tm.Pop() }},
 		})
 
-	tm.Subs["wingding"] = g2.MakeThunderSubMenu(
+	tm.Subs["foo0"] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Wingding", Callback: func() { tm.Pop() }},
-			&g2.Button{Size: 30, Triggers: triggers, Name: "Thundercake"},
+			&g2.Button{Size: 30, Triggers: triggers, Name: "FooBack", Callback: func() { tm.Pop() }},
 		})
 
 	tm.Start(300)

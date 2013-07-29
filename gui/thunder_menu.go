@@ -4,6 +4,7 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
 	// "github.com/runningwild/magnus/base"
+	"math"
 )
 
 type ThunderSubMenu struct {
@@ -93,72 +94,85 @@ func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
 type ThunderMenu struct {
 	Subs      map[string]*ThunderSubMenu
 	menuStack []string
-	inTransit float64
+	current   int
+	delta     float64
 	request   Dims
 }
 
 func (tm *ThunderMenu) Think(gui *Gui) {
-	if tm.inTransit != 0 {
-		tm.inTransit *= 0.7
+	if tm.delta != 0 {
+		tm.delta *= 0.7
 		threshold := 0.001
-		if tm.inTransit < threshold && tm.inTransit > -threshold {
-			if tm.inTransit < 0 {
+		if tm.delta < threshold && tm.delta > -threshold {
+			tm.delta = 0
+			if tm.current < len(tm.menuStack)-1 {
 				tm.menuStack = tm.menuStack[0 : len(tm.menuStack)-1]
 			}
-			tm.inTransit = 0
 		}
-		return
 	}
-	tsm := tm.Subs[tm.menuStack[len(tm.menuStack)-1]]
+	tsm := tm.Subs[tm.menuStack[tm.current]]
 	for key := range tsm.Options {
 		tsm.Options[key].Think(gui)
 	}
 }
 
 func (tm *ThunderMenu) Push(target string) {
-	if tm.inTransit != 0 {
-		return
+	tm.delta -= 1.0
+	tm.current++
+	if len(tm.menuStack) > tm.current {
+		tm.menuStack[tm.current] = target
+	} else {
+		tm.menuStack = append(tm.menuStack, target)
 	}
-	tm.inTransit = 1.0
-	tm.menuStack = append(tm.menuStack, target)
 }
 
 func (tm *ThunderMenu) Pop() {
-	if tm.inTransit != 0 {
-		return
-	}
-	tm.inTransit = -1.0
+	tm.delta += 1.0
+	tm.current--
 }
 
 func (tm *ThunderMenu) Respond(eventGroup gin.EventGroup) {
-	if tm.inTransit != 0 {
-		return
-	}
-	tm.Subs[tm.menuStack[len(tm.menuStack)-1]].Respond(eventGroup)
+	tm.Subs[tm.menuStack[tm.current]].Respond(eventGroup)
 }
 
 func (tm *ThunderMenu) Draw(region Region, style StyleStack) {
-	if tm.inTransit != 0 {
-		var shift float64
-		if tm.inTransit < 0 {
-			shift = -tm.inTransit
-		} else {
-			shift = 1.0 - tm.inTransit
-		}
-		prevRegion := region
-		prevRegion.X -= int(float64(prevRegion.Dx) * shift)
-		gl.Color4ub(255, 0, 0, 100)
-		tm.Subs[tm.menuStack[len(tm.menuStack)-2]].Draw(prevRegion, style)
-	}
-	var shift float64
-	if tm.inTransit < 0 {
-		shift = 1.0 + tm.inTransit
+	// Set clip planes
+	gl.PushAttrib(gl.TRANSFORM_BIT)
+	defer gl.PopAttrib()
+	var eqs [4][4]gl.Double
+	eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3] = 1, 0, 0, -gl.Double(region.X)
+	eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3] = -1, 0, 0, gl.Double(region.X+region.Dx)
+	eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3] = 0, 1, 0, -gl.Double(region.Y)
+	eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3] = 0, -1, 0, gl.Double(region.Y+region.Dy)
+	gl.Enable(gl.CLIP_PLANE0)
+	gl.Enable(gl.CLIP_PLANE1)
+	gl.Enable(gl.CLIP_PLANE2)
+	gl.Enable(gl.CLIP_PLANE3)
+	gl.ClipPlane(gl.CLIP_PLANE0, &eqs[0][0])
+	gl.ClipPlane(gl.CLIP_PLANE1, &eqs[1][0])
+	gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
+	gl.ClipPlane(gl.CLIP_PLANE3, &eqs[3][0])
+
+	var start, end int
+	if tm.delta <= 0 {
+		start = tm.current + int(math.Floor(tm.delta))
+		end = tm.current
+		region.X += int(float64(region.Dx) * (float64(start-tm.current) - tm.delta))
 	} else {
-		shift = tm.inTransit
+		start = tm.current
+		end = tm.current + int(math.Ceil(tm.delta))
+		region.X += int(float64(region.Dx) * (float64(end-tm.current) - tm.delta - math.Floor(tm.delta) - 1))
 	}
-	region.X += int(float64(region.Dx) * shift)
-	gl.Color4ub(0, 255, 0, 100)
-	tm.Subs[tm.menuStack[len(tm.menuStack)-1]].Draw(region, style)
+	for i := start; i <= end; i++ {
+		if i == tm.current {
+			gl.Color4ub(0, 255, 0, 100)
+		} else {
+			gl.Color4ub(255, 0, 0, 100)
+		}
+		gl.Color4ub(255, 0, 0, 100)
+		tm.Subs[tm.menuStack[i]].Draw(region, style)
+		region.X += region.Dx
+	}
 }
 
 func (tsm *ThunderSubMenu) RequestedDims() Dims {
