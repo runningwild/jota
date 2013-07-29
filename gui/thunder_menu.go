@@ -28,13 +28,13 @@ func MakeThunderSubMenu(options []Widget) *ThunderSubMenu {
 func (tsm *ThunderSubMenu) Respond(eventGroup gin.EventGroup) {
 	var up, down bool
 	for _, keyIndex := range tsm.downs {
-		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeController, gin.DeviceIndexAny).Id()
+		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeAny, gin.DeviceIndexAny).Id()
 		if found, event := eventGroup.FindEvent(id); found && event.Type == gin.Press {
 			down = true
 		}
 	}
 	for _, keyIndex := range tsm.ups {
-		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeController, gin.DeviceIndexAny).Id()
+		id := gin.In().GetKeyFlat(keyIndex, gin.DeviceTypeAny, gin.DeviceIndexAny).Id()
 		if found, event := eventGroup.FindEvent(id); found && event.Type == gin.Press {
 			up = true
 		}
