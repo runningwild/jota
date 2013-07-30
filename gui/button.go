@@ -43,13 +43,21 @@ func (b *Button) Respond(eventGroup gin.EventGroup) {
 func (b *Button) Draw(region Region, style StyleStack) {
 	b.Last = region
 	selected, ok := style.Get("selected").(bool)
+	var xOffset float64
+	var renderName string
 	if b.Hover || (ok && selected) {
-		gui.SetFontColor(1, 1, 0, 1)
+		gui.SetFontColor(0, 0, 0, 1)
+		renderName = ">" + b.Name
+		xOffset = 0.0
 	} else {
-		gui.SetFontColor(1, 1, 0, 0.5)
+		gui.SetFontColor(0, 0, 0, 0.7)
+		renderName = b.Name
+		xOffset = base.GetDictionary("luxisr").StringWidth(">", float64(b.Size))
 	}
-	base.GetDictionary("luxisr").RenderString(b.Name, float64(region.X), float64(region.Y), 0, float64(b.Size), gui.Left)
+	base.GetDictionary("luxisr").RenderString(renderName, xOffset+float64(region.X), float64(region.Y), 0, float64(b.Size), gui.Left)
 }
 func (b *Button) RequestedDims() Dims {
-	return Dims{int(base.GetDictionary("luxisr").StringWidth(b.Name, float64(b.Size))), b.Size}
+	mark := base.GetDictionary("luxisr").StringWidth(">", float64(b.Size))
+	name := base.GetDictionary("luxisr").StringWidth(b.Name, float64(b.Size))
+	return Dims{int(mark + name), b.Size}
 }

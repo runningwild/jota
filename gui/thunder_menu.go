@@ -2,10 +2,38 @@ package gui
 
 import (
 	gl "github.com/chsc/gogl/gl21"
+	fmod "github.com/runningwild/fmod/ex"
 	"github.com/runningwild/glop/gin"
-	// "github.com/runningwild/magnus/base"
+	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"math"
+	"path/filepath"
+	"sync"
 )
+
+var soundInit sync.Once
+var sound *fmod.Sound
+var fmodSys *fmod.System
+
+func setupSound() {
+	soundInit.Do(func() {
+		var err error
+		fmodSys, err = fmod.CreateSystem()
+		if err != nil {
+			base.Error().Fatalf("Unable to initialize fmod: %v", err)
+		}
+		err = fmodSys.Init(2, 0, nil)
+		if err != nil {
+			base.Error().Fatalf("Unable to initialize fmod: %v", err)
+		}
+		target := filepath.Join(base.GetDataDir(), "sound/ping.wav")
+		base.Log().Printf("Trying to load ", target)
+		sound, err = fmodSys.CreateSound_FromFilename(target, fmod.MODE_DEFAULT)
+		if err != nil {
+			base.Error().Fatalf("Unable to load sound: %v", err)
+		}
+	})
+}
 
 type ThunderSubMenu struct {
 	Options  []Widget
@@ -16,6 +44,7 @@ type ThunderSubMenu struct {
 }
 
 func MakeThunderSubMenu(options []Widget) *ThunderSubMenu {
+	setupSound()
 	var tsm ThunderSubMenu
 	tsm.Options = make([]Widget, len(options))
 	copy(tsm.Options, options)
@@ -68,6 +97,14 @@ func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
 	gl.Disable(gl.TEXTURE_2D)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.Enable(gl.BLEND)
+	base.EnableShader("marble")
+	offset, ok := style.Get("offset").(linear.Vec2)
+	if ok {
+		base.SetUniformV2("marble", "offset", offset)
+	} else {
+		base.SetUniformV2("marble", "offset", linear.Vec2{})
+	}
+	gl.Color4ub(255, 255, 255, 255)
 	gl.Begin(gl.QUADS)
 	x := gl.Int(region.X)
 	y := gl.Int(region.Y)
@@ -78,6 +115,7 @@ func (tsm *ThunderSubMenu) Draw(region Region, style StyleStack) {
 	gl.Vertex2i(x+dx, y+dy)
 	gl.Vertex2i(x+dx, y)
 	gl.End()
+	base.EnableShader("")
 	for i, option := range tsm.Options {
 		region.Dy = tsm.requests[option].Dy
 		if i == tsm.selected {
@@ -117,6 +155,7 @@ func (tm *ThunderMenu) Think(gui *Gui) {
 }
 
 func (tm *ThunderMenu) Push(target string) {
+	fmodSys.PlaySound(0, sound, false)
 	tm.delta -= 1.0
 	tm.current++
 	if len(tm.menuStack) > tm.current {
@@ -127,6 +166,7 @@ func (tm *ThunderMenu) Push(target string) {
 }
 
 func (tm *ThunderMenu) Pop() {
+	fmodSys.PlaySound(0, sound, false)
 	tm.delta += 1.0
 	tm.current--
 }
@@ -163,14 +203,12 @@ func (tm *ThunderMenu) Draw(region Region, style StyleStack) {
 		end = tm.current + int(math.Ceil(tm.delta))
 		region.X += int(float64(region.Dx) * (float64(end-tm.current) - tm.delta - math.Floor(tm.delta) - 1))
 	}
+	var offset linear.Vec2
+	offset.X = (float64(tm.current) + tm.delta) * float64(region.Dx)
 	for i := start; i <= end; i++ {
-		if i == tm.current {
-			gl.Color4ub(0, 255, 0, 100)
-		} else {
-			gl.Color4ub(255, 0, 0, 100)
-		}
-		gl.Color4ub(255, 0, 0, 100)
+		style.PushStyle(map[string]interface{}{"offset": offset})
 		tm.Subs[tm.menuStack[i]].Draw(region, style)
+		style.Pop()
 		region.X += region.Dx
 	}
 }
