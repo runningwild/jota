@@ -52,7 +52,7 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-func debugHookup() *cgf.Engine {
+func debugHookup(version string, architect bool) *cgf.Engine {
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
 		sys.Think()
@@ -72,7 +72,7 @@ func debugHookup() *cgf.Engine {
 	}
 	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
-	if Version() == "host" {
+	if version == "host" {
 		sys.Think()
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
@@ -90,14 +90,14 @@ func debugHookup() *cgf.Engine {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, false)
-	} else if Version() == "client" {
+		game.SetLocalEngine(engine, sys, architect)
+	} else if version == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, true)
+		game.SetLocalEngine(engine, sys, architect)
 		g := engine.CopyState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
@@ -196,29 +196,21 @@ func standardHookup() *cgf.Engine {
 		gin.AnyReturn: struct{}{},
 		gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny).Id(): struct{}{},
 	}
+	var debugAsArchitect, debugAsInvaders bool
 	tm.Subs[""] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Bar", Callback: func() { tm.Push("bar0") }},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Foo", Callback: func() { tm.Push("foo0") }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Debug", Callback: func() { tm.Push("debug") }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Host LAN game", Callback: func() {}},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Join LAN game", Callback: func() {}},
 		})
 
-	tm.Subs["bar0"] = g2.MakeThunderSubMenu(
+	tm.Subs["debug"] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 50, Triggers: triggers, Name: "BarBack", Callback: func() { tm.Pop() }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Architect", Callback: func() { debugAsArchitect = true }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Invaders", Callback: func() { debugAsInvaders = true }},
 		})
 
-	tm.Subs["foo0"] = g2.MakeThunderSubMenu(
-		[]g2.Widget{
-			&g2.Button{Size: 50, Triggers: triggers, Name: "FooForward", Callback: func() { tm.Push("foo1") }},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "FooBack", Callback: func() { tm.Pop() }},
-		})
-
-	tm.Subs["foo1"] = g2.MakeThunderSubMenu(
-		[]g2.Widget{
-			&g2.Button{Size: 50, Triggers: triggers, Name: "FooBack", Callback: func() { tm.Pop() }},
-		})
-
-	tm.Start(300)
+	tm.Start(500)
 	g.AddChild(&tm, g2.AnchorDeadCenter)
 
 	// rbox := g2.Box{Color: [4]int{255, 0, 0, 255}, Dims: g2.Dims{100, 300}}
@@ -241,6 +233,15 @@ func standardHookup() *cgf.Engine {
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
 	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
 		sys.Think()
+		switch {
+		case debugAsArchitect:
+			mainLoop(debugHookup("host", true))
+			debugAsArchitect = false
+		case debugAsInvaders:
+			mainLoop(debugHookup("host", false))
+			debugAsInvaders = false
+		default:
+		}
 		render.Queue(func() {
 			gl.ClearColor(0, 0, 0, 1)
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -294,7 +295,7 @@ func main() {
 
 	var engine *cgf.Engine
 	if Version() != "standard" {
-		engine = debugHookup()
+		engine = debugHookup(Version(), Version() == "host")
 	} else {
 		engine = standardHookup()
 	}
