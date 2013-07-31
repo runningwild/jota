@@ -266,7 +266,7 @@ func (dst *ManaSource) OverwriteWith(src *ManaSource) {
 	dst.options = src.options
 }
 
-func (ms *ManaSource) Draw(dx float64, dy float64) {
+func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 	if local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)
 		local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)

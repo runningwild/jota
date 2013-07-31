@@ -42,7 +42,8 @@ type localArchitectData struct {
 	place linear.Poly
 }
 
-type localData struct {
+type LocalData struct {
+	name       string
 	regionPos  linear.Vec2
 	regionDims linear.Vec2
 
@@ -85,13 +86,19 @@ type localData struct {
 	nodeWarpingData    []byte
 }
 
-var local localData
-
-func IsArchitect() bool {
-	return local.isArchitect
+type gameResponderWrapper struct {
+	l *LocalData
 }
 
-func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
+func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
+	grw.l.HandleEventGroup(group)
+}
+
+func (grw *gameResponderWrapper) Think(int64) {}
+
+func NewLocalData(engine *cgf.Engine, sys system.System, isArchitect bool) *LocalData {
+	var local LocalData
+	local.name = "FOOOO"
 	if local.engine != nil {
 		base.Error().Fatalf("Engine has already been set.")
 	}
@@ -158,35 +165,10 @@ func SetLocalEngine(engine *cgf.Engine, sys system.System, isArchitect bool) {
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	})
+	return &local
 }
 
-// This is just a placeholder for code that copies the backbuffer to a texture
-func (g *Game) copyBackbuffer() {
-	gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
-	gl.CopyTexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		0,
-		0,
-		gl.Sizei(g.Room.Dx),
-		gl.Sizei(g.Room.Dy),
-		0)
-	gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
-	gl.Color4d(1, 1, 1, 1)
-	gl.Begin(gl.QUADS)
-	gl.TexCoord2d(0, 1)
-	gl.Vertex2i(0, 0)
-	gl.TexCoord2d(0, 0)
-	gl.Vertex2i(0, 60*3)
-	gl.TexCoord2d(1, 0)
-	gl.Vertex2i(90*3, 60*3)
-	gl.TexCoord2d(1, 1)
-	gl.Vertex2i(90*3, 0)
-	gl.End()
-}
-
-func (g *Game) renderLosMask() {
+func (g *Game) renderLosMask(local *LocalData) {
 	base.EnableShader("los")
 	gl.Enable(gl.TEXTURE_2D)
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -234,7 +216,7 @@ func (g *Game) renderLosMask() {
 	base.EnableShader("")
 }
 
-func (g *Game) renderLocalInvaders(region gui.Region) {
+func (g *Game) renderLocalInvaders(region gui.Region, local *LocalData) {
 	local.doInvadersFocusRegion(g)
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
@@ -270,7 +252,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	g.ManaSource.Draw(float64(g.Room.Dx), float64(g.Room.Dy))
+	g.ManaSource.Draw(local, float64(g.Room.Dx), float64(g.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
@@ -309,7 +291,7 @@ func (g *Game) renderLocalInvaders(region gui.Region) {
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
-	g.renderLosMask()
+	g.renderLosMask(local)
 	for _, p := range local.players {
 		if p.abs.activeAbility != nil {
 			p.abs.activeAbility.Draw(p.gid, g)
@@ -356,7 +338,7 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	return true
 }
 
-func (l *localData) doArchitectFocusRegion(g *Game) {
+func (l *LocalData) doArchitectFocusRegion(g *Game) {
 	if l.limit.mid.X == 0 && l.limit.mid.Y == 0 {
 		// On the very first frame the limit midpoint will be (0,0), which should
 		// never happen after the game begins.  We use this as an opportunity to
@@ -384,23 +366,23 @@ func (l *localData) doArchitectFocusRegion(g *Game) {
 	zoom := 1 / math.Exp(l.zoom)
 	l.current.dims = l.limit.dims.Scale(zoom)
 	if gin.In().GetKey(gin.AnySpace).CurPressAmt() > 0 {
-		if !local.cursorHidden {
-			local.sys.HideCursor(true)
-			local.cursorHidden = true
+		if !l.cursorHidden {
+			l.sys.HideCursor(true)
+			l.cursorHidden = true
 		}
 		x := gin.In().GetKey(gin.AnyMouseXAxis).FramePressAmt()
 		y := gin.In().GetKey(gin.AnyMouseYAxis).FramePressAmt()
 		l.current.mid.X -= float64(x) * 2
 		l.current.mid.Y -= float64(y) * 2
 	} else {
-		if local.cursorHidden {
-			local.sys.HideCursor(false)
-			local.cursorHidden = false
+		if l.cursorHidden {
+			l.sys.HideCursor(false)
+			l.cursorHidden = false
 		}
 	}
 }
 
-func (g *Game) renderLocalArchitect(region gui.Region) {
+func (g *Game) renderLocalArchitect(region gui.Region, local *LocalData) {
 	local.doArchitectFocusRegion(g)
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
@@ -436,7 +418,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	g.ManaSource.Draw(float64(g.Room.Dx), float64(g.Room.Dy))
+	g.ManaSource.Draw(local, float64(g.Room.Dx), float64(g.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
@@ -475,7 +457,7 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
-	g.renderLosMask()
+	g.renderLosMask(local)
 	if local.architect.abs.activeAbility != nil {
 		local.architect.abs.activeAbility.Draw("", g)
 	}
@@ -484,17 +466,17 @@ func (g *Game) renderLocalArchitect(region gui.Region) {
 // Draws everything that is relevant to the players on a compute, but not the
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
-func (g *Game) RenderLocal(region gui.Region) {
+func (g *Game) RenderLocal(region gui.Region, local *LocalData) {
 	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	if local.isArchitect {
-		g.renderLocalArchitect(region)
+		g.renderLocalArchitect(region, local)
 	} else {
-		g.renderLocalInvaders(region)
+		g.renderLocalInvaders(region, local)
 	}
 }
 
-func SetLocalPlayer(gid Gid, index gin.DeviceIndex) {
+func (local *LocalData) SetLocalPlayer(gid Gid, index gin.DeviceIndex) {
 	var lp localPlayer
 	lp.gid = gid
 	lp.deviceIndex = index
@@ -520,7 +502,7 @@ func SetLocalPlayer(gid Gid, index gin.DeviceIndex) {
 	local.players = append(local.players, &lp)
 }
 
-func (l *localData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
+func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
 	activeAbility := abs.activeAbility
 	abs.activeAbility = nil
 	if activeAbility != nil {
@@ -540,13 +522,13 @@ func (l *localData) activateAbility(abs *personalAbilities, gid Gid, n int, keyP
 		abs.activeAbility = abs.abilities[n]
 	}
 }
-func (l *localData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
+func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 	if abs.activeAbility == nil {
 		return
 	}
 	var mouse linear.Vec2
 	if l.isArchitect {
-		mx, my := local.sys.GetCursorPos()
+		mx, my := l.sys.GetCursorPos()
 		mouse.X = float64(mx)
 		mouse.Y = float64(my)
 		mouse = mouse.Sub(l.regionPos)
@@ -559,13 +541,13 @@ func (l *localData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 	}
 	events, die := abs.activeAbility.Think(gid, g, mouse)
 	for _, event := range events {
-		local.engine.ApplyEvent(event)
+		l.engine.ApplyEvent(event)
 	}
 	if die {
 		more_events := abs.activeAbility.Deactivate(gid)
 		abs.activeAbility = nil
 		for _, event := range more_events {
-			local.engine.ApplyEvent(event)
+			l.engine.ApplyEvent(event)
 		}
 	}
 }
@@ -580,12 +562,12 @@ func axisControl(v float64) float64 {
 	return v
 }
 
-func localThinkArchitect(g *Game) {
-	local.thinkAbility(g, &local.architect.abs, "")
+func (l *LocalData) localThinkArchitect(g *Game) {
+	l.thinkAbility(g, &l.architect.abs, "")
 }
-func localThinkInvaders(g *Game) {
-	for _, player := range local.players {
-		local.thinkAbility(g, &player.abs, player.gid)
+func (l *LocalData) localThinkInvaders(g *Game) {
+	for _, player := range l.players {
+		l.thinkAbility(g, &player.abs, player.gid)
 		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.deviceIndex)
 		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.deviceIndex)
 		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.deviceIndex)
@@ -599,15 +581,15 @@ func localThinkInvaders(g *Game) {
 		left := axisControl(left_axis.CurPressAmt())
 		right := axisControl(right_axis.CurPressAmt())
 		if up-down != 0 {
-			local.engine.ApplyEvent(Accelerate{player.gid, 2 * (up - down)})
+			l.engine.ApplyEvent(Accelerate{player.gid, 2 * (up - down)})
 		}
 		if left-right != 0 {
-			local.engine.ApplyEvent(Turn{player.gid, (right - left)})
+			l.engine.ApplyEvent(Turn{player.gid, (right - left)})
 		}
 	}
 }
 
-func (l *localData) doInvadersFocusRegion(g *Game) {
+func (l *LocalData) doInvadersFocusRegion(g *Game) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
 	g.DoForEnts(func(gid Gid, ent Ent) {
@@ -668,15 +650,15 @@ func (l *localData) doInvadersFocusRegion(g *Game) {
 	}
 }
 
-func localThink(g *Game) {
-	if local.isArchitect {
-		localThinkArchitect(g)
+func (l *LocalData) Think(g *Game) {
+	if l.isArchitect {
+		l.localThinkArchitect(g)
 	} else {
-		localThinkInvaders(g)
+		l.localThinkInvaders(g)
 	}
 }
 
-func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
+func (l *LocalData) handleEventGroupArchitect(group gin.EventGroup) {
 	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
 		l.activateAbility(&l.architect.abs, "", 0, true)
 	}
@@ -694,8 +676,8 @@ func (l *localData) handleEventGroupArchitect(group gin.EventGroup) {
 	}
 }
 
-func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
-	for _, player := range local.players {
+func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
+	for _, player := range l.players {
 		k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 		k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
@@ -719,7 +701,7 @@ func (l *localData) handleEventGroupInvaders(group gin.EventGroup) {
 	}
 }
 
-func (l *localData) HandleEventGroup(group gin.EventGroup) {
+func (l *LocalData) HandleEventGroup(group gin.EventGroup) {
 	if l.isArchitect {
 		l.handleEventGroupArchitect(group)
 	} else {

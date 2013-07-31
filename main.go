@@ -52,7 +52,7 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-func debugHookup(version string, architect bool) *cgf.Engine {
+func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) {
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
 		sys.Think()
@@ -72,7 +72,8 @@ func debugHookup(version string, architect bool) *cgf.Engine {
 	}
 	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
-	if version == "host" {
+	var localData *game.LocalData
+	if version == "host" || version == "debug" {
 		sys.Think()
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
@@ -86,18 +87,22 @@ func debugHookup(version string, architect bool) *cgf.Engine {
 		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
-		engine, err = cgf.NewHostEngine(&g, 17, "", 50001, base.Log())
+		if version == "host" {
+			engine, err = cgf.NewHostEngine(&g, 17, "", 50001, base.Log())
+		} else {
+			engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
+		}
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, architect)
+		localData = game.NewLocalData(engine, sys, architect)
 	} else if version == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		game.SetLocalEngine(engine, sys, architect)
+		localData = game.NewLocalData(engine, sys, architect)
 		g := engine.CopyState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
@@ -107,36 +112,43 @@ func debugHookup(version string, architect bool) *cgf.Engine {
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
-	if game.IsArchitect() {
-
+	if architect {
 	} else {
 		d := sys.GetActiveDevices()
 		n := 0
 		for _, index := range d[gin.DeviceTypeController] {
-			game.SetLocalPlayer(players[n], index)
+			localData.SetLocalPlayer(players[n], index)
 			n++
 			if n > len(players) {
 				break
 			}
 		}
 		if len(d[gin.DeviceTypeController]) == 0 {
-			game.SetLocalPlayer(players[0], 0)
+			localData.SetLocalPlayer(players[0], 0)
 		}
 	}
 	base.Log().Printf("Engine Id: %v", engine.Id())
 	base.Log().Printf("All Ids: %v", engine.Ids())
-	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
-	ui.AddChild(anchor)
-	anchor.AddChild(&game.GameWindow{Engine: engine}, gui.Anchor{0.1, 0.5, 0.1, 0.5})
-	return engine
+	return engine, localData
 }
 
-func mainLoop(engine *cgf.Engine) {
+func mainLoop(engine *cgf.Engine, local *game.LocalData) {
+	defer engine.Kill()
 	var profile_output *os.File
 	var num_mem_profiles int
 	// ui.AddChild(base.MakeConsole())
 
 	ticker := time.Tick(time.Millisecond * 17)
+	var err error
+	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+		return
+	}
+	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
+	ui.AddChild(anchor)
+	anchor.AddChild(&game.GameWindow{Engine: engine, Local: local}, gui.Anchor{0.1, 0.5, 0.1, 0.5})
+	defer gui.Unmake(gin.In(), ui)
 	for {
 		<-ticker
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
@@ -187,79 +199,101 @@ func mainLoop(engine *cgf.Engine) {
 	}
 }
 
-func standardHookup() *cgf.Engine {
+func standardHookup() {
 	g := g2.Make(0, 0, wdx, wdy)
-	base.Log().Printf("%d %d", wdx, wdy)
 	var tm g2.ThunderMenu
 	tm.Subs = make(map[string]*g2.ThunderSubMenu)
 	triggers := map[gin.KeyId]struct{}{
 		gin.AnyReturn: struct{}{},
 		gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny).Id(): struct{}{},
 	}
-	var debugAsArchitect, debugAsInvaders bool
+	var debugAsArchitect, debugAsInvaders, quit bool
 	tm.Subs[""] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Debug", Callback: func() { tm.Push("debug") }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Host LAN game", Callback: func() {}},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Join LAN game", Callback: func() {}},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Quit", Callback: func() { quit = true }},
 		})
 
 	tm.Subs["debug"] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Architect", Callback: func() { debugAsArchitect = true }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Invaders", Callback: func() { debugAsInvaders = true }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Back", Callback: func() { tm.Pop() }},
 		})
 
 	tm.Start(500)
 	g.AddChild(&tm, g2.AnchorDeadCenter)
 
-	// rbox := g2.Box{Color: [4]int{255, 0, 0, 255}, Dims: g2.Dims{100, 300}}
-	// gbox := g2.Box{Color: [4]int{0, 255, 0, 255}, Dims: g2.Dims{200, 300}}
-	// bbox := g2.Box{Color: [4]int{0, 0, 255, 255}, Dims: g2.Dims{100, 300}}
-	// button := g2.Button{Size: 30, Name: "Fooo"}
-	// var vtable g2.VTable
-	// vtable.Children = append(vtable.Children, &rbox)
-	// vtable.Children = append(vtable.Children, &gbox)
-	// vtable.Children = append(vtable.Children, &bbox)
-	// vtable.Children = append(vtable.Children, &button)
-	// g.AddChild(&vtable, g2.AnchorDeadCenter)
-
-	var blist g2.ButtonList
-	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Fudge"})
-	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Thunder"})
-	blist.Children = append(blist.Children, &g2.Button{Size: 30, Name: "Buttons!!!"})
-	g.AddChild(&blist, g2.AnchorUL)
-
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
-	for gin.In().GetKey(gin.AnyEscape).FramePressCount() == 0 {
+	after := false
+	for {
+		if after {
+			base.Log().Printf("A")
+		}
 		sys.Think()
+		if after {
+			base.Log().Printf("A")
+		}
 		switch {
 		case debugAsArchitect:
-			mainLoop(debugHookup("host", true))
+			engine, local := debugHookup("debug", true)
+			mainLoop(engine, local)
+			after = true
 			debugAsArchitect = false
 		case debugAsInvaders:
-			mainLoop(debugHookup("host", false))
+			engine, local := debugHookup("debug", false)
+			mainLoop(engine, local)
+			after = true
 			debugAsInvaders = false
+		case quit:
+			return
 		default:
+		}
+		if after {
+			base.Log().Printf("A")
 		}
 		render.Queue(func() {
 			gl.ClearColor(0, 0, 0, 1)
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+			if after {
+				base.Log().Printf("A")
+			}
 			if true {
 				ratio := float64(wdx) / float64(wdy)
 				t.RenderAdvanced(-1+(1-1/ratio), -1, 2/ratio, 2, 0, false)
 			}
 			gl.Disable(gl.TEXTURE_2D)
+			if after {
+				base.Log().Printf("A")
+			}
 			base.GetDictionary("luxisr").RenderString("INvASioN!!!", 0, 0.5, 0, 0.03, gui.Center)
 		})
+		if after {
+			base.Log().Printf("A")
+		}
 		render.Queue(func() {
+			if after {
+				base.Log().Printf("A")
+			}
 			g.Draw()
+			if after {
+				base.Log().Printf("A")
+			}
 			sys.SwapBuffers()
+			if after {
+				base.Log().Printf("A")
+			}
 		})
+		if after {
+			base.Log().Printf("A")
+		}
 		render.Purge()
+		if after {
+			base.Log().Printf("A")
+		}
 	}
-	return nil
-
 	// 1 Start with a title screen
 	// 2 Option to host or join
 	// 3a If host then wait for a connection
@@ -286,18 +320,13 @@ func main() {
 	})
 	base.InitShaders()
 	runtime.GOMAXPROCS(2)
-	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-	}
 	sys.Think()
 	base.LoadAllDictionaries()
 
-	var engine *cgf.Engine
 	if Version() != "standard" {
-		engine = debugHookup(Version(), Version() == "host")
+		engine, local := debugHookup(Version(), Version() == "host")
+		mainLoop(engine, local)
 	} else {
-		engine = standardHookup()
+		standardHookup()
 	}
-	mainLoop(engine)
 }

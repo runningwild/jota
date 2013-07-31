@@ -342,16 +342,6 @@ func (g *Game) ReleaseResources() {
 	g.ManaSource.ReleaseResources()
 }
 
-type gameResponderWrapper struct {
-	l *localData
-}
-
-func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
-	grw.l.HandleEventGroup(group)
-}
-
-func (grw *gameResponderWrapper) Think(int64) {}
-
 func invSquareDist(dist_sq float64) float64 {
 	return 1.0 / (dist_sq + 1)
 }
@@ -531,9 +521,6 @@ func (g *Game) Think() {
 			moved[i] = true
 		}
 	}
-
-	// This must always be the very last thing
-	localThink(g)
 }
 
 func clamp(v, low, high float64) float64 {
@@ -578,6 +565,7 @@ func (a Accelerate) Apply(_g interface{}) {
 
 type GameWindow struct {
 	Engine    *cgf.Engine
+	Local     *LocalData
 	game      *Game
 	prev_game *Game
 	region    gui.Region
@@ -605,7 +593,7 @@ func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 	if old_game != nil {
 		old_game.ReleaseResources()
 	}
-
+	gw.Local.Think(gw.game)
 	// gw.prev_game = gw.game.Copy().(*Game)
 	// } else {
 	// 	gw.Engine.UpdateState(gw.game)
@@ -653,6 +641,6 @@ func (gw *GameWindow) Draw(region gui.Region) {
 		gl.LineWidth(1)
 	}()
 
-	gw.game.RenderLocal(region)
+	gw.game.RenderLocal(region, gw.Local)
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}
