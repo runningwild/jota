@@ -133,6 +133,14 @@ func Make(x, y, dx, dy int) *Gui {
 	return &g
 }
 
+func (g *Gui) Pause() {
+	gin.In().UnregisterEventListener(g)
+}
+
+func (g *Gui) Unpause() {
+	gin.In().RegisterEventListener(g)
+}
+
 type childPlacement struct {
 	child Widget
 	place Anchor

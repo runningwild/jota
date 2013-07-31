@@ -238,13 +238,17 @@ func standardHookup() {
 		}
 		switch {
 		case debugAsArchitect:
+			g.Pause()
 			engine, local := debugHookup("debug", true)
 			mainLoop(engine, local)
+			g.Unpause()
 			after = true
 			debugAsArchitect = false
 		case debugAsInvaders:
+			g.Pause()
 			engine, local := debugHookup("debug", false)
 			mainLoop(engine, local)
+			g.Unpause()
 			after = true
 			debugAsInvaders = false
 		case quit:
