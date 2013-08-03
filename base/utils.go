@@ -20,7 +20,13 @@ var datadir string
 var logger *log.Logger
 var log_reader io.Reader
 var log_out *os.File
+
 var log_console *bytes.Buffer
+var logTailer Tailer
+
+func GetLogTailer() Tailer {
+	return logTailer
+}
 
 func SetDatadir(_datadir string) {
 	datadir = _datadir
@@ -42,8 +48,9 @@ func setupLogger() {
 		fmt.Printf("Unable to open log file: %v\nLogging to stdout...\n", err.Error())
 		log_out = os.Stdout
 	}
-	log_console = bytes.NewBuffer(nil)
-	log_writer := io.MultiWriter(log_console, log_out)
+	tee := bytes.NewBuffer(nil)
+	log_writer := io.MultiWriter(tee, log_out)
+	logTailer = newTail(tee, 100)
 	logger = log.New(log_writer, "> ", log.Ltime|log.Lshortfile)
 }
 
