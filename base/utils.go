@@ -25,6 +25,9 @@ var log_console *bytes.Buffer
 var logTailer Tailer
 
 func GetLogTailer() Tailer {
+	if logTailer == nil {
+		panic("Can't get the log Tailer before the logging has been set up.")
+	}
 	return logTailer
 }
 
@@ -49,9 +52,9 @@ func setupLogger() {
 		log_out = os.Stdout
 	}
 	tee := bytes.NewBuffer(nil)
-	log_writer := io.MultiWriter(tee, log_out)
+	logWriter := io.MultiWriter(tee, log_out)
 	logTailer = newTail(tee, 100)
-	logger = log.New(log_writer, "> ", log.Ltime|log.Lshortfile)
+	logger = log.New(logWriter, "> ", log.Ltime|log.Lshortfile)
 }
 
 // TODO: This probably isn't the best way to do things - different go-routines

@@ -211,8 +211,8 @@ func standardHookup() {
 	tm.Subs[""] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Debug", Callback: func() { tm.Push("debug") }},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Host LAN game", Callback: func() {}},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Join LAN game", Callback: func() {}},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Host LAN game", Callback: func() { base.Log().Printf("HOST"); print("HOST\n") }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Join LAN game", Callback: func() { base.Log().Printf("JOIN"); print("JOIN\n") }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Quit", Callback: func() { quit = true }},
 		})
 
@@ -225,6 +225,7 @@ func standardHookup() {
 
 	tm.Start(500)
 	g.AddChild(&tm, g2.AnchorDeadCenter)
+	g.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
 
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
 	after := false
