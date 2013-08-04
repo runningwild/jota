@@ -34,7 +34,7 @@ func MakeConsole(dx, dy int) *Console {
 }
 
 func (c *Console) Think(g *Gui) {
-	c.visible = gin.In().GetKey(gin.AnyTab).IsDown()
+	c.visible = gin.In().GetKey(gin.AnyLeftShift).IsDown() || gin.In().GetKey(gin.AnyRightShift).IsDown()
 	c.tail.GetLines(c.lines)
 }
 
