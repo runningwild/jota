@@ -139,16 +139,10 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData) {
 	// ui.AddChild(base.MakeConsole())
 
 	ticker := time.Tick(time.Millisecond * 17)
-	var err error
-	ui, err = gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(datadir, "fonts", "skia.ttf"))
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-		return
-	}
-	anchor := gui.MakeAnchorBox(gui.Dims{(wdx * 3) / 4, (wdy * 3) / 4})
-	ui.AddChild(anchor)
-	anchor.AddChild(&game.GameWindow{Engine: engine, Local: local}, gui.Anchor{0.1, 0.5, 0.1, 0.5})
-	defer gui.Unmake(gin.In(), ui)
+	ui := g2.Make(0, 0, wdx, wdy)
+	ui.AddChild(&game.GameWindow{Engine: engine, Local: local, Dims: g2.Dims{wdx, wdy}}, g2.AnchorDeadCenter)
+	ui.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
+	defer ui.StopEventListening()
 	for {
 		<-ticker
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
@@ -228,76 +222,40 @@ func standardHookup() {
 	g.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
 
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
-	after := false
 	for {
-		if after {
-			base.Log().Printf("A")
-		}
 		sys.Think()
-		if after {
-			base.Log().Printf("A")
-		}
 		switch {
 		case debugAsArchitect:
-			g.Pause()
+			g.StopEventListening()
 			engine, local := debugHookup("debug", true)
 			mainLoop(engine, local)
-			g.Unpause()
-			after = true
+			g.RestartEventListening()
 			debugAsArchitect = false
 		case debugAsInvaders:
-			g.Pause()
+			g.StopEventListening()
 			engine, local := debugHookup("debug", false)
 			mainLoop(engine, local)
-			g.Unpause()
-			after = true
+			g.RestartEventListening()
 			debugAsInvaders = false
 		case quit:
 			return
 		default:
 		}
-		if after {
-			base.Log().Printf("A")
-		}
 		render.Queue(func() {
 			gl.ClearColor(0, 0, 0, 1)
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-			if after {
-				base.Log().Printf("A")
-			}
 			if true {
 				ratio := float64(wdx) / float64(wdy)
 				t.RenderAdvanced(-1+(1-1/ratio), -1, 2/ratio, 2, 0, false)
 			}
 			gl.Disable(gl.TEXTURE_2D)
-			if after {
-				base.Log().Printf("A")
-			}
 			base.GetDictionary("luxisr").RenderString("INvASioN!!!", 0, 0.5, 0, 0.03, gui.Center)
 		})
-		if after {
-			base.Log().Printf("A")
-		}
 		render.Queue(func() {
-			if after {
-				base.Log().Printf("A")
-			}
 			g.Draw()
-			if after {
-				base.Log().Printf("A")
-			}
 			sys.SwapBuffers()
-			if after {
-				base.Log().Printf("A")
-			}
 		})
-		if after {
-			base.Log().Printf("A")
-		}
 		render.Purge()
-		if after {
-			base.Log().Printf("A")
-		}
 	}
 	// 1 Start with a title screen
 	// 2 Option to host or join

@@ -9,9 +9,9 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/gui"
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
@@ -566,9 +566,9 @@ func (a Accelerate) Apply(_g interface{}) {
 type GameWindow struct {
 	Engine    *cgf.Engine
 	Local     *LocalData
+	Dims      gui.Dims
 	game      *Game
 	prev_game *Game
-	region    gui.Region
 }
 
 func (gw *GameWindow) String() string {
@@ -583,10 +583,7 @@ func (gw *GameWindow) Requested() gui.Dims {
 	}
 	return gui.Dims{800, 600}
 }
-func (gw *GameWindow) Rendered() gui.Region {
-	return gw.region
-}
-func (gw *GameWindow) Think(g *gui.Gui, t int64) {
+func (gw *GameWindow) Think(g *gui.Gui) {
 	// if gw.game == nil {
 	old_game := gw.game
 	gw.game = gw.Engine.CopyState().(*Game)
@@ -601,26 +598,19 @@ func (gw *GameWindow) Think(g *gui.Gui, t int64) {
 	// 	gw.prev_game.OverwriteWith(gw.game)
 	// }
 }
-func (gw *GameWindow) Respond(g *gui.Gui, group gui.EventGroup) bool {
-	return false
+func (gw *GameWindow) Respond(group gin.EventGroup) {
+}
+func (gw *GameWindow) RequestedDims() gui.Dims {
+	return gw.Dims
 }
 
-var latest_region gui.Region
-
-// Returns the most recent region used when rendering the game.
-func (g *Game) Region() gui.Region {
-	return latest_region
-}
-
-func (gw *GameWindow) Draw(region gui.Region) {
+func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
 	defer func() {
 		if r := recover(); r != nil {
 			base.Error().Printf("Panic: %v", r)
 			base.Error().Fatalf("Stack:\n%s", debug.Stack())
 		}
 	}()
-	gw.region = region
-	latest_region = region
 	defer func() {
 		// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
 		gl.Disable(gl.TEXTURE_2D)

@@ -9,6 +9,7 @@ import (
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	g2 "github.com/runningwild/magnus/gui"
 	"github.com/runningwild/magnus/los"
 	"math"
 )
@@ -216,7 +217,7 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.EnableShader("")
 }
 
-func (g *Game) renderLocalInvaders(region gui.Region, local *LocalData) {
+func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	local.doInvadersFocusRegion(g)
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
@@ -382,7 +383,7 @@ func (l *LocalData) doArchitectFocusRegion(g *Game) {
 	}
 }
 
-func (g *Game) renderLocalArchitect(region gui.Region, local *LocalData) {
+func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	local.doArchitectFocusRegion(g)
 	if g.InvadersWin {
 		gl.Disable(gl.TEXTURE_2D)
@@ -466,7 +467,7 @@ func (g *Game) renderLocalArchitect(region gui.Region, local *LocalData) {
 // Draws everything that is relevant to the players on a compute, but not the
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
-func (g *Game) RenderLocal(region gui.Region, local *LocalData) {
+func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	if local.isArchitect {

@@ -133,11 +133,11 @@ func Make(x, y, dx, dy int) *Gui {
 	return &g
 }
 
-func (g *Gui) Pause() {
+func (g *Gui) StopEventListening() {
 	gin.In().UnregisterEventListener(g)
 }
 
-func (g *Gui) Unpause() {
+func (g *Gui) RestartEventListening() {
 	gin.In().RegisterEventListener(g)
 }
 
