@@ -101,7 +101,6 @@ type Process interface {
 	Responder
 	stats.Condition
 	Draw(id Gid, game *Game)
-	Copy() Process
 }
 
 type Color int
@@ -154,14 +153,6 @@ func (g *Game) AddPlayers(numPlayers int) []Gid {
 		gids = append(gids, p.Gid)
 	}
 	return gids
-}
-
-func (p *Player) Copy() Ent {
-	p2 := *p
-	p2.Los = p.Los.Copy()
-	p2.BaseEnt = *p.BaseEnt.Copy()
-
-	return &p2
 }
 
 func init() {
@@ -268,7 +259,6 @@ type Ent interface {
 	Vel() linear.Vec2
 
 	Supply(mana Mana) Mana
-	Copy() Ent
 }
 
 type NonManaUser struct{}
@@ -363,65 +353,6 @@ func getWeights(distance_squares []float64, value_sum float64, transform func(fl
 		weights[i] = value_sum * w / weight_sum
 	}
 	return weights
-}
-
-// func (g *Game) Merge(g2 *Game) {
-// 	frac := 0.0 // i.e. don't merge
-// 	for i := range g.Ents {
-// 		_p1 := g.Ents[i]
-// 		var p1 *Player
-// 		var ok bool
-// 		if p1, ok = _p1.(*Player); !ok {
-// 			continue
-// 		}
-// 		p2, ok := g2.GetEnt(p1.Id()).(*Player)
-// 		if p2 == nil || !ok {
-// 			continue
-// 		}
-// 		p1.Position.X = frac*p2.Position.X + (1-frac)*p1.Position.X
-// 		p1.Position.Y = frac*p2.Position.Y + (1-frac)*p1.Position.Y
-// 		p1.Angle = frac*p2.Angle + (1-frac)*p1.Angle
-// 	}
-// }
-
-func (g *Game) Copy() interface{} {
-	var g2 Game
-
-	g2.ManaSource = g.ManaSource.Copy()
-	g2.InvadersWin = g.InvadersWin
-
-	// NEXT: This needs to be an actual Copy()
-	g2.Room = g.Room
-
-	g2.Rng = g.Rng.Copy()
-
-	g2.Friction = g.Friction
-	g2.Friction_lava = g.Friction_lava
-	g2.NextGidValue = g.NextGidValue
-	g2.GameThinks = g.GameThinks
-
-	g2.Ents = make(map[Gid]Ent, len(g.Ents))
-	for gid, ent := range g.Ents {
-		g2.Ents[gid] = ent.Copy()
-	}
-	return &g2
-}
-
-func (g *Game) OverwriteWith(_g2 interface{}) {
-	g2 := _g2.(*Game)
-	g.ManaSource.OverwriteWith(&g2.ManaSource)
-	g.Rng.OverwriteWith(g2.Rng)
-	g.InvadersWin = g2.InvadersWin
-	g.Friction = g2.Friction
-	g.Room.Walls = g2.Room.Walls
-	g.NextGidValue = g2.NextGidValue
-	g.GameThinks = g2.GameThinks
-
-	g.Ents = make(map[Gid]Ent, len(g2.Ents))
-	g2ids := g2.sortedGids()
-	for _, g2id := range g2ids {
-		g.Ents[g2id] = g2.Ents[g2id].Copy()
-	}
 }
 
 func (g *Game) sortedGids() []Gid {
@@ -578,25 +509,12 @@ func (gw *GameWindow) Expandable() (bool, bool) {
 	return false, false
 }
 func (gw *GameWindow) Requested() gui.Dims {
-	if gw.game == nil {
-		return gui.Dims{}
-	}
 	return gui.Dims{800, 600}
 }
 func (gw *GameWindow) Think(g *gui.Gui) {
-	// if gw.game == nil {
-	old_game := gw.game
-	gw.game = gw.Engine.CopyState().(*Game)
-	if old_game != nil {
-		old_game.ReleaseResources()
-	}
-	gw.Local.Think(gw.game)
-	// gw.prev_game = gw.game.Copy().(*Game)
-	// } else {
-	// 	gw.Engine.UpdateState(gw.game)
-	// 	gw.game.Merge(gw.prev_game)
-	// 	gw.prev_game.OverwriteWith(gw.game)
-	// }
+	gw.Engine.Pause()
+	gw.Local.Think(gw.Engine.GetState().(*Game))
+	gw.Engine.Unpause()
 }
 func (gw *GameWindow) Respond(group gin.EventGroup) {
 }
@@ -631,6 +549,8 @@ func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
 		gl.LineWidth(1)
 	}()
 
-	gw.game.RenderLocal(region, gw.Local)
+	gw.Engine.Pause()
+	gw.Engine.GetState().(*Game).RenderLocal(region, gw.Local)
+	gw.Engine.Unpause()
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

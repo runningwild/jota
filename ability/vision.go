@@ -118,11 +118,6 @@ type visionProcess struct {
 	supplied float64
 }
 
-func (p *visionProcess) Copy() game.Process {
-	p2 := *p
-	return &p2
-}
-
 const visionHorizon = 500
 
 func (p *visionProcess) Supply(supply game.Mana) game.Mana {

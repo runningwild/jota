@@ -11,20 +11,17 @@ function doBuild {
 
   install_name_tool -change ./libfmodex.dylib @executable_path/../lib/libfmodex.dylib ./$1.app/Contents/MacOS/$1
   install_name_tool -change ./libfmodexL.dylib @executable_path/../lib/libfmodexL.dylib ./$1.app/Contents/MacOS/$1
-  install_name_tool -change ./libfmodevent.dylib @executable_path/../lib/libfmodevent.dylib ./standard.app/Contents/MacOS/$1
+  install_name_tool -change ./libfmodevent.dylib @executable_path/../lib/libfmodevent.dylib ./$1.app/Contents/MacOS/$1
   install_name_tool -change ./libfmodex.dylib @executable_path/../lib/libfmodex.dylib ./$1.app/Contents/lib/libfmodevent.dylib
 
   cp -r data/* $1.app/Contents/
 }
 
-#doBuild 'host'
-doBuild 'standard'
-open standard.app
-false
+#doBuild 'standard'
+#open standard.app
+#false
 
 doBuild 'host'
-#open host.app
-#false
 doBuild 'client'
 
 open host.app

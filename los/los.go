@@ -86,15 +86,6 @@ func Make(Horizon float64) *Los {
 func (l *Los) ReleaseResources() {
 	deleteBuffer(l.in.Buffer)
 }
-func (l *Los) Copy() *Los {
-	var l2 Los
-	l2.in.Buffer = newBuffer()
-	copy(l2.in.Buffer.ZBuffer, l.in.Buffer.ZBuffer)
-	copy(l2.in.Buffer.SBuffer, l.in.Buffer.SBuffer)
-	l2.in.Horizon = l.in.Horizon
-	l2.in.Pos = l.in.Pos
-	return &l2
-}
 func (l *Los) WriteDepthBuffer(dst []uint32, maxDist float32) {
 	for i := range dst {
 		dst[i] = uint32(math.Sqrt(float64(l.in.Buffer.ZBuffer[i])) / float64(maxDist) * (1<<32 - 1))

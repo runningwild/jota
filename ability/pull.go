@@ -119,11 +119,6 @@ type pullProcess struct {
 	supplied float64
 }
 
-func (p *pullProcess) Copy() game.Process {
-	p2 := *p
-	return &p2
-}
-
 func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 	if supply[game.ColorBlue] > p.required()-p.supplied {
 		supply[game.ColorBlue] -= p.required() - p.supplied

@@ -118,10 +118,6 @@ type nodeSeed struct {
 	color int
 }
 
-func (dst *node) OverwriteWith(src *node) {
-	*dst = *src
-}
-
 type ManaSource struct {
 	options ManaSourceOptions
 
@@ -242,30 +238,6 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 func (src *ManaSource) ReleaseResources() {
 	deleteNodes(src.rawNodes)
 }
-func (src *ManaSource) Copy() ManaSource {
-	var dst ManaSource
-
-	dst.rawNodes = newNodes(len(src.rawNodes))
-	// dst.rawNodes = make([]node, len(src.rawNodes))
-	dst.nodes = make([][]node, len(src.nodes))
-	for x := range src.nodes {
-		dst.nodes[x] = dst.rawNodes[x*len(src.nodes[x]) : (x+1)*len(src.nodes[x])]
-	}
-	for i, srcNode := range src.rawNodes {
-		dst.rawNodes[i] = srcNode
-	}
-	dst.options = src.options
-
-	return dst
-}
-
-func (dst *ManaSource) OverwriteWith(src *ManaSource) {
-	for i, srcNode := range src.rawNodes {
-		dst.rawNodes[i] = srcNode
-	}
-	dst.options = src.options
-}
-
 func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 	if local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)

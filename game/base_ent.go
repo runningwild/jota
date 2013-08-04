@@ -2,7 +2,6 @@ package game
 
 import (
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
 )
@@ -20,19 +19,6 @@ type BaseEnt struct {
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
-}
-
-func (b *BaseEnt) Copy() *BaseEnt {
-	b2 := *b
-	b2.Processes = make(map[int]Process)
-	for k, v := range b.Processes {
-		b2.Processes[k] = v.Copy()
-		if v == nil {
-			base.Error().Fatalf("No idea how this could happen...")
-		}
-	}
-	b2.StatsInst = *b.StatsInst.Copy()
-	return &b2
 }
 
 func (b *BaseEnt) OnDeath(g *Game) {

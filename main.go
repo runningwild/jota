@@ -103,7 +103,7 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 			base.Error().Fatalf("%v", err.Error())
 		}
 		localData = game.NewLocalData(engine, sys, architect)
-		g := engine.CopyState().(*game.Game)
+		g := engine.GetState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
 				players = append(players, ent.Id())

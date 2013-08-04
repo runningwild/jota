@@ -20,11 +20,6 @@ func init() {
 	gob.Register(&Pest{})
 }
 
-func (p *Pest) Copy() Ent {
-	p2 := *p
-	return &p2
-}
-
 func (p *Pest) Draw(g *Game) {
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.01)

@@ -15,11 +15,6 @@ package game
 // 	gob.Register(&Snare{})
 // }
 
-// func (s *Snare) Copy() Ent {
-// 	s2 := *s
-// 	return &s2
-// }
-
 // func (s *Snare) Draw(g *Game) {
 // 	gl.Disable(gl.TEXTURE_2D)
 // 	gl.Color4ub(255, 255, 255, 255)
