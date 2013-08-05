@@ -34,8 +34,10 @@ func MakeConsole(dx, dy int) *Console {
 }
 
 func (c *Console) Think(g *Gui) {
-	c.visible = gin.In().GetKey(gin.AnyLeftShift).IsDown() || gin.In().GetKey(gin.AnyRightShift).IsDown()
-	c.tail.GetLines(c.lines)
+	c.visible = gin.In().GetKeyFlat(gin.EitherShift, gin.DeviceTypeAny, gin.DeviceIndexAny).IsDown()
+	if c.visible {
+		c.tail.GetLines(c.lines)
+	}
 }
 
 func (c *Console) RequestedDims() Dims {
@@ -43,6 +45,7 @@ func (c *Console) RequestedDims() Dims {
 }
 
 func (c *Console) Respond(group gin.EventGroup) {
+	base.Log().Printf("Event: %v", group.Events[0])
 }
 
 func (c *Console) Draw(region Region, stlye StyleStack) {
