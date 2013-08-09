@@ -45,7 +45,6 @@ func (c *Console) RequestedDims() Dims {
 }
 
 func (c *Console) Respond(group gin.EventGroup) {
-	base.Log().Printf("Event: %v", group.Events[0])
 }
 
 func (c *Console) Draw(region Region, stlye StyleStack) {

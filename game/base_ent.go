@@ -15,7 +15,8 @@ type BaseEnt struct {
 		Speed float64
 		Angle float64
 	}
-	Gid Gid
+	Gid          Gid
+	CurrentLevel Gid
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
@@ -52,6 +53,14 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 	b.Position = pos
 }
 
+func (b *BaseEnt) Level() Gid {
+	return b.CurrentLevel
+}
+
+func (b *BaseEnt) SetLevel(level Gid) {
+	b.CurrentLevel = level
+}
+
 func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
 	b.StatsInst.Think()
@@ -83,8 +92,9 @@ func (b *BaseEnt) Think(g *Game) {
 		b.Delta.Angle = b.StatsInst.MaxTurn()
 	}
 
+	room := g.Levels[b.CurrentLevel].Room
 	inLava := false
-	for _, lava := range g.Room.Lava {
+	for _, lava := range room.Lava {
 		if linear.VecInsideConvexPoly(b.Pos(), lava) {
 			inLava = true
 		}
@@ -115,7 +125,7 @@ func (b *BaseEnt) Think(g *Game) {
 	sizeSq := size * size
 	prev := b.Position
 	b.Position = b.Position.Add(b.Velocity)
-	for _, poly := range g.Room.Walls {
+	for _, poly := range room.Walls {
 		for i := range poly {
 			// Don't bother with back-facing segments
 			if poly.Seg(i).Right(b.Position) {

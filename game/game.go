@@ -16,6 +16,7 @@ import (
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"sort"
 )
@@ -141,16 +142,25 @@ func (g *Game) AddPlayers(numPlayers int) []Gid {
 		if err != nil {
 			base.Log().Fatalf("%v", err)
 		}
+		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.
 		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(numPlayers))
-		p.Position = g.Room.Start.Add(rot)
+		p.Position = g.Levels[GidInvadersStart].Room.Start.Add(rot)
+
+		// NEXT: REthing Gids and how the levels are laid out - should they just
+		// be indexed by gids?
 
 		p.Gid = g.NextGid()
 		p.Processes = make(map[int]Process)
 		p.Los = los.Make(LosPlayerHorizon)
+		p.SetLevel(GidInvadersStart)
 		g.Ents[p.Gid] = &p
 		gids = append(gids, p.Gid)
+	}
+	base.Log().Printf("Added player")
+	for _, ent := range g.Ents {
+		base.Log().Printf("level: %v: %v", ent.Id(), ent.Level())
 	}
 	return gids
 }
@@ -159,9 +169,9 @@ func init() {
 	gob.Register(&Player{})
 }
 
-func (p *Player) ReleaseResources() {
-	p.Los.ReleaseResources()
-}
+// func (p *Player) ReleaseResources() {
+// 	p.Los.ReleaseResources()
+// }
 
 func (p *Player) Draw(game *Game) {
 	var t *texture.Data
@@ -208,7 +218,7 @@ func (p *Player) Draw(game *Game) {
 
 func (p *Player) Think(g *Game) {
 	p.Los.Reset(p.Pos())
-	for polyIndex, poly := range g.Room.Walls {
+	for polyIndex, poly := range g.Levels[p.Level()].Room.Walls {
 		// maxDistSq := 0.0
 		// for i := 1; i < len(poly); i++ {
 		// 	distSq := poly[i].Sub(poly[0]).Mag2()
@@ -250,10 +260,12 @@ type Ent interface {
 
 	Id() Gid
 	Pos() linear.Vec2
+	Level() Gid
 
 	// Need to have a SetPos method because we don't want ents moving through
 	// walls.
 	SetPos(pos linear.Vec2)
+	SetLevel(Gid)
 
 	Mass() float64
 	Vel() linear.Vec2
@@ -267,10 +279,17 @@ func (NonManaUser) Supply(mana Mana) Mana { return mana }
 
 type Gid string
 
-type Game struct {
-	ManaSource ManaSource
+const (
+	GidInvadersStart Gid = "invaders start"
+)
 
-	Room Room
+type Level struct {
+	ManaSource ManaSource
+	Room       Room
+}
+
+type Game struct {
+	Levels map[Gid]*Level
 
 	Rng *cmwc.Cmwc
 
@@ -288,6 +307,7 @@ type Game struct {
 	InvadersWin bool
 
 	Architect architectData
+	Invaders  invadersData
 }
 
 func (g *Game) NextGid() Gid {
@@ -296,41 +316,43 @@ func (g *Game) NextGid() Gid {
 }
 
 func (g *Game) Init() {
-	msOptions := ManaSourceOptions{
-		NumSeeds:    20,
-		NumNodeRows: g.Room.Dy / 10,
-		NumNodeCols: g.Room.Dx / 10,
+	for gid := range g.Levels {
+		msOptions := ManaSourceOptions{
+			NumSeeds:    20,
+			NumNodeRows: g.Levels[gid].Room.Dy / 10,
+			NumNodeCols: g.Levels[gid].Room.Dx / 10,
 
-		BoardLeft:   0,
-		BoardTop:    0,
-		BoardRight:  float64(g.Room.Dx),
-		BoardBottom: float64(g.Room.Dy),
+			BoardLeft:   0,
+			BoardTop:    0,
+			BoardRight:  float64(g.Levels[gid].Room.Dx),
+			BoardBottom: float64(g.Levels[gid].Room.Dy),
 
-		MaxDrainDistance: 120.0,
-		MaxDrainRate:     5.0,
+			MaxDrainDistance: 120.0,
+			MaxDrainRate:     5.0,
 
-		RegenPerFrame:     0.002,
-		NodeMagnitude:     100,
-		MinNodeBrightness: 20,
-		MaxNodeBrightness: 150,
+			RegenPerFrame:     0.002,
+			NodeMagnitude:     100,
+			MinNodeBrightness: 20,
+			MaxNodeBrightness: 150,
 
-		Rng: g.Rng,
+			Rng: g.Rng,
+		}
+		g.Levels[gid].ManaSource.Init(&msOptions)
 	}
-	g.ManaSource.Init(&msOptions)
 }
 
 func init() {
 	gob.Register(&Game{})
 }
 
-func (g *Game) ReleaseResources() {
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok {
-			p.ReleaseResources()
-		}
-	})
-	g.ManaSource.ReleaseResources()
-}
+// func (g *Game) ReleaseResources() {
+// 	g.DoForEnts(func(gid Gid, ent Ent) {
+// 		if p, ok := ent.(*Player); ok {
+// 			p.ReleaseResources()
+// 		}
+// 	})
+// 	g.ManaSource.ReleaseResources()
+// }
 
 func invSquareDist(dist_sq float64) float64 {
 	return 1.0 / (dist_sq + 1)
@@ -355,23 +377,58 @@ func getWeights(distance_squares []float64, value_sum float64, transform func(fl
 	return weights
 }
 
-func (g *Game) sortedGids() []Gid {
-	_gids := make([]string, len(g.Ents))[0:0]
-	for gid := range g.Ents {
-		_gids = append(_gids, string(gid))
+type sortGids []reflect.Value
+
+func (s sortGids) Len() int { return len(s) }
+func (s sortGids) Less(i, j int) bool {
+	var a, b Gid
+	reflect.ValueOf(&a).Elem().Set(s[i])
+	reflect.ValueOf(&b).Elem().Set(s[j])
+	return a < b
+}
+func (s sortGids) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+// orderedGids lets you get the Gids that are used as keys in a map in sorted
+// order.  If _mapIn is a map[Gid]Foo and _gids is a *[]Gid then this function
+// will set the contents of _gids to be the keys from _mapIn in sorted order.
+func orderedGids(_mapIn interface{}, _gids interface{}) {
+	mapIn := reflect.ValueOf(_mapIn)
+	if mapIn.Kind() != reflect.Map {
+		panic(fmt.Sprintf("First parameter to orderedGids must be a map, not a %v", mapIn.Kind()))
 	}
-	sort.Strings(_gids)
-	gids := make([]Gid, len(_gids))
-	for i := range gids {
-		gids[i] = Gid(_gids[i])
+	gids := reflect.ValueOf(_gids)
+	if gids.Kind() != reflect.Ptr || gids.Elem().Kind() != reflect.Slice {
+		panic(fmt.Sprintf("Second parameter to orderedGids must be a pointer to a slice, not a %v", gids.Kind()))
 	}
-	return gids
+	keys := mapIn.MapKeys()
+	if len(keys) == 0 {
+		gids.Elem().SetLen(0)
+		return
+	}
+	var sg sortGids = sortGids(keys)
+	sort.Sort(sg)
+	out := reflect.MakeSlice(gids.Elem().Type(), len(keys), len(keys))
+	for i, key := range keys {
+		out.Index(i).Set(key)
+	}
+	gids.Elem().Set(out)
 }
 
-func (g *Game) DoForEnts(f func(gid Gid, ent Ent)) {
-	for _, _gid := range g.sortedGids() {
-		gid := Gid(_gid)
+// TODO: Just like orderedGids is reflecty, consider making DoFor* functions
+// reflecty as well, they're all the same.
+func (g *Game) DoForEnts(f func(Gid, Ent)) {
+	var gids []Gid
+	orderedGids(g.Ents, &gids)
+	for _, gid := range gids {
 		f(gid, g.Ents[gid])
+	}
+}
+
+func (g *Game) DoForLevels(f func(Gid, *Level)) {
+	var gids []Gid
+	orderedGids(g.Levels, &gids)
+	for _, gid := range gids {
+		f(gid, g.Levels[gid])
 	}
 }
 
@@ -394,15 +451,9 @@ func (g *Game) Think() {
 	}()
 	g.GameThinks++
 
-	// Check for player victory
-	victory := true
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if _, ok := ent.(*Player); ok {
-			if ent.Pos().Sub(g.Room.End).Mag2() > 100*100 {
-				victory = false
-			}
-		}
-	})
+	// Check for invaders victory
+	// Currently there is no invaders victory condition
+	victory := false
 	if victory {
 		g.InvadersWin = true
 	}
@@ -417,7 +468,9 @@ func (g *Game) Think() {
 		}
 	})
 
-	g.ManaSource.Think(g.Ents)
+	g.DoForLevels(func(gid Gid, level *Level) {
+		level.ManaSource.Think(g.Ents)
+	})
 	g.Architect.Think(g)
 
 	// Advance players, check for collisions, add segments
@@ -426,32 +479,32 @@ func (g *Game) Think() {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		ent.Think(g)
 		pos := ent.Pos()
-		pos.X = clamp(pos.X, 0, float64(g.Room.Dx))
-		pos.Y = clamp(pos.Y, 0, float64(g.Room.Dy))
+		pos.X = clamp(pos.X, 0, float64(g.Levels[ent.Level()].Room.Dx))
+		pos.Y = clamp(pos.Y, 0, float64(g.Levels[ent.Level()].Room.Dy))
 		ent.SetPos(pos)
 	})
-	moved := make(map[Gid]bool)
-	gids := g.sortedGids()
-	for _, i := range gids {
-		for _, j := range gids {
-			if i == j {
-				continue
-			}
-			dist := g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Mag()
-			if dist > 25 {
-				continue
-			}
-			if dist < 0.01 {
-				continue
-			}
-			if dist <= 0.5 {
-				dist = 0.5
-			}
-			force := 20.0 * (25 - dist)
-			g.Ents[i].ApplyForce(g.Ents[i].Pos().Sub(g.Ents[j].Pos()).Norm().Scale(force))
-			moved[i] = true
+	var outerEnt Ent
+	inner := func(gid Gid, innerEnt Ent) {
+		if innerEnt == outerEnt {
+			return
 		}
+		dist := outerEnt.Pos().Sub(innerEnt.Pos()).Mag()
+		if dist > 25 {
+			return
+		}
+		if dist < 0.01 {
+			return
+		}
+		if dist <= 0.5 {
+			dist = 0.5
+		}
+		force := 20.0 * (25 - dist)
+		outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Norm().Scale(force))
 	}
+	g.DoForEnts(func(gid Gid, outer Ent) {
+		outerEnt = outer
+		g.DoForEnts(inner)
+	})
 }
 
 func clamp(v, low, high float64) float64 {

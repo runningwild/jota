@@ -235,9 +235,11 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 		}
 	}
 }
-func (src *ManaSource) ReleaseResources() {
-	deleteNodes(src.rawNodes)
-}
+
+// func (src *ManaSource) ReleaseResources() {
+// 	deleteNodes(src.rawNodes)
+// }
+
 func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 	if local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)

@@ -9,7 +9,7 @@ import (
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
-	"github.com/runningwild/linear"
+	// "github.com/runningwild/linear"
 	g2 "github.com/runningwild/magnus/gui"
 	"time"
 	// "math"
@@ -81,10 +81,12 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 		g.Ents = make(map[game.Gid]game.Ent)
 		g.Friction = 0.97
 		g.Friction_lava = 0.85
-		g.Room = room
+		g.Levels = make(map[game.Gid]*game.Level)
+		g.Levels[game.GidInvadersStart] = &game.Level{}
+		g.Levels[game.GidInvadersStart].Room = room
 
 		players = g.AddPlayers(1)
-		players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
+		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
 		if version == "host" {

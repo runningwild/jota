@@ -106,19 +106,19 @@ func NewLocalData(engine *cgf.Engine, sys system.System, isArchitect bool) *Loca
 	local.engine = engine
 	local.isArchitect = isArchitect
 	if isArchitect {
-		local.architect.abs.abilities =
-			append(
-				local.architect.abs.abilities,
-				ability_makers["placePoly"](map[string]int{"wall": 1}))
-		local.architect.abs.abilities =
-			append(
-				local.architect.abs.abilities,
-				ability_makers["placePoly"](map[string]int{"lava": 1}))
-		local.architect.abs.abilities =
-			append(
-				local.architect.abs.abilities,
-				ability_makers["placePoly"](map[string]int{"pests": 1}))
-		local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["removePoly"](nil))
+		// local.architect.abs.abilities =
+		// 	append(
+		// 		local.architect.abs.abilities,
+		// 		ability_makers["placePoly"](map[string]int{"wall": 1}))
+		// local.architect.abs.abilities =
+		// 	append(
+		// 		local.architect.abs.abilities,
+		// 		ability_makers["placePoly"](map[string]int{"lava": 1}))
+		// local.architect.abs.abilities =
+		// 	append(
+		// 		local.architect.abs.abilities,
+		// 		ability_makers["placePoly"](map[string]int{"pests": 1}))
+		// local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["removePoly"](nil))
 	}
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
@@ -185,8 +185,9 @@ func (g *Game) renderLosMask(local *LocalData) {
 		gl.UNSIGNED_INT,
 		gl.Pointer(&local.los.texRawData[0]))
 	base.SetUniformI("los", "tex0", 0)
-	base.SetUniformF("los", "dx", float32(g.Room.Dx))
-	base.SetUniformF("los", "dy", float32(g.Room.Dy))
+	// TODO: This has to not be hardcoded
+	base.SetUniformF("los", "dx", float32(g.Levels[GidInvadersStart].Room.Dx))
+	base.SetUniformF("los", "dy", float32(g.Levels[GidInvadersStart].Room.Dy))
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", los.Resolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
@@ -208,11 +209,11 @@ func (g *Game) renderLosMask(local *LocalData) {
 	gl.TexCoord2d(0, 1)
 	gl.Vertex2i(0, 0)
 	gl.TexCoord2d(0, 0)
-	gl.Vertex2i(0, gl.Int(g.Room.Dy))
+	gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
 	gl.TexCoord2d(1, 0)
-	gl.Vertex2i(gl.Int(g.Room.Dx), gl.Int(g.Room.Dy))
+	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
 	gl.TexCoord2d(1, 1)
-	gl.Vertex2i(gl.Int(g.Room.Dx), 0)
+	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
 	gl.End()
 	base.EnableShader("")
 }
@@ -253,11 +254,12 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	g.ManaSource.Draw(local, float64(g.Room.Dx), float64(g.Room.Dy))
+	level := g.Levels[GidInvadersStart]
+	level.ManaSource.Draw(local, float64(level.Room.Dx), float64(level.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
-	for _, poly := range g.Room.Walls {
+	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
 		for i := range poly {
 			seg := poly.Seg(i)
 			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
@@ -267,7 +269,7 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	gl.End()
 
 	gl.Color4d(1, 0, 0, 1)
-	for _, poly := range g.Room.Lava {
+	for _, poly := range g.Levels[GidInvadersStart].Room.Lava {
 		gl.Begin(gl.TRIANGLE_FAN)
 		for _, v := range poly {
 			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
@@ -276,8 +278,8 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	}
 
 	gui.SetFontColor(0, 255, 0, 255)
-	base.GetDictionary("luxisr").RenderString("Start!", g.Room.Start.X, g.Room.Start.Y, 0, 100, gui.Center)
-	base.GetDictionary("luxisr").RenderString("End!", g.Room.End.X, g.Room.End.Y, 0, 100, gui.Center)
+	base.GetDictionary("luxisr").RenderString("Start!", g.Levels[GidInvadersStart].Room.Start.X, g.Levels[GidInvadersStart].Room.Start.Y, 0, 100, gui.Center)
+	base.GetDictionary("luxisr").RenderString("End!", g.Levels[GidInvadersStart].Room.End.X, g.Levels[GidInvadersStart].Room.End.Y, 0, 100, gui.Center)
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
@@ -330,7 +332,7 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	}
 
 	// Not placeable if it intersects with any walls
-	for _, wall := range g.Room.Walls {
+	for _, wall := range g.Levels[GidInvadersStart].Room.Walls {
 		if linear.ConvexPolysOverlap(poly, wall) {
 			return false
 		}
@@ -344,15 +346,15 @@ func (l *LocalData) doArchitectFocusRegion(g *Game) {
 		// On the very first frame the limit midpoint will be (0,0), which should
 		// never happen after the game begins.  We use this as an opportunity to
 		// init the data now that we know the region we're working with.
-		if l.regionDims.X/l.regionDims.Y > float64(g.Room.Dx)/float64(g.Room.Dy) {
-			l.limit.dims.Y = float64(g.Room.Dy)
-			l.limit.dims.X = float64(g.Room.Dx) * float64(g.Room.Dy) / l.regionDims.Y
+		if l.regionDims.X/l.regionDims.Y > float64(g.Levels[GidInvadersStart].Room.Dx)/float64(g.Levels[GidInvadersStart].Room.Dy) {
+			l.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+			l.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx) * float64(g.Levels[GidInvadersStart].Room.Dy) / l.regionDims.Y
 		} else {
-			l.limit.dims.X = float64(g.Room.Dx)
-			l.limit.dims.Y = float64(g.Room.Dy) * float64(g.Room.Dx) / l.regionDims.X
+			l.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+			l.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy) * float64(g.Levels[GidInvadersStart].Room.Dx) / l.regionDims.X
 		}
-		l.limit.mid.X = float64(g.Room.Dx / 2)
-		l.limit.mid.Y = float64(g.Room.Dy / 2)
+		l.limit.mid.X = float64(g.Levels[GidInvadersStart].Room.Dx / 2)
+		l.limit.mid.Y = float64(g.Levels[GidInvadersStart].Room.Dy / 2)
 		l.current = l.limit
 		l.zoom = 0
 	}
@@ -419,11 +421,12 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	g.ManaSource.Draw(local, float64(g.Room.Dx), float64(g.Room.Dy))
+	level := g.Levels[GidInvadersStart]
+	level.ManaSource.Draw(local, float64(level.Room.Dx), float64(level.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
-	for _, poly := range g.Room.Walls {
+	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
 		for i := range poly {
 			seg := poly.Seg(i)
 			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
@@ -433,7 +436,7 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	gl.End()
 
 	gl.Color4d(1, 0, 0, 1)
-	for _, poly := range g.Room.Lava {
+	for _, poly := range g.Levels[GidInvadersStart].Room.Lava {
 		gl.Begin(gl.TRIANGLE_FAN)
 		for _, v := range poly {
 			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
@@ -442,8 +445,8 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	}
 
 	gl.Color4ub(0, 255, 0, 255)
-	base.GetDictionary("luxisr").RenderString("Start!", g.Room.Start.X, g.Room.Start.Y-25, 0, 50, gui.Center)
-	base.GetDictionary("luxisr").RenderString("End!", g.Room.End.X, g.Room.End.Y-25, 0, 50, gui.Center)
+	base.GetDictionary("luxisr").RenderString("Start!", g.Levels[GidInvadersStart].Room.Start.X, g.Levels[GidInvadersStart].Room.Start.Y-25, 0, 50, gui.Center)
+	base.GetDictionary("luxisr").RenderString("End!", g.Levels[GidInvadersStart].Room.End.X, g.Levels[GidInvadersStart].Room.End.Y-25, 0, 50, gui.Center)
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
@@ -620,11 +623,11 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 	}
 	max.X += LosPlayerHorizon
 	max.Y += LosPlayerHorizon
-	if max.X > float64(g.Room.Dx) {
-		max.X = float64(g.Room.Dx)
+	if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
+		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
 	}
-	if max.Y > float64(g.Room.Dy) {
-		max.Y = float64(g.Room.Dy)
+	if max.Y > float64(g.Levels[GidInvadersStart].Room.Dy) {
+		max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
 	}
 
 	mid := min.Add(max).Scale(0.5)
