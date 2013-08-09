@@ -12,6 +12,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 )
@@ -247,4 +249,62 @@ func SetStoreVal(key, val string) {
 	}
 	store[key] = val
 	SaveJson(path, store)
+}
+
+type sortAnythings struct {
+	values []reflect.Value
+	less   reflect.Value
+}
+
+func (s sortAnythings) Len() int { return len(s.values) }
+func (s sortAnythings) Less(i, j int) bool {
+	return s.less.Call([]reflect.Value{s.values[i], s.values[j]})[0].Bool()
+}
+func (s sortAnythings) Swap(i, j int) { s.values[i], s.values[j] = s.values[j], s.values[i] }
+
+// This is a slowish way to iterate through a map in a deterministic order.
+// If this is ever too slow then either a non-reflecty version should be made.
+func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
+	start := time.Now()
+	mapInValue := reflect.ValueOf(mapIn)
+	if mapInValue.Kind() != reflect.Map {
+		panic(fmt.Sprintf("Parameter 'mapIn' to iterateOrdered must be a map, not a %v", mapInValue.Kind()))
+	}
+
+	lessValue := reflect.ValueOf(less)
+	if lessValue.Kind() != reflect.Func || lessValue.Type().NumIn() != 2 || lessValue.Type().NumOut() != 1 {
+		panic("Parameter 'less' to iterateOrdered must be a function with two inputs and out output.")
+	}
+	if lessValue.Type().Out(0).Kind() != reflect.Bool {
+		panic("Parameter 'less' to iterateOrdered must return a bool.")
+	}
+	if lessValue.Type().In(0) != lessValue.Type().In(1) || lessValue.Type().In(0) != mapInValue.Type().Key() {
+		panic("Parameter 'less' to iterateOrdered must take two parameters with the same type as the values of the 'mapIn' parameter.")
+	}
+
+	doValue := reflect.ValueOf(do)
+	if doValue.Kind() != reflect.Func || doValue.Type().NumIn() != 2 {
+		panic(fmt.Sprintf("Parameter 'do' to iterateOrdered must be a function of two parameters, not a %v", doValue.Kind()))
+	}
+	if doValue.Type().In(0) != mapInValue.Type().Key() || doValue.Type().In(1) != mapInValue.Type().Elem() {
+		panic("The first and second parameters to do must match the types of the key and values of mapIn, respectively.")
+	}
+	fmt.Printf("Checking time: %vms\n", time.Now().Sub(start).Seconds()*1000)
+	start = time.Now()
+
+	keys := mapInValue.MapKeys()
+	if len(keys) == 0 {
+		return
+	}
+	fmt.Printf("GetKeys: %vms\n", time.Now().Sub(start).Seconds()*1000)
+	start = time.Now()
+	sort.Sort(sortAnythings{keys, lessValue})
+	fmt.Printf("Sorting time: %vms\n", time.Now().Sub(start).Seconds()*1000)
+	start = time.Now()
+	for _, key := range keys {
+		value := mapInValue.MapIndex(key)
+		doValue.Call([]reflect.Value{key, value})
+	}
+	fmt.Printf("Doit time: %vms\n", time.Now().Sub(start).Seconds()*1000)
+	start = time.Now()
 }

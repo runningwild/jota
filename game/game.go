@@ -16,9 +16,7 @@ import (
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	"path/filepath"
-	"reflect"
 	"runtime/debug"
-	"sort"
 )
 
 // type Ability func(game *Game, player *Player, params map[string]int) Process
@@ -157,10 +155,6 @@ func (g *Game) AddPlayers(numPlayers int) []Gid {
 		p.SetLevel(GidInvadersStart)
 		g.Ents[p.Gid] = &p
 		gids = append(gids, p.Gid)
-	}
-	base.Log().Printf("Added player")
-	for _, ent := range g.Ents {
-		base.Log().Printf("level: %v: %v", ent.Id(), ent.Level())
 	}
 	return gids
 }
@@ -316,16 +310,16 @@ func (g *Game) NextGid() Gid {
 }
 
 func (g *Game) Init() {
-	for gid := range g.Levels {
+	g.DoForLevels(func(gid Gid, level *Level) {
 		msOptions := ManaSourceOptions{
 			NumSeeds:    20,
-			NumNodeRows: g.Levels[gid].Room.Dy / 10,
-			NumNodeCols: g.Levels[gid].Room.Dx / 10,
+			NumNodeRows: level.Room.Dy / 10,
+			NumNodeCols: level.Room.Dx / 10,
 
 			BoardLeft:   0,
 			BoardTop:    0,
-			BoardRight:  float64(g.Levels[gid].Room.Dx),
-			BoardBottom: float64(g.Levels[gid].Room.Dy),
+			BoardRight:  float64(level.Room.Dx),
+			BoardBottom: float64(level.Room.Dy),
 
 			MaxDrainDistance: 120.0,
 			MaxDrainRate:     5.0,
@@ -337,8 +331,8 @@ func (g *Game) Init() {
 
 			Rng: g.Rng,
 		}
-		g.Levels[gid].ManaSource.Init(&msOptions)
-	}
+		level.ManaSource.Init(&msOptions)
+	})
 }
 
 func init() {
@@ -377,59 +371,16 @@ func getWeights(distance_squares []float64, value_sum float64, transform func(fl
 	return weights
 }
 
-type sortGids []reflect.Value
-
-func (s sortGids) Len() int { return len(s) }
-func (s sortGids) Less(i, j int) bool {
-	var a, b Gid
-	reflect.ValueOf(&a).Elem().Set(s[i])
-	reflect.ValueOf(&b).Elem().Set(s[j])
+func lessGids(a, b Gid) bool {
 	return a < b
 }
-func (s sortGids) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
-// orderedGids lets you get the Gids that are used as keys in a map in sorted
-// order.  If _mapIn is a map[Gid]Foo and _gids is a *[]Gid then this function
-// will set the contents of _gids to be the keys from _mapIn in sorted order.
-func orderedGids(_mapIn interface{}, _gids interface{}) {
-	mapIn := reflect.ValueOf(_mapIn)
-	if mapIn.Kind() != reflect.Map {
-		panic(fmt.Sprintf("First parameter to orderedGids must be a map, not a %v", mapIn.Kind()))
-	}
-	gids := reflect.ValueOf(_gids)
-	if gids.Kind() != reflect.Ptr || gids.Elem().Kind() != reflect.Slice {
-		panic(fmt.Sprintf("Second parameter to orderedGids must be a pointer to a slice, not a %v", gids.Kind()))
-	}
-	keys := mapIn.MapKeys()
-	if len(keys) == 0 {
-		gids.Elem().SetLen(0)
-		return
-	}
-	var sg sortGids = sortGids(keys)
-	sort.Sort(sg)
-	out := reflect.MakeSlice(gids.Elem().Type(), len(keys), len(keys))
-	for i, key := range keys {
-		out.Index(i).Set(key)
-	}
-	gids.Elem().Set(out)
-}
-
-// TODO: Just like orderedGids is reflecty, consider making DoFor* functions
-// reflecty as well, they're all the same.
 func (g *Game) DoForEnts(f func(Gid, Ent)) {
-	var gids []Gid
-	orderedGids(g.Ents, &gids)
-	for _, gid := range gids {
-		f(gid, g.Ents[gid])
-	}
+	base.DoOrdered(g.Ents, lessGids, f)
 }
 
 func (g *Game) DoForLevels(f func(Gid, *Level)) {
-	var gids []Gid
-	orderedGids(g.Levels, &gids)
-	for _, gid := range gids {
-		f(gid, g.Levels[gid])
-	}
+	base.DoOrdered(g.Levels, lessGids, f)
 }
 
 func (g *Game) RemoveEnt(gid Gid) {
