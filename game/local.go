@@ -36,18 +36,41 @@ type localPlayer struct {
 	abs personalAbilities
 }
 
+type cameraInfo struct {
+	regionPos  linear.Vec2
+	regionDims linear.Vec2
+	// Camera positions.  target is used for the invaders so that the camera can
+	// follow the players without being too jerky.  limit is used by the architect
+	// so we have a constant reference point.
+	current, target, limit struct {
+		mid, dims linear.Vec2
+	}
+	zoom         float64
+	cursorHidden bool
+}
+
+type localInvadersData struct {
+	camera cameraInfo
+}
+
 type localArchitectData struct {
+	camera cameraInfo
+
 	abs personalAbilities
 
 	//DEPRECATED:
 	place linear.Poly
 }
 
-type LocalData struct {
-	name       string
-	regionPos  linear.Vec2
-	regionDims linear.Vec2
+type viewMode int
 
+const (
+	viewArchitect viewMode = iota
+	viewInvaders
+	viewEditor
+)
+
+type LocalData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
@@ -68,23 +91,19 @@ type LocalData struct {
 		texId      gl.Uint
 	}
 
-	// Camera positions.  target is used for the invaders so that the camera can
-	// follow the players without being too jerky.  limit is used by the architect
-	// so we have a constant reference point.
-	current, target, limit struct {
-		mid, dims linear.Vec2
-	}
-	zoom         float64
-	cursorHidden bool
-
 	sys       system.System
 	architect localArchitectData
+	invaders  localInvadersData
 
 	// For displaying the mana grid
 	nodeTextureId      gl.Uint
 	nodeTextureData    []byte
 	nodeWarpingTexture gl.Uint
 	nodeWarpingData    []byte
+}
+
+func (l *LocalData) DebugSwapRoles() {
+	l.isArchitect = !l.isArchitect
 }
 
 type gameResponderWrapper struct {
@@ -99,7 +118,6 @@ func (grw *gameResponderWrapper) Think(int64) {}
 
 func NewLocalData(engine *cgf.Engine, sys system.System, isArchitect bool) *LocalData {
 	var local LocalData
-	local.name = "FOOOO"
 	if local.engine != nil {
 		base.Error().Fatalf("Engine has already been set.")
 	}
@@ -236,11 +254,12 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
 	defer gl.PopAttrib()
 
+	current := local.invaders.camera.current
 	gl.Ortho(
-		gl.Double(local.current.mid.X-local.current.dims.X/2),
-		gl.Double(local.current.mid.X+local.current.dims.X/2),
-		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
-		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
+		gl.Double(current.mid.X-current.dims.X/2),
+		gl.Double(current.mid.X+current.dims.X/2),
+		gl.Double(current.mid.Y+current.dims.Y/2),
+		gl.Double(current.mid.Y-current.dims.Y/2),
 		gl.Double(1000),
 		gl.Double(-1000),
 	)
@@ -342,45 +361,46 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 }
 
 func (l *LocalData) doArchitectFocusRegion(g *Game) {
-	if l.limit.mid.X == 0 && l.limit.mid.Y == 0 {
+	camera := &l.architect.camera
+	if camera.limit.mid.X == 0 && camera.limit.mid.Y == 0 {
 		// On the very first frame the limit midpoint will be (0,0), which should
 		// never happen after the game begins.  We use this as an opportunity to
 		// init the data now that we know the region we're working with.
-		if l.regionDims.X/l.regionDims.Y > float64(g.Levels[GidInvadersStart].Room.Dx)/float64(g.Levels[GidInvadersStart].Room.Dy) {
-			l.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
-			l.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx) * float64(g.Levels[GidInvadersStart].Room.Dy) / l.regionDims.Y
+		if camera.regionDims.X/camera.regionDims.Y > float64(g.Levels[GidInvadersStart].Room.Dx)/float64(g.Levels[GidInvadersStart].Room.Dy) {
+			camera.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+			camera.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx) * float64(g.Levels[GidInvadersStart].Room.Dy) / camera.regionDims.Y
 		} else {
-			l.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx)
-			l.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy) * float64(g.Levels[GidInvadersStart].Room.Dx) / l.regionDims.X
+			camera.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+			camera.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy) * float64(g.Levels[GidInvadersStart].Room.Dx) / camera.regionDims.X
 		}
-		l.limit.mid.X = float64(g.Levels[GidInvadersStart].Room.Dx / 2)
-		l.limit.mid.Y = float64(g.Levels[GidInvadersStart].Room.Dy / 2)
-		l.current = l.limit
-		l.zoom = 0
+		camera.limit.mid.X = float64(g.Levels[GidInvadersStart].Room.Dx / 2)
+		camera.limit.mid.Y = float64(g.Levels[GidInvadersStart].Room.Dy / 2)
+		camera.current = camera.limit
+		camera.zoom = 0
 	}
 	wheel := gin.In().GetKeyFlat(gin.MouseWheelVertical, gin.DeviceTypeAny, gin.DeviceIndexAny)
-	l.zoom += wheel.FramePressAmt() / 500
-	if l.zoom < 0 {
-		l.zoom = 0
+	camera.zoom += wheel.FramePressAmt() / 500
+	if camera.zoom < 0 {
+		camera.zoom = 0
 	}
-	if l.zoom > 2 {
-		l.zoom = 2
+	if camera.zoom > 2 {
+		camera.zoom = 2
 	}
-	zoom := 1 / math.Exp(l.zoom)
-	l.current.dims = l.limit.dims.Scale(zoom)
+	zoom := 1 / math.Exp(camera.zoom)
+	camera.current.dims = camera.limit.dims.Scale(zoom)
 	if gin.In().GetKey(gin.AnySpace).CurPressAmt() > 0 {
-		if !l.cursorHidden {
+		if !camera.cursorHidden {
 			l.sys.HideCursor(true)
-			l.cursorHidden = true
+			camera.cursorHidden = true
 		}
 		x := gin.In().GetKey(gin.AnyMouseXAxis).FramePressAmt()
 		y := gin.In().GetKey(gin.AnyMouseYAxis).FramePressAmt()
-		l.current.mid.X -= float64(x) * 2
-		l.current.mid.Y -= float64(y) * 2
+		camera.current.mid.X -= float64(x) * 2
+		camera.current.mid.Y -= float64(y) * 2
 	} else {
-		if l.cursorHidden {
+		if camera.cursorHidden {
 			l.sys.HideCursor(false)
-			l.cursorHidden = false
+			camera.cursorHidden = false
 		}
 	}
 }
@@ -403,11 +423,12 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
 	defer gl.PopAttrib()
 
+	current := local.architect.camera.current
 	gl.Ortho(
-		gl.Double(local.current.mid.X-local.current.dims.X/2),
-		gl.Double(local.current.mid.X+local.current.dims.X/2),
-		gl.Double(local.current.mid.Y+local.current.dims.Y/2),
-		gl.Double(local.current.mid.Y-local.current.dims.Y/2),
+		gl.Double(current.mid.X-current.dims.X/2),
+		gl.Double(current.mid.X+current.dims.X/2),
+		gl.Double(current.mid.Y+current.dims.Y/2),
+		gl.Double(current.mid.Y-current.dims.Y/2),
 		gl.Double(1000),
 		gl.Double(-1000),
 	)
@@ -471,8 +492,14 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
-	local.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
-	local.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
+	var camera *cameraInfo
+	if local.isArchitect {
+		camera = &local.architect.camera
+	} else {
+		camera = &local.invaders.camera
+	}
+	camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
+	camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	if local.isArchitect {
 		g.renderLocalArchitect(region, local)
 	} else {
@@ -535,13 +562,13 @@ func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 		mx, my := l.sys.GetCursorPos()
 		mouse.X = float64(mx)
 		mouse.Y = float64(my)
-		mouse = mouse.Sub(l.regionPos)
-		mouse.X /= l.regionDims.X
-		mouse.Y /= l.regionDims.Y
-		mouse.X *= l.current.dims.X
-		mouse.Y *= l.current.dims.Y
-		mouse = mouse.Sub(l.current.dims.Scale(0.5))
-		mouse = mouse.Add(l.current.mid)
+		mouse = mouse.Sub(l.architect.camera.regionPos)
+		mouse.X /= l.architect.camera.regionDims.X
+		mouse.Y /= l.architect.camera.regionDims.Y
+		mouse.X *= l.architect.camera.current.dims.X
+		mouse.Y *= l.architect.camera.current.dims.Y
+		mouse = mouse.Sub(l.architect.camera.current.dims.Scale(0.5))
+		mouse = mouse.Add(l.architect.camera.current.mid)
 	}
 	events, die := abs.activeAbility.Think(gid, g, mouse)
 	for _, event := range events {
@@ -632,25 +659,26 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 
 	mid := min.Add(max).Scale(0.5)
 	dims := max.Sub(min)
-	if dims.X/dims.Y < l.regionDims.X/l.regionDims.Y {
-		dims.X = dims.Y * l.regionDims.X / l.regionDims.Y
+	if dims.X/dims.Y < l.invaders.camera.regionDims.X/l.invaders.camera.regionDims.Y {
+		dims.X = dims.Y * l.invaders.camera.regionDims.X / l.invaders.camera.regionDims.Y
 	} else {
-		dims.Y = dims.X * l.regionDims.Y / l.regionDims.X
+		dims.Y = dims.X * l.invaders.camera.regionDims.Y / l.invaders.camera.regionDims.X
 	}
-	l.target.dims = dims
-	l.target.mid = mid
+	l.invaders.camera.target.dims = dims
+	l.invaders.camera.target.mid = mid
 
-	if l.current.mid.X == 0 && l.current.mid.Y == 0 {
+	camera := &l.invaders.camera
+	if camera.current.mid.X == 0 && camera.current.mid.Y == 0 {
 		// On the very first frame the current midpoint will be (0,0), which should
 		// never happen after the game begins.  In this one case we'll immediately
 		// set current to target so we don't start off by approaching it from the
 		// origin.
-		l.current = l.target
+		camera.current = camera.target
 	} else {
 		// speed is in (0, 1), the higher it is, the faster current approaches target.
 		speed := 0.1
-		l.current.dims = l.current.dims.Scale(1 - speed).Add(l.target.dims.Scale(speed))
-		l.current.mid = l.current.mid.Scale(1 - speed).Add(l.target.mid.Scale(speed))
+		camera.current.dims = camera.current.dims.Scale(1 - speed).Add(camera.target.dims.Scale(speed))
+		camera.current.mid = camera.current.mid.Scale(1 - speed).Add(camera.target.mid.Scale(speed))
 	}
 }
 

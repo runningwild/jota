@@ -114,21 +114,22 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 	} else {
 		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
 	}
-	if architect {
-	} else {
-		d := sys.GetActiveDevices()
-		n := 0
-		for _, index := range d[gin.DeviceTypeController] {
-			localData.SetLocalPlayer(players[n], index)
-			n++
-			if n > len(players) {
-				break
-			}
-		}
-		if len(d[gin.DeviceTypeController]) == 0 {
-			localData.SetLocalPlayer(players[0], 0)
+
+	// Hook the players up regardless of in we're architect or not, since we can
+	// switch between the two in debug mode.
+	d := sys.GetActiveDevices()
+	n := 0
+	for _, index := range d[gin.DeviceTypeController] {
+		localData.SetLocalPlayer(players[n], index)
+		n++
+		if n > len(players) {
+			break
 		}
 	}
+	if len(d[gin.DeviceTypeController]) == 0 {
+		localData.SetLocalPlayer(players[0], 0)
+	}
+
 	base.Log().Printf("Engine Id: %v", engine.Id())
 	base.Log().Printf("All Ids: %v", engine.Ids())
 	return engine, localData
@@ -158,7 +159,9 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData) {
 			sys.SwapBuffers()
 		})
 		render.Purge()
-
+		if gin.In().GetKey(gin.AnyKeyL).FramePressCount() > 0 {
+			local.DebugSwapRoles()
+		}
 		// TODO: Replace the 'P' key with an appropriate keybind
 		var err error
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {
