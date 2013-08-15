@@ -49,6 +49,10 @@ type cameraInfo struct {
 	cursorHidden bool
 }
 
+type localMobaData struct {
+	camera cameraInfo
+}
+
 type localInvadersData struct {
 	camera cameraInfo
 }
@@ -74,8 +78,7 @@ type LocalData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
-	// true iff this is the computer playing the architect sgide of the game
-	isArchitect bool
+	mode localMode
 
 	// All of the players controlled by humans on localhost.
 	players []*localPlayer
@@ -94,6 +97,7 @@ type LocalData struct {
 	sys       system.System
 	architect localArchitectData
 	invaders  localInvadersData
+	moba      localMobaData
 
 	// For displaying the mana grid
 	nodeTextureId      gl.Uint
@@ -103,7 +107,12 @@ type LocalData struct {
 }
 
 func (l *LocalData) DebugSwapRoles() {
-	l.isArchitect = !l.isArchitect
+	switch l.mode {
+	case localModeArchitect:
+		l.mode = localModeInvaders
+	case localModeInvaders:
+		l.mode = localModeArchitect
+	}
 }
 
 type gameResponderWrapper struct {
@@ -116,14 +125,34 @@ func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
 
 func (grw *gameResponderWrapper) Think(int64) {}
 
-func NewLocalData(engine *cgf.Engine, sys system.System, isArchitect bool) *LocalData {
+type localMode int
+
+const (
+	localModeInvaders localMode = iota
+	localModeArchitect
+	localModeMoba
+)
+
+func NewLocalDataMoba(engine *cgf.Engine, sys system.System) *LocalData {
+	return newLocalDataHelper(engine, sys, localModeMoba)
+}
+
+func NewLocalDataInvaders(engine *cgf.Engine, sys system.System) *LocalData {
+	return newLocalDataHelper(engine, sys, localModeInvaders)
+}
+
+func NewLocalDataArchitect(engine *cgf.Engine, sys system.System) *LocalData {
+	return newLocalDataHelper(engine, sys, localModeArchitect)
+}
+
+func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode localMode) *LocalData {
 	var local LocalData
 	if local.engine != nil {
 		base.Error().Fatalf("Engine has already been set.")
 	}
 	local.engine = engine
-	local.isArchitect = isArchitect
-	if isArchitect {
+	local.mode = mode
+	if mode == localModeArchitect {
 		// local.architect.abs.abilities =
 		// 	append(
 		// 		local.architect.abs.abilities,
@@ -209,7 +238,7 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", los.Resolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-	if local.isArchitect {
+	if local.mode == localModeArchitect {
 		base.SetUniformI("los", "architect", 1)
 	} else {
 		base.SetUniformI("los", "architect", 0)
@@ -483,17 +512,23 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	var camera *cameraInfo
-	if local.isArchitect {
+	switch local.mode {
+	case localModeArchitect:
 		camera = &local.architect.camera
-	} else {
+	case localModeInvaders:
 		camera = &local.invaders.camera
+	case localModeMoba:
+		camera = &local.moba.camera
 	}
 	camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
-	if local.isArchitect {
+	switch local.mode {
+	case localModeArchitect:
 		g.renderLocalArchitect(region, local)
-	} else {
+	case localModeInvaders:
 		g.renderLocalInvaders(region, local)
+	case localModeMoba:
+		// g.renderLocalInvaders(region, local)
 	}
 }
 
@@ -548,7 +583,7 @@ func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 		return
 	}
 	var mouse linear.Vec2
-	if l.isArchitect {
+	if l.mode == localModeArchitect {
 		mx, my := l.sys.GetCursorPos()
 		mouse.X = float64(mx)
 		mouse.Y = float64(my)
@@ -673,10 +708,13 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 }
 
 func (l *LocalData) Think(g *Game) {
-	if l.isArchitect {
+	switch l.mode {
+	case localModeArchitect:
 		l.localThinkArchitect(g)
-	} else {
+	case localModeInvaders:
 		l.localThinkInvaders(g)
+	case localModeMoba:
+		//		l.localThinkInvaders(g)
 	}
 }
 
@@ -724,9 +762,12 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 }
 
 func (l *LocalData) HandleEventGroup(group gin.EventGroup) {
-	if l.isArchitect {
+	switch l.mode {
+	case localModeArchitect:
 		l.handleEventGroupArchitect(group)
-	} else {
+	case localModeInvaders:
 		l.handleEventGroupInvaders(group)
+	case localModeMoba:
+		// l.handleEventGroupInvaders(group)
 	}
 }

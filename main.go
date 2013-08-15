@@ -84,7 +84,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		localData = game.NewLocalData(engine, sys, true)
+		localData = game.NewLocalDataArchitect(engine, sys)
 		g := engine.GetState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
@@ -102,7 +102,11 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		g.Levels = make(map[game.Gid]*game.Level)
 		g.Levels[game.GidInvadersStart] = &game.Level{}
 		g.Levels[game.GidInvadersStart].Room = room
-		g.Standard = &game.GameModeStandard{}
+		if version == "host" || version == "standard" {
+			g.Standard = &game.GameModeStandard{}
+		} else {
+			g.Moba = &game.GameModeMoba{}
+		}
 		players = g.AddPlayers(1)
 		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
@@ -115,7 +119,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		localData = game.NewLocalData(engine, sys, false)
+		localData = game.NewLocalDataInvaders(engine, sys)
 	}
 
 	// Hook the players up regardless of in we're architect or not, since we can
