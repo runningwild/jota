@@ -238,11 +238,6 @@ func (g *Game) renderLosMask(local *LocalData) {
 
 func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	local.doInvadersFocusRegion(g)
-	if g.InvadersWin {
-		gl.Disable(gl.TEXTURE_2D)
-		gui.SetFontColor(1, 1, 0, 1)
-		defer base.GetDictionary("luxisr").RenderString("WINNER!", 600, 400, 0, 200, gui.Center)
-	}
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -407,11 +402,6 @@ func (l *LocalData) doArchitectFocusRegion(g *Game) {
 
 func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	local.doArchitectFocusRegion(g)
-	if g.InvadersWin {
-		gl.Disable(gl.TEXTURE_2D)
-		gl.Color4ub(255, 255, 0, 255)
-		defer base.GetDictionary("luxisr").RenderString("LOSER!", 600, 400, 0, 200, gui.Center)
-	}
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()

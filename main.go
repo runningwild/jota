@@ -52,7 +52,12 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) {
+// versions are 'standard', 'moba', 'host', 'client'
+func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
+	if version != "standard" && version != "moba" && version != "host" && version != "client" {
+		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
+	}
+
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
 		sys.Think()
@@ -73,7 +78,20 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
 	var localData *game.LocalData
-	if version == "host" || version == "debug" {
+	if version == "client" {
+		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
+		if err != nil {
+			base.Log().Printf("Unable to connect: %v", err)
+			base.Error().Fatalf("%v", err.Error())
+		}
+		localData = game.NewLocalData(engine, sys, true)
+		g := engine.GetState().(*game.Game)
+		for _, ent := range g.Ents {
+			if _, ok := ent.(*game.Player); ok {
+				players = append(players, ent.Id())
+			}
+		}
+	} else {
 		sys.Think()
 		var g game.Game
 		g.Rng = cmwc.MakeGoodCmwc()
@@ -84,7 +102,7 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 		g.Levels = make(map[game.Gid]*game.Level)
 		g.Levels[game.GidInvadersStart] = &game.Level{}
 		g.Levels[game.GidInvadersStart].Room = room
-
+		g.Standard = &game.GameModeStandard{}
 		players = g.AddPlayers(1)
 		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
@@ -97,22 +115,7 @@ func debugHookup(version string, architect bool) (*cgf.Engine, *game.LocalData) 
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		localData = game.NewLocalData(engine, sys, architect)
-	} else if version == "client" {
-		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
-		if err != nil {
-			base.Log().Printf("Unable to connect: %v", err)
-			base.Error().Fatalf("%v", err.Error())
-		}
-		localData = game.NewLocalData(engine, sys, architect)
-		g := engine.GetState().(*game.Game)
-		for _, ent := range g.Ents {
-			if _, ok := ent.(*game.Player); ok {
-				players = append(players, ent.Id())
-			}
-		}
-	} else {
-		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
+		localData = game.NewLocalData(engine, sys, false)
 	}
 
 	// Hook the players up regardless of in we're architect or not, since we can
@@ -206,19 +209,19 @@ func standardHookup() {
 		gin.AnyReturn: struct{}{},
 		gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny).Id(): struct{}{},
 	}
-	var debugAsArchitect, debugAsInvaders, quit bool
+	action := ""
 	tm.Subs[""] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Debug", Callback: func() { tm.Push("debug") }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Host LAN game", Callback: func() { base.Log().Printf("HOST"); print("HOST\n") }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Join LAN game", Callback: func() { base.Log().Printf("JOIN"); print("JOIN\n") }},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Quit", Callback: func() { quit = true }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Quit", Callback: func() { action = "Quit" }},
 		})
 
 	tm.Subs["debug"] = g2.MakeThunderSubMenu(
 		[]g2.Widget{
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Architect", Callback: func() { debugAsArchitect = true }},
-			&g2.Button{Size: 50, Triggers: triggers, Name: "Invaders", Callback: func() { debugAsInvaders = true }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Standard", Callback: func() { action = "standard" }},
+			&g2.Button{Size: 50, Triggers: triggers, Name: "Moba", Callback: func() { action = "moba" }},
 			&g2.Button{Size: 50, Triggers: triggers, Name: "Back", Callback: func() { tm.Pop() }},
 		})
 
@@ -229,22 +232,15 @@ func standardHookup() {
 	t := texture.LoadFromPath(filepath.Join(base.GetDataDir(), "background/buttons1.jpg"))
 	for {
 		sys.Think()
-		switch {
-		case debugAsArchitect:
-			g.StopEventListening()
-			engine, local := debugHookup("debug", true)
-			mainLoop(engine, local)
-			g.RestartEventListening()
-			debugAsArchitect = false
-		case debugAsInvaders:
-			g.StopEventListening()
-			engine, local := debugHookup("debug", false)
-			mainLoop(engine, local)
-			g.RestartEventListening()
-			debugAsInvaders = false
-		case quit:
+		if action == "Quit" {
 			return
-		default:
+		}
+		if action == "standard" || action == "moba" {
+			g.StopEventListening()
+			engine, local := debugHookup(action)
+			mainLoop(engine, local)
+			g.RestartEventListening()
+			action = ""
 		}
 		render.Queue(func() {
 			gl.ClearColor(0, 0, 0, 1)
@@ -292,7 +288,7 @@ func main() {
 	base.LoadAllDictionaries()
 
 	if Version() != "standard" {
-		engine, local := debugHookup(Version(), Version() == "host")
+		engine, local := debugHookup(Version())
 		mainLoop(engine, local)
 	} else {
 		standardHookup()

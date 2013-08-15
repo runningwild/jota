@@ -297,11 +297,16 @@ type Game struct {
 
 	GameThinks int
 
-	// Set to true once the players are close enough to the goal
-	InvadersWin bool
+	// Game Modes - Exactly one of these will be set
+	Standard *GameModeStandard
+	Moba     *GameModeMoba
+}
 
+type GameModeStandard struct {
 	Architect architectData
 	Invaders  invadersData
+}
+type GameModeMoba struct {
 }
 
 func (g *Game) NextGid() Gid {
@@ -402,13 +407,6 @@ func (g *Game) Think() {
 	}()
 	g.GameThinks++
 
-	// Check for invaders victory
-	// Currently there is no invaders victory condition
-	victory := false
-	if victory {
-		g.InvadersWin = true
-	}
-
 	// if g.GameThinks%10 == 0 {
 	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
 	// }
@@ -422,11 +420,8 @@ func (g *Game) Think() {
 	g.DoForLevels(func(gid Gid, level *Level) {
 		level.ManaSource.Think(g.Ents)
 	})
-	g.Architect.Think(g)
 
 	// Advance players, check for collisions, add segments
-	// TODO: VERY IMPORTANT - any iteration through ents or traps
-	// must be done in a deterministic order.
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		ent.Think(g)
 		pos := ent.Pos()
@@ -456,6 +451,15 @@ func (g *Game) Think() {
 		outerEnt = outer
 		g.DoForEnts(inner)
 	})
+
+	switch {
+	case g.Moba != nil:
+		// Do moba thinking
+	case g.Standard != nil:
+		// Do standard thinking
+	default:
+		panic("Game mode not set")
+	}
 }
 
 func clamp(v, low, high float64) float64 {
