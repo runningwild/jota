@@ -16,12 +16,16 @@ type BaseEnt struct {
 		Angle float64
 	}
 	Gid          Gid
+	Side_        int
 	CurrentLevel Gid
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
 }
 
+func (b *BaseEnt) Side() int {
+	return b.Side_
+}
 func (b *BaseEnt) OnDeath(g *Game) {
 }
 

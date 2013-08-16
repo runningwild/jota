@@ -30,6 +30,8 @@ type localPlayer struct {
 	// This player's gid
 	gid Gid
 
+	side int
+
 	// The device controlling this player.
 	deviceIndex gin.DeviceIndex
 
@@ -80,6 +82,9 @@ type LocalData struct {
 
 	mode localMode
 
+	// Side of the people on this computer - this should be 0 in standard mode.
+	side int
+
 	// All of the players controlled by humans on localhost.
 	players []*localPlayer
 
@@ -104,6 +109,10 @@ type LocalData struct {
 	nodeTextureData    []byte
 	nodeWarpingTexture gl.Uint
 	nodeWarpingData    []byte
+}
+
+func (l *LocalData) DebugSetSide(side int) {
+	l.side = side
 }
 
 func (l *LocalData) DebugSwapRoles() {
@@ -245,11 +254,15 @@ func (g *Game) renderLosMask(local *LocalData) {
 	}
 	var playerPos []linear.Vec2
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if _, ok := ent.(*Player); ok {
+		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == localModeArchitect) {
 			playerPos = append(playerPos, ent.Pos())
 			// base.Log().Printf("Los(%d): %v", gid, ent.(*Player).Los.WriteDepthBuffer(dst, maxDist))
 		}
 	})
+	if len(playerPos) == 0 {
+		// TODO: Probably shouldn't have even gotten here
+		return
+	}
 	base.SetUniformV2Array("los", "playerPos", playerPos)
 	base.SetUniformI("los", "losNumPlayers", len(playerPos))
 	gl.Color4d(0, 0, 1, 1)
@@ -266,7 +279,7 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.EnableShader("")
 }
 
-func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
+func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData, side int) {
 	local.doInvadersFocusRegion(g)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
@@ -328,7 +341,7 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok {
+		if p, ok := ent.(*Player); ok && p.Side() == side {
 			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 			losCount++
 		}
@@ -510,7 +523,7 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	}
 }
 
-// Draws everything that is relevant to the players on a compute, but not the
+// Draws everything that is relevant to the players on a computer, but not the
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
@@ -529,15 +542,16 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	case localModeArchitect:
 		g.renderLocalArchitect(region, local)
 	case localModeInvaders:
-		g.renderLocalInvaders(region, local)
+		g.renderLocalInvaders(region, local, local.side)
 	case localModeMoba:
 		// g.renderLocalInvaders(region, local)
 	}
 }
 
-func (local *LocalData) SetLocalPlayer(gid Gid, index gin.DeviceIndex) {
+func (local *LocalData) SetLocalPlayer(ent Ent, index gin.DeviceIndex) {
 	var lp localPlayer
-	lp.gid = gid
+	lp.gid = ent.Id()
+	lp.side = ent.Side()
 	lp.deviceIndex = index
 	lp.abs.abilities = append(
 		lp.abs.abilities,
@@ -652,6 +666,9 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
 	g.DoForEnts(func(gid Gid, ent Ent) {
+		if ent.Side() != l.side {
+			return
+		}
 		if player, ok := ent.(*Player); ok {
 			pos := player.Pos()
 			if pos.X < min.X {

@@ -78,6 +78,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
 	var localData *game.LocalData
+	var g *game.Game
 	if version == "client" {
 		engine, err = cgf.NewClientEngine(17, "", 50001, base.Log())
 		if err != nil {
@@ -85,7 +86,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			base.Error().Fatalf("%v", err.Error())
 		}
 		localData = game.NewLocalDataArchitect(engine, sys)
-		g := engine.GetState().(*game.Game)
+		g = engine.GetState().(*game.Game)
 		for _, ent := range g.Ents {
 			if _, ok := ent.(*game.Player); ok {
 				players = append(players, ent.Id())
@@ -93,7 +94,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		}
 	} else {
 		sys.Think()
-		var g game.Game
+		g = new(game.Game)
 		g.Rng = cmwc.MakeGoodCmwc()
 		g.Rng.SeedWithDevRand()
 		g.Ents = make(map[game.Gid]game.Ent)
@@ -108,8 +109,8 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			g.Moba = &game.GameModeMoba{}
 		}
 		if version == "moba" {
-			players = g.AddPlayers(1, 0)
 			players = g.AddPlayers(1, 1)
+			players = g.AddPlayers(1, 0)
 		} else {
 			players = g.AddPlayers(1, 0)
 			players = g.AddPlayers(1, 0)
@@ -118,9 +119,9 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 
 		g.Init()
 		if version == "host" {
-			engine, err = cgf.NewHostEngine(&g, 17, "", 50001, base.Log())
+			engine, err = cgf.NewHostEngine(g, 17, "", 50001, base.Log())
 		} else {
-			engine, err = cgf.NewLocalEngine(&g, 17, base.Log())
+			engine, err = cgf.NewLocalEngine(g, 17, base.Log())
 		}
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
@@ -133,14 +134,14 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	d := sys.GetActiveDevices()
 	n := 0
 	for _, index := range d[gin.DeviceTypeController] {
-		localData.SetLocalPlayer(players[n], index)
+		localData.SetLocalPlayer(g.Ents[players[n]], index)
 		n++
 		if n > len(players) {
 			break
 		}
 	}
 	if len(d[gin.DeviceTypeController]) == 0 {
-		localData.SetLocalPlayer(players[0], 0)
+		localData.SetLocalPlayer(g.Ents[players[0]], 0)
 	}
 
 	base.Log().Printf("Engine Id: %v", engine.Id())
@@ -158,11 +159,21 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData) {
 	ui := g2.Make(0, 0, wdx, wdy)
 	ui.AddChild(&game.GameWindow{Engine: engine, Local: local, Dims: g2.Dims{wdx, wdy}}, g2.AnchorDeadCenter)
 	ui.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
+	side0Index := gin.In().BindDerivedKeyFamily("Side0", gin.In().MakeBindingFamily(gin.Key1, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
+	side1Index := gin.In().BindDerivedKeyFamily("Side1", gin.In().MakeBindingFamily(gin.Key2, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
+	side0Key := gin.In().GetKeyFlat(side0Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
+	side1Key := gin.In().GetKeyFlat(side1Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	defer ui.StopEventListening()
 	for {
 		<-ticker
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
 			return
+		}
+		if side0Key.FramePressCount() > 0 {
+			local.DebugSetSide(0)
+		}
+		if side1Key.FramePressCount() > 0 {
+			local.DebugSetSide(1)
 		}
 		sys.Think()
 		render.Queue(func() {

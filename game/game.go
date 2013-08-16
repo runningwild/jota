@@ -163,7 +163,7 @@ func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
 
 		// NEXT: REthing Gids and how the levels are laid out - should they just
 		// be indexed by gids?
-
+		p.Side_ = side
 		p.Gid = g.NextGid()
 		p.Processes = make(map[int]Process)
 		p.Los = los.Make(LosPlayerHorizon)
@@ -270,6 +270,7 @@ type Ent interface {
 	Id() Gid
 	Pos() linear.Vec2
 	Level() Gid
+	Side() int // which side the ent belongs to
 
 	// Need to have a SetPos method because we don't want ents moving through
 	// walls.
