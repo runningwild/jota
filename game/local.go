@@ -247,6 +247,7 @@ func (g *Game) renderLosMask(local *LocalData) {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if _, ok := ent.(*Player); ok {
 			playerPos = append(playerPos, ent.Pos())
+			// base.Log().Printf("Los(%d): %v", gid, ent.(*Player).Los.WriteDepthBuffer(dst, maxDist))
 		}
 	})
 	base.SetUniformV2Array("los", "playerPos", playerPos)
@@ -329,6 +330,7 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if p, ok := ent.(*Player); ok {
 			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
+			losCount++
 		}
 	})
 	gl.Color4d(1, 1, 1, 1)
@@ -493,6 +495,7 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if p, ok := ent.(*Player); ok {
 			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
+			losCount++
 		}
 	})
 	gl.Color4d(1, 1, 1, 1)

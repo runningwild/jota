@@ -118,7 +118,22 @@ type Player struct {
 	Los *los.Los
 }
 
-func (g *Game) AddPlayers(numPlayers int) []Gid {
+// AddPlayers adds numPlayers to the specified side.  In standard game mode side
+// should be zero, otherwise it should be between 0 and number of side - 1,
+// inclusive.
+func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
+	switch {
+	case g.Standard != nil:
+		if side != 0 {
+			base.Error().Fatalf("AddPlayers expects side == 0 for Standard game mode.")
+		}
+	case g.Moba != nil:
+		if side < 0 {
+			base.Error().Fatalf("AddPlayers expects side >= 0 for Moba game mode.")
+		}
+	default:
+		base.Error().Fatalf("Cannot add players without first specifying a game mode.")
+	}
 	var gids []Gid
 	for i := 0; i < numPlayers; i++ {
 		var p Player

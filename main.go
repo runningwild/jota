@@ -107,7 +107,13 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		} else {
 			g.Moba = &game.GameModeMoba{}
 		}
-		players = g.AddPlayers(1)
+		if version == "moba" {
+			players = g.AddPlayers(1, 0)
+			players = g.AddPlayers(1, 1)
+		} else {
+			players = g.AddPlayers(1, 0)
+			players = g.AddPlayers(1, 0)
+		}
 		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
