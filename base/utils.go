@@ -265,7 +265,6 @@ func (s sortAnythings) Swap(i, j int) { s.values[i], s.values[j] = s.values[j], 
 // This is a slowish way to iterate through a map in a deterministic order.
 // If this is ever too slow then either a non-reflecty version should be made.
 func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
-	start := time.Now()
 	mapInValue := reflect.ValueOf(mapIn)
 	if mapInValue.Kind() != reflect.Map {
 		panic(fmt.Sprintf("Parameter 'mapIn' to iterateOrdered must be a map, not a %v", mapInValue.Kind()))
@@ -289,22 +288,15 @@ func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
 	if doValue.Type().In(0) != mapInValue.Type().Key() || doValue.Type().In(1) != mapInValue.Type().Elem() {
 		panic("The first and second parameters to do must match the types of the key and values of mapIn, respectively.")
 	}
-	fmt.Printf("Checking time: %vms\n", time.Now().Sub(start).Seconds()*1000)
-	start = time.Now()
 
 	keys := mapInValue.MapKeys()
 	if len(keys) == 0 {
 		return
 	}
-	fmt.Printf("GetKeys: %vms\n", time.Now().Sub(start).Seconds()*1000)
-	start = time.Now()
+
 	sort.Sort(sortAnythings{keys, lessValue})
-	fmt.Printf("Sorting time: %vms\n", time.Now().Sub(start).Seconds()*1000)
-	start = time.Now()
 	for _, key := range keys {
 		value := mapInValue.MapIndex(key)
 		doValue.Call([]reflect.Value{key, value})
 	}
-	fmt.Printf("Doit time: %vms\n", time.Now().Sub(start).Seconds()*1000)
-	start = time.Now()
 }
