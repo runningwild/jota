@@ -52,6 +52,10 @@ type cameraInfo struct {
 	cursorHidden bool
 }
 
+type localEditorData struct {
+	camera cameraInfo
+}
+
 type localMobaData struct {
 	camera cameraInfo
 }
@@ -81,7 +85,7 @@ type LocalData struct {
 	// The engine running this game, so that the game can apply events to itself.
 	engine *cgf.Engine
 
-	mode localMode
+	mode LocalMode
 
 	// Side of the people on this computer - this should be 0 in standard mode.
 	side int
@@ -104,6 +108,7 @@ type LocalData struct {
 	architect localArchitectData
 	invaders  localInvadersData
 	moba      localMobaData
+	editor    localEditorData
 
 	// For displaying the mana grid
 	nodeTextureId      gl.Uint
@@ -116,13 +121,8 @@ func (l *LocalData) DebugSetSide(side int) {
 	l.side = side
 }
 
-func (l *LocalData) DebugSwapRoles() {
-	switch l.mode {
-	case localModeArchitect:
-		l.mode = localModeInvaders
-	case localModeInvaders:
-		l.mode = localModeArchitect
-	}
+func (l *LocalData) DebugChangeMode(mode LocalMode) {
+	l.mode = mode
 }
 
 type gameResponderWrapper struct {
@@ -135,34 +135,35 @@ func (grw *gameResponderWrapper) HandleEventGroup(group gin.EventGroup) {
 
 func (grw *gameResponderWrapper) Think(int64) {}
 
-type localMode int
+type LocalMode int
 
 const (
-	localModeInvaders localMode = iota
-	localModeArchitect
-	localModeMoba
+	LocalModeInvaders LocalMode = iota
+	LocalModeArchitect
+	LocalModeMoba
+	LocalModeEditor
 )
 
 func NewLocalDataMoba(engine *cgf.Engine, sys system.System) *LocalData {
-	return newLocalDataHelper(engine, sys, localModeMoba)
+	return newLocalDataHelper(engine, sys, LocalModeMoba)
 }
 
 func NewLocalDataInvaders(engine *cgf.Engine, sys system.System) *LocalData {
-	return newLocalDataHelper(engine, sys, localModeInvaders)
+	return newLocalDataHelper(engine, sys, LocalModeInvaders)
 }
 
 func NewLocalDataArchitect(engine *cgf.Engine, sys system.System) *LocalData {
-	return newLocalDataHelper(engine, sys, localModeArchitect)
+	return newLocalDataHelper(engine, sys, LocalModeArchitect)
 }
 
-func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode localMode) *LocalData {
+func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *LocalData {
 	var local LocalData
 	if local.engine != nil {
 		base.Error().Fatalf("Engine has already been set.")
 	}
 	local.engine = engine
 	local.mode = mode
-	if mode == localModeArchitect {
+	if mode == LocalModeArchitect {
 		// local.architect.abs.abilities =
 		// 	append(
 		// 		local.architect.abs.abilities,
@@ -248,14 +249,14 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
 	base.SetUniformF("los", "losResolution", los.Resolution)
 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-	if local.mode == localModeArchitect {
+	if local.mode == LocalModeArchitect {
 		base.SetUniformI("los", "architect", 1)
 	} else {
 		base.SetUniformI("los", "architect", 0)
 	}
 	var playerPos []linear.Vec2
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == localModeArchitect) {
+		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == LocalModeArchitect) {
 			playerPos = append(playerPos, ent.Pos())
 			// base.Log().Printf("Los(%d): %v", gid, ent.(*Player).Los.WriteDepthBuffer(dst, maxDist))
 		}
@@ -532,21 +533,23 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	var camera *cameraInfo
 	switch local.mode {
-	case localModeArchitect:
+	case LocalModeArchitect:
 		camera = &local.architect.camera
-	case localModeInvaders:
+	case LocalModeInvaders:
 		camera = &local.invaders.camera
-	case localModeMoba:
+	case LocalModeMoba:
 		camera = &local.moba.camera
+	case LocalModeEditor:
+		camera = &local.editor.camera
 	}
 	camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	switch local.mode {
-	case localModeArchitect:
+	case LocalModeArchitect:
 		g.renderLocalArchitect(region, local)
-	case localModeInvaders:
+	case LocalModeInvaders:
 		g.renderLocalInvaders(region, local, local.side)
-	case localModeMoba:
+	case LocalModeMoba:
 		// g.renderLocalInvaders(region, local)
 	}
 }
@@ -603,7 +606,7 @@ func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 		return
 	}
 	var mouse linear.Vec2
-	if l.mode == localModeArchitect {
+	if l.mode == LocalModeArchitect {
 		mx, my := l.sys.GetCursorPos()
 		mouse.X = float64(mx)
 		mouse.Y = float64(my)
@@ -732,27 +735,21 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 
 func (l *LocalData) Think(g *Game) {
 	switch l.mode {
-	case localModeArchitect:
+	case LocalModeArchitect:
 		l.localThinkArchitect(g)
-	case localModeInvaders:
+	case LocalModeInvaders:
 		l.localThinkInvaders(g)
-	case localModeMoba:
+	case LocalModeMoba:
 		//		l.localThinkInvaders(g)
 	}
 }
 
 func (l *LocalData) handleEventGroupArchitect(group gin.EventGroup) {
-	if found, event := group.FindEvent(gin.AnyKey1); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, "", 0, true)
-	}
-	if found, event := group.FindEvent(gin.AnyKey2); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, "", 1, true)
-	}
-	if found, event := group.FindEvent(gin.AnyKey3); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, "", 2, true)
-	}
-	if found, event := group.FindEvent(gin.AnyKey4); found && event.Type == gin.Press {
-		l.activateAbility(&l.architect.abs, "", 3, true)
+	keys := []gin.KeyId{gin.AnyKey1, gin.AnyKey2, gin.AnyKey3, gin.AnyKey4, gin.AnyKey5, gin.AnyKey6, gin.AnyKey7, gin.AnyKey8, gin.AnyKey9}
+	for i := range l.architect.abs.abilities {
+		if found, event := group.FindEvent(keys[i]); found && event.Type == gin.Press {
+			l.activateAbility(&l.architect.abs, "", i, true)
+		}
 	}
 	if l.architect.abs.activeAbility != nil {
 		l.architect.abs.activeAbility.Respond("", group)
@@ -786,11 +783,11 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 
 func (l *LocalData) HandleEventGroup(group gin.EventGroup) {
 	switch l.mode {
-	case localModeArchitect:
+	case LocalModeArchitect:
 		l.handleEventGroupArchitect(group)
-	case localModeInvaders:
+	case LocalModeInvaders:
 		l.handleEventGroupInvaders(group)
-	case localModeMoba:
+	case LocalModeMoba:
 		// l.handleEventGroupInvaders(group)
 	}
 }

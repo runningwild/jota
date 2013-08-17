@@ -161,8 +161,10 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 	ui.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
 	side0Index := gin.In().BindDerivedKeyFamily("Side0", gin.In().MakeBindingFamily(gin.Key1, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
 	side1Index := gin.In().BindDerivedKeyFamily("Side1", gin.In().MakeBindingFamily(gin.Key2, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
+	side2Index := gin.In().BindDerivedKeyFamily("Side2", gin.In().MakeBindingFamily(gin.Key3, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
 	side0Key := gin.In().GetKeyFlat(side0Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	side1Key := gin.In().GetKeyFlat(side1Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
+	side2Key := gin.In().GetKeyFlat(side2Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	defer ui.StopEventListening()
 	for {
 		<-ticker
@@ -178,8 +180,14 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 			}
 		}
 		if mode == "standard" {
-			if gin.In().GetKey(gin.AnyKeyL).FramePressCount() > 0 {
-				local.DebugSwapRoles()
+			if side0Key.FramePressCount() > 0 {
+				local.DebugChangeMode(game.LocalModeInvaders)
+			}
+			if side1Key.FramePressCount() > 0 {
+				local.DebugChangeMode(game.LocalModeArchitect)
+			}
+			if side2Key.FramePressCount() > 0 {
+				local.DebugChangeMode(game.LocalModeEditor)
 			}
 		}
 		sys.Think()
