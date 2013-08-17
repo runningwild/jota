@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
@@ -335,8 +336,9 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData, side int)
 	}
 
 	gui.SetFontColor(0, 255, 0, 255)
-	base.GetDictionary("luxisr").RenderString("Start!", g.Levels[GidInvadersStart].Room.Start.X, g.Levels[GidInvadersStart].Room.Start.Y, 0, 100, gui.Center)
-	base.GetDictionary("luxisr").RenderString("End!", g.Levels[GidInvadersStart].Room.End.X, g.Levels[GidInvadersStart].Room.End.Y, 0, 100, gui.Center)
+	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
+		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
+	}
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
@@ -500,8 +502,9 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	}
 
 	gl.Color4ub(0, 255, 0, 255)
-	base.GetDictionary("luxisr").RenderString("Start!", g.Levels[GidInvadersStart].Room.Start.X, g.Levels[GidInvadersStart].Room.Start.Y-25, 0, 50, gui.Center)
-	base.GetDictionary("luxisr").RenderString("End!", g.Levels[GidInvadersStart].Room.End.X, g.Levels[GidInvadersStart].Room.End.Y-25, 0, 50, gui.Center)
+	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
+		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
+	}
 
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0

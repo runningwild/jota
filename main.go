@@ -109,8 +109,8 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			g.Moba = &game.GameModeMoba{}
 		}
 		if version == "moba" {
-			players = g.AddPlayers(1, 1)
-			players = g.AddPlayers(1, 0)
+			players = g.AddPlayers(2, 1)
+			players = g.AddPlayers(2, 0)
 		} else {
 			players = g.AddPlayers(1, 0)
 			players = g.AddPlayers(1, 0)
@@ -149,7 +149,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	return engine, localData
 }
 
-func mainLoop(engine *cgf.Engine, local *game.LocalData) {
+func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 	defer engine.Kill()
 	var profile_output *os.File
 	var num_mem_profiles int
@@ -169,11 +169,18 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData) {
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
 			return
 		}
-		if side0Key.FramePressCount() > 0 {
-			local.DebugSetSide(0)
+		if mode == "moba" {
+			if side0Key.FramePressCount() > 0 {
+				local.DebugSetSide(0)
+			}
+			if side1Key.FramePressCount() > 0 {
+				local.DebugSetSide(1)
+			}
 		}
-		if side1Key.FramePressCount() > 0 {
-			local.DebugSetSide(1)
+		if mode == "standard" {
+			if gin.In().GetKey(gin.AnyKeyL).FramePressCount() > 0 {
+				local.DebugSwapRoles()
+			}
 		}
 		sys.Think()
 		render.Queue(func() {
@@ -183,9 +190,6 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData) {
 			sys.SwapBuffers()
 		})
 		render.Purge()
-		if gin.In().GetKey(gin.AnyKeyL).FramePressCount() > 0 {
-			local.DebugSwapRoles()
-		}
 		// TODO: Replace the 'P' key with an appropriate keybind
 		var err error
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {
@@ -259,7 +263,7 @@ func standardHookup() {
 		if action == "standard" || action == "moba" {
 			g.StopEventListening()
 			engine, local := debugHookup(action)
-			mainLoop(engine, local)
+			mainLoop(engine, local, action)
 			g.RestartEventListening()
 			action = ""
 		}
@@ -310,7 +314,7 @@ func main() {
 
 	if Version() != "standard" {
 		engine, local := debugHookup(Version())
-		mainLoop(engine, local)
+		mainLoop(engine, local, "standard")
 	} else {
 		standardHookup()
 	}

@@ -13,7 +13,7 @@ type Portal struct {
 type Room struct {
 	Walls   map[string]linear.Poly
 	Lava    map[string]linear.Poly
-	Start   linear.Vec2
+	Starts  []linear.Vec2
 	End     linear.Vec2
 	Portals map[string]Portal
 	Dx, Dy  int

@@ -12,8 +12,7 @@ import (
 type Room struct {
 	Walls  map[string]linear.Poly
 	Lava   map[string]linear.Poly
-	Start  linear.Vec2
-	End    linear.Vec2
+	Starts []linear.Vec2
 	Dx, Dy int
 	NextId int
 }
@@ -108,8 +107,7 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 		}
 	}
 
-	room.Start = poss[a]
-	room.End = poss[b]
+	room.Starts = []linear.Vec2{poss[a], poss[b]}
 
 	for i, p := range poss {
 		if i == a || i == b {

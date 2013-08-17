@@ -128,8 +128,8 @@ func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
 			base.Error().Fatalf("AddPlayers expects side == 0 for Standard game mode.")
 		}
 	case g.Moba != nil:
-		if side < 0 {
-			base.Error().Fatalf("AddPlayers expects side >= 0 for Moba game mode.")
+		if side < 0 || side >= len(g.Levels[GidInvadersStart].Room.Starts) {
+			base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Levels[GidInvadersStart].Room.Starts)-1)
 		}
 	default:
 		base.Error().Fatalf("Cannot add players without first specifying a game mode.")
@@ -159,7 +159,7 @@ func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
 
 		// Evenly space the players on a circle around the starting position.
 		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(numPlayers))
-		p.Position = g.Levels[GidInvadersStart].Room.Start.Add(rot)
+		p.Position = g.Levels[GidInvadersStart].Room.Starts[side].Add(rot)
 
 		// NEXT: REthing Gids and how the levels are laid out - should they just
 		// be indexed by gids?
