@@ -126,7 +126,11 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		localData = game.NewLocalDataInvaders(engine, sys)
+		if version == "moba" {
+			localData = game.NewLocalDataMoba(engine, sys)
+		} else {
+			localData = game.NewLocalDataInvaders(engine, sys)
+		}
 	}
 
 	// Hook the players up regardless of in we're architect or not, since we can

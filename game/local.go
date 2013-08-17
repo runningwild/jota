@@ -138,7 +138,8 @@ func (grw *gameResponderWrapper) Think(int64) {}
 type LocalMode int
 
 const (
-	LocalModeInvaders LocalMode = iota
+	LocalModeNone LocalMode = iota
+	LocalModeInvaders
 	LocalModeArchitect
 	LocalModeMoba
 	LocalModeEditor
@@ -258,7 +259,6 @@ func (g *Game) renderLosMask(local *LocalData) {
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == LocalModeArchitect) {
 			playerPos = append(playerPos, ent.Pos())
-			// base.Log().Printf("Los(%d): %v", gid, ent.(*Player).Los.WriteDepthBuffer(dst, maxDist))
 		}
 	})
 	if len(playerPos) == 0 {
@@ -281,8 +281,17 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.EnableShader("")
 }
 
-func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData, side int) {
-	local.doInvadersFocusRegion(g)
+func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
+	g.renderLocalHelper(region, local, &local.invaders.camera)
+}
+
+func (g *Game) renderLocalMoba(region g2.Region, local *LocalData) {
+	g.renderLocalHelper(region, local, &local.moba.camera)
+}
+
+// For invaders or moba, does a lot of basic stuff common to both
+func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo) {
+	camera.doInvadersFocusRegion(g, local.side)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -294,7 +303,7 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData, side int)
 	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
 	defer gl.PopAttrib()
 
-	current := local.invaders.camera.current
+	current := camera.current
 	gl.Ortho(
 		gl.Double(current.mid.X-current.dims.X/2),
 		gl.Double(current.mid.X+current.dims.X/2),
@@ -344,7 +353,7 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData, side int)
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok && p.Side() == side {
+		if p, ok := ent.(*Player); ok && p.Side() == local.side {
 			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 			losCount++
 		}
@@ -402,8 +411,7 @@ func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
 	return true
 }
 
-func (l *LocalData) doArchitectFocusRegion(g *Game) {
-	camera := &l.architect.camera
+func (camera *cameraInfo) doArchitectFocusRegion(g *Game, sys system.System) {
 	if camera.limit.mid.X == 0 && camera.limit.mid.Y == 0 {
 		// On the very first frame the limit midpoint will be (0,0), which should
 		// never happen after the game begins.  We use this as an opportunity to
@@ -432,7 +440,7 @@ func (l *LocalData) doArchitectFocusRegion(g *Game) {
 	camera.current.dims = camera.limit.dims.Scale(zoom)
 	if gin.In().GetKey(gin.AnySpace).CurPressAmt() > 0 {
 		if !camera.cursorHidden {
-			l.sys.HideCursor(true)
+			sys.HideCursor(true)
 			camera.cursorHidden = true
 		}
 		x := gin.In().GetKey(gin.AnyMouseXAxis).FramePressAmt()
@@ -441,14 +449,14 @@ func (l *LocalData) doArchitectFocusRegion(g *Game) {
 		camera.current.mid.Y -= float64(y) * 2
 	} else {
 		if camera.cursorHidden {
-			l.sys.HideCursor(false)
+			sys.HideCursor(false)
 			camera.cursorHidden = false
 		}
 	}
 }
 
 func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
-	local.doArchitectFocusRegion(g)
+	local.architect.camera.doArchitectFocusRegion(g, local.sys)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -548,9 +556,9 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	case LocalModeArchitect:
 		g.renderLocalArchitect(region, local)
 	case LocalModeInvaders:
-		g.renderLocalInvaders(region, local, local.side)
+		g.renderLocalInvaders(region, local)
 	case LocalModeMoba:
-		// g.renderLocalInvaders(region, local)
+		g.renderLocalMoba(region, local)
 	}
 }
 
@@ -668,11 +676,11 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	}
 }
 
-func (l *LocalData) doInvadersFocusRegion(g *Game) {
+func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if ent.Side() != l.side {
+		if ent.Side() != side {
 			return
 		}
 		if player, ok := ent.(*Player); ok {
@@ -710,15 +718,14 @@ func (l *LocalData) doInvadersFocusRegion(g *Game) {
 
 	mid := min.Add(max).Scale(0.5)
 	dims := max.Sub(min)
-	if dims.X/dims.Y < l.invaders.camera.regionDims.X/l.invaders.camera.regionDims.Y {
-		dims.X = dims.Y * l.invaders.camera.regionDims.X / l.invaders.camera.regionDims.Y
+	if dims.X/dims.Y < camera.regionDims.X/camera.regionDims.Y {
+		dims.X = dims.Y * camera.regionDims.X / camera.regionDims.Y
 	} else {
-		dims.Y = dims.X * l.invaders.camera.regionDims.Y / l.invaders.camera.regionDims.X
+		dims.Y = dims.X * camera.regionDims.Y / camera.regionDims.X
 	}
-	l.invaders.camera.target.dims = dims
-	l.invaders.camera.target.mid = mid
+	camera.target.dims = dims
+	camera.target.mid = mid
 
-	camera := &l.invaders.camera
 	if camera.current.mid.X == 0 && camera.current.mid.Y == 0 {
 		// On the very first frame the current midpoint will be (0,0), which should
 		// never happen after the game begins.  In this one case we'll immediately
