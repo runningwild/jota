@@ -157,6 +157,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 	defer engine.Kill()
 	var profile_output *os.File
+	var contention_output *os.File
 	var num_mem_profiles int
 	// ui.AddChild(base.MakeConsole())
 
@@ -211,18 +212,34 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 				if err == nil {
 					err = pprof.StartCPUProfile(profile_output)
 					if err != nil {
-						fmt.Printf("Unable to start CPU profile: %v\n", err)
+						base.Log().Printf("Unable to start CPU profile: %v\n", err)
 						profile_output.Close()
 						profile_output = nil
 					}
-					fmt.Printf("profout: %v\n", profile_output)
+					base.Log().Printf("cpu prof: %v\n", profile_output)
 				} else {
-					fmt.Printf("Unable to start CPU profile: %v\n", err)
+					base.Log().Printf("Unable to start CPU profile: %v\n", err)
 				}
 			} else {
 				pprof.StopCPUProfile()
 				profile_output.Close()
 				profile_output = nil
+			}
+		}
+
+		if gin.In().GetKey(gin.AnyKeyL).FramePressCount() > 0 {
+			if contention_output == nil {
+				contention_output, err = os.Create(filepath.Join(datadir, "contention.prof"))
+				if err == nil {
+					runtime.SetBlockProfileRate(1)
+					base.Log().Printf("contention prof: %v\n", contention_output)
+				} else {
+					base.Log().Printf("Unable to start contention profile: %v\n", err)
+				}
+			} else {
+				pprof.Lookup("block").WriteTo(contention_output, 0)
+				contention_output.Close()
+				contention_output = nil
 			}
 		}
 
