@@ -416,17 +416,22 @@ func (camera *cameraInfo) doArchitectFocusRegion(g *Game, sys system.System) {
 		// On the very first frame the limit midpoint will be (0,0), which should
 		// never happen after the game begins.  We use this as an opportunity to
 		// init the data now that we know the region we're working with.
-		if camera.regionDims.X/camera.regionDims.Y > float64(g.Levels[GidInvadersStart].Room.Dx)/float64(g.Levels[GidInvadersStart].Room.Dy) {
-			camera.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
-			camera.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx) * float64(g.Levels[GidInvadersStart].Room.Dy) / camera.regionDims.Y
+		rdx := float64(g.Levels[GidInvadersStart].Room.Dx)
+		rdy := float64(g.Levels[GidInvadersStart].Room.Dy)
+		if camera.regionDims.X/camera.regionDims.Y > rdx/rdy {
+			camera.limit.dims.Y = rdy
+			camera.limit.dims.X = rdy * camera.regionDims.X / camera.regionDims.Y
 		} else {
-			camera.limit.dims.X = float64(g.Levels[GidInvadersStart].Room.Dx)
-			camera.limit.dims.Y = float64(g.Levels[GidInvadersStart].Room.Dy) * float64(g.Levels[GidInvadersStart].Room.Dx) / camera.regionDims.X
+			camera.limit.dims.X = rdx
+			camera.limit.dims.Y = rdx * camera.regionDims.Y / camera.regionDims.X
 		}
-		camera.limit.mid.X = float64(g.Levels[GidInvadersStart].Room.Dx / 2)
-		camera.limit.mid.Y = float64(g.Levels[GidInvadersStart].Room.Dy / 2)
+		camera.limit.mid.X = rdx / 2
+		camera.limit.mid.Y = rdy / 2
 		camera.current = camera.limit
 		camera.zoom = 0
+		base.Log().Printf("Region Dims: %2.2v", camera.regionDims)
+		base.Log().Printf("Room Dims: %2.2v %2.2v", rdx, rdy)
+		base.Log().Printf("Limit Dims: %2.2v", camera.limit.dims)
 	}
 	wheel := gin.In().GetKeyFlat(gin.MouseWheelVertical, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	camera.zoom += wheel.FramePressAmt() / 500
