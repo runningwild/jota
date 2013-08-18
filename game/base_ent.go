@@ -28,6 +28,9 @@ func (b *BaseEnt) Side() int {
 }
 func (b *BaseEnt) OnDeath(g *Game) {
 }
+func (b *BaseEnt) Walls() [][]linear.Vec2 {
+	return nil
+}
 
 func (b *BaseEnt) ApplyForce(f linear.Vec2) {
 	b.Velocity = b.Velocity.Add(f.Scale(1 / b.Mass()))
@@ -129,7 +132,9 @@ func (b *BaseEnt) Think(g *Game) {
 	sizeSq := size * size
 	prev := b.Position
 	b.Position = b.Position.Add(b.Velocity)
-	for _, poly := range room.Walls {
+	walls := g.temp.AllWalls[b.CurrentLevel]
+	for _, _poly := range walls {
+		poly := linear.Poly(_poly)
 		for i := range poly {
 			// Don't bother with back-facing segments
 			if poly.Seg(i).Right(b.Position) {

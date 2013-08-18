@@ -227,7 +227,8 @@ func (p *Player) Draw(game *Game) {
 
 func (p *Player) Think(g *Game) {
 	p.Los.Reset(p.Pos())
-	for polyIndex, poly := range g.Levels[p.Level()].Room.Walls {
+	for _, _poly := range g.temp.AllWalls[p.Level()] {
+		poly := linear.Poly(_poly)
 		// maxDistSq := 0.0
 		// for i := 1; i < len(poly); i++ {
 		// 	distSq := poly[i].Sub(poly[0]).Mag2()
@@ -244,7 +245,7 @@ func (p *Player) Think(g *Game) {
 			if seg.Right(p.Position) {
 				continue
 			}
-			p.Los.DrawSeg(seg, polyIndex)
+			p.Los.DrawSeg(seg, "")
 
 		}
 	}
@@ -263,9 +264,15 @@ type Ent interface {
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 
+	// If this Ent is immovable it may provide walls that will be considered just
+	// like normal walls.
+	Walls() [][]linear.Vec2
+
 	// Stats based methods
 	OnDeath(g *Game)
 	Stats() *stats.Inst
+	Mass() float64
+	Vel() linear.Vec2
 
 	Id() Gid
 	Pos() linear.Vec2
@@ -276,9 +283,6 @@ type Ent interface {
 	// walls.
 	SetPos(pos linear.Vec2)
 	SetLevel(Gid)
-
-	Mass() float64
-	Vel() linear.Vec2
 
 	Supply(mana Mana) Mana
 }
@@ -316,6 +320,12 @@ type Game struct {
 	// Game Modes - Exactly one of these will be set
 	Standard *GameModeStandard
 	Moba     *GameModeMoba
+
+	temp struct {
+		// This include all room walls for each room, and all walls declared by any
+		// ents in that room.  This is updated on each Think().
+		AllWalls map[Gid][][]linear.Vec2
+	}
 }
 
 type GameModeStandard struct {
@@ -422,6 +432,22 @@ func (g *Game) Think() {
 		}
 	}()
 	g.GameThinks++
+
+	g.temp.AllWalls = make(map[Gid][][]linear.Vec2)
+	for gid := range g.Levels {
+		var allWalls [][]linear.Vec2
+		base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
+			allWalls = append(allWalls, []linear.Vec2(walls))
+		})
+		g.DoForEnts(func(entGid Gid, ent Ent) {
+			if ent.Level() == gid {
+				for _, walls := range ent.Walls() {
+					allWalls = append(allWalls, walls)
+				}
+			}
+		})
+		g.temp.AllWalls[gid] = allWalls
+	}
 
 	// if g.GameThinks%10 == 0 {
 	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})

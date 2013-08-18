@@ -747,7 +747,7 @@ func (l *LocalData) Think(g *Game) {
 	case LocalModeInvaders:
 		l.localThinkInvaders(g)
 	case LocalModeMoba:
-		//		l.localThinkInvaders(g)
+		l.localThinkInvaders(g)
 	}
 }
 
@@ -795,6 +795,6 @@ func (l *LocalData) HandleEventGroup(group gin.EventGroup) {
 	case LocalModeInvaders:
 		l.handleEventGroupInvaders(group)
 	case LocalModeMoba:
-		// l.handleEventGroupInvaders(group)
+		l.handleEventGroupInvaders(group)
 	}
 }
