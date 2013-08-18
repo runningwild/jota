@@ -123,6 +123,8 @@ type ManaSource struct {
 
 	nodes    [][]node
 	rawNodes []node // the underlying array for nodes
+
+	thinks int
 }
 
 func (ms *ManaSource) GobEncode() ([]byte, error) {
@@ -130,6 +132,10 @@ func (ms *ManaSource) GobEncode() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)
 	err := enc.Encode(ms.options)
+	if err == nil {
+		err = enc.Encode(uint32(ms.thinks))
+		base.Log().Printf("Encode thinks: %d", ms.thinks)
+	}
 	if err == nil {
 		err = enc.Encode(uint32(len(ms.nodes)))
 		base.Log().Printf("Encode dx: %d", len(ms.nodes))
@@ -149,6 +155,12 @@ func (ms *ManaSource) GobDecode(data []byte) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	err := dec.Decode(&ms.options)
 	var d1, d2 int
+	if err == nil {
+		var d uint32
+		err = dec.Decode(&d)
+		ms.thinks = int(d)
+		base.Log().Printf("Decoded %d", d)
+	}
 	if err == nil {
 		var d uint32
 		err = dec.Decode(&d)
@@ -555,7 +567,13 @@ func (ms *ManaSource) supplyPlayers(td *thinkData, players []*Player) {
 var globalThinkData thinkData
 
 func (ms *ManaSource) Think(ents map[Gid]Ent) {
-	ms.regenerateMana()
+	ms.thinks++
+	// If regenerateMana takes too long we can just do it every other frame and
+	// have mana regen at twice the rate.  Should look just as good and will save
+	// on some cycles.
+	if ms.thinks%1 == 0 {
+		ms.regenerateMana()
+	}
 	var players []*Player
 	for _, ent := range ents {
 		if player, ok := ent.(*Player); ok {
