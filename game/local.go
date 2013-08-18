@@ -15,7 +15,7 @@ import (
 	"math"
 )
 
-const LosMaxPlayers = 2
+const LosMaxPlayers = 32
 const LosMaxDist = 1000
 const LosPlayerHorizon = 400
 

@@ -110,12 +110,15 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		}
 		if version == "moba" {
 			players = g.AddPlayers(2, 1)
-			players = g.AddPlayers(2, 0)
-			g.MakeFrozenThrones()
+			players = g.AddPlayers(20, 0)
+			// g.MakeFrozenThrones()
 		} else {
 			players = g.AddPlayers(1, 0)
 			players = g.AddPlayers(1, 0)
 		}
+		g.DoForEnts(func(gid game.Gid, ent game.Ent) {
+			base.Log().Printf("side: %d", ent.Side())
+		})
 		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()

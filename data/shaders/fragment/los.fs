@@ -6,7 +6,7 @@ uniform int architect;
 uniform float dx;
 uniform float dy;
 uniform sampler2D tex0;
-uniform vec2 playerPos[2];
+uniform vec2 playerPos[32];
 void main(void) {
   vec2 pos = vec2(gl_TexCoord[0].x * dx, dy - gl_TexCoord[0].y * dy);
 
