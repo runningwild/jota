@@ -323,8 +323,22 @@ type Game struct {
 
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
-		// ents in that room.  This is updated on each Think().
-		AllWalls map[Gid][][]linear.Vec2
+		// ents in that room.
+		AllWalls      map[Gid][][]linear.Vec2
+		AllWallsDirty bool
+
+		// Map from level to list of ents on that level, in the order that they
+		// should be iterated in.
+		AllEntsByLevel      map[Gid][]Ent
+		AllEntsByLevelDirty bool
+
+		// List of all ents, in the order that they should be iterated in.
+		AllEnts      []Ent
+		AllEntsDirty bool
+
+		// All levels, in the order that they should be iterated in.
+		AllLevels      []*Level
+		AllLevelsDirty bool
 	}
 }
 
@@ -369,15 +383,6 @@ func (g *Game) Init() {
 func init() {
 	gob.Register(&Game{})
 }
-
-// func (g *Game) ReleaseResources() {
-// 	g.DoForEnts(func(gid Gid, ent Ent) {
-// 		if p, ok := ent.(*Player); ok {
-// 			p.ReleaseResources()
-// 		}
-// 	})
-// 	g.ManaSource.ReleaseResources()
-// }
 
 func invSquareDist(dist_sq float64) float64 {
 	return 1.0 / (dist_sq + 1)
@@ -433,29 +438,20 @@ func (g *Game) Think() {
 	}()
 	g.GameThinks++
 
-	g.temp.AllWalls = make(map[Gid][][]linear.Vec2)
-	for gid := range g.Levels {
-		var allWalls [][]linear.Vec2
-		base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
-			allWalls = append(allWalls, []linear.Vec2(walls))
-		})
-		g.DoForEnts(func(entGid Gid, ent Ent) {
-			if ent.Level() == gid {
-				for _, walls := range ent.Walls() {
-					allWalls = append(allWalls, walls)
-				}
-			}
-		})
-		g.temp.AllWalls[gid] = allWalls
+	if g.temp.AllEntsByLevel == nil || g.temp.AllEntsByLevelDirty {
+		g.temp.AllEntsByLevel = make(map[Gid][]Ent)
 	}
-
-	// if g.GameThinks%10 == 0 {
-	// 	g.AddMolecule(linear.Vec2{200 + float64(g.Rng.Int63()%10), 50 + float64(g.Rng.Int63()%10)})
-	// }
+	for gid := range g.temp.AllEntsByLevel {
+		g.temp.AllEntsByLevel[gid] = g.temp.AllEntsByLevel[gid][0:0]
+	}
+	g.temp.AllEnts = g.temp.AllEnts[0:0]
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		if ent.Stats().HealthCur() <= 0 {
 			ent.OnDeath(g)
 			g.RemoveEnt(gid)
+		} else {
+			g.temp.AllEntsByLevel[gid] = append(g.temp.AllEntsByLevel[gid], ent)
+			g.temp.AllEnts = append(g.temp.AllEnts, ent)
 		}
 	})
 
@@ -464,35 +460,51 @@ func (g *Game) Think() {
 	})
 
 	// Advance players, check for collisions, add segments
-	g.DoForEnts(func(gid Gid, ent Ent) {
+	for _, ent := range g.temp.AllEnts {
 		ent.Think(g)
 		pos := ent.Pos()
 		pos.X = clamp(pos.X, 0, float64(g.Levels[ent.Level()].Room.Dx))
 		pos.Y = clamp(pos.Y, 0, float64(g.Levels[ent.Level()].Room.Dy))
 		ent.SetPos(pos)
-	})
-	var outerEnt Ent
-	inner := func(gid Gid, innerEnt Ent) {
-		if innerEnt == outerEnt {
-			return
-		}
-		dist := outerEnt.Pos().Sub(innerEnt.Pos()).Mag()
-		if dist > 25 {
-			return
-		}
-		if dist < 0.01 {
-			return
-		}
-		if dist <= 0.5 {
-			dist = 0.5
-		}
-		force := 20.0 * (25 - dist)
-		outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Norm().Scale(force))
 	}
-	g.DoForEnts(func(gid Gid, outer Ent) {
-		outerEnt = outer
-		g.DoForEnts(inner)
-	})
+
+	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
+		g.temp.AllWalls = make(map[Gid][][]linear.Vec2)
+		for gid := range g.Levels {
+			var allWalls [][]linear.Vec2
+			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
+				allWalls = append(allWalls, []linear.Vec2(walls))
+			})
+			g.DoForEnts(func(entGid Gid, ent Ent) {
+				if ent.Level() == gid {
+					for _, walls := range ent.Walls() {
+						allWalls = append(allWalls, walls)
+					}
+				}
+			})
+			g.temp.AllWalls[gid] = allWalls
+		}
+	}
+
+	for _, outerEnt := range g.temp.AllEnts {
+		for _, innerEnt := range g.temp.AllEnts {
+			if innerEnt == outerEnt {
+				continue
+			}
+			dist := outerEnt.Pos().Sub(innerEnt.Pos()).Mag()
+			if dist > 25 {
+				continue
+			}
+			if dist < 0.01 {
+				continue
+			}
+			if dist <= 0.5 {
+				dist = 0.5
+			}
+			force := 20.0 * (25 - dist)
+			outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Norm().Scale(force))
+		}
+	}
 
 	switch {
 	case g.Moba != nil:
