@@ -358,8 +358,8 @@ func (g *Game) Init() {
 	g.DoForLevels(func(gid Gid, level *Level) {
 		msOptions := ManaSourceOptions{
 			NumSeeds:    20,
-			NumNodeRows: level.Room.Dy / 10,
-			NumNodeCols: level.Room.Dx / 10,
+			NumNodeRows: level.Room.Dy / 32,
+			NumNodeCols: level.Room.Dx / 32,
 
 			BoardLeft:   0,
 			BoardTop:    0,

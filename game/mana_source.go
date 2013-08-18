@@ -323,8 +323,8 @@ func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 		gl.Pointer(&local.nodeWarpingData[0]))
 
 	base.EnableShader("nodes")
-	base.SetUniformI("nodes", "width", ms.options.NumNodeRows)
-	base.SetUniformI("nodes", "height", ms.options.NumNodeCols)
+	base.SetUniformI("nodes", "width", ms.options.NumNodeRows*3)
+	base.SetUniformI("nodes", "height", ms.options.NumNodeCols*3)
 	base.SetUniformI("nodes", "drains", 1)
 	base.SetUniformI("nodes", "tex0", 0)
 	base.SetUniformI("nodes", "tex1", 1)

@@ -18,8 +18,8 @@ float gridAttenuation1d(float f) {
 }
 
 float gridAttenuation(vec2 pos) {
-  float attx = gridAttenuation1d(pos.x * float(width));
-  float atty = gridAttenuation1d(pos.y * float(height));
+  float attx = gridAttenuation1d(pos.x * float(width*2));
+  float atty = gridAttenuation1d(pos.y * float(height*2));
   return 1.0 - (1.0 - attx) * (1.0 - atty);
 }
 
