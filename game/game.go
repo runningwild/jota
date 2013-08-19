@@ -15,6 +15,7 @@ import (
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
+	"math"
 	"path/filepath"
 	"runtime/debug"
 )
@@ -492,17 +493,32 @@ func (g *Game) Think() {
 
 	pix := g.LosTex.pix
 	for i := range pix {
-		pix[i] = 200
+		if pix[i] < 250 {
+			pix[i] += 5
+			if pix[i] >= 250 {
+				pix[i] = 255
+			}
+		}
 	}
 
+	losBuffer := los.Make(LosPlayerHorizon)
 	for _, ent := range g.temp.AllEnts {
-		// continue
-		dx0 := (int(ent.Pos().X) - LosPlayerHorizon) / 4
-		dx1 := (int(ent.Pos().X) + LosPlayerHorizon) / 4
-		dy0 := (int(ent.Pos().Y) - LosPlayerHorizon) / 4
-		dy1 := (int(ent.Pos().Y) + LosPlayerHorizon) / 4
+		losBuffer.Reset(ent.Pos())
+		for _, walls := range g.temp.AllWalls[ent.Level()] {
+			poly := linear.Poly(walls)
+			for i := range poly {
+				wall := poly.Seg(i)
+				mid := wall.P.Add(wall.Q).Scale(0.5)
+				if mid.Sub(ent.Pos()).Mag() < LosPlayerHorizon+wall.Ray().Mag() {
+					losBuffer.DrawSeg(wall, "")
+				}
+			}
+		}
+		dx0 := (int(ent.Pos().X) - LosPlayerHorizon) / LosGridSize
+		dx1 := (int(ent.Pos().X) + LosPlayerHorizon) / LosGridSize
+		dy0 := (int(ent.Pos().Y) - LosPlayerHorizon) / LosGridSize
+		dy1 := (int(ent.Pos().Y) + LosPlayerHorizon) / LosGridSize
 		for x := dx0; x <= dx1; x++ {
-			// base.Log().Printf("x %d", x)
 			if x < 0 || x >= len(g.LosTex.Pix()) {
 				continue
 			}
@@ -510,12 +526,20 @@ func (g *Game) Think() {
 				if y < 0 || y >= len(g.LosTex.Pix()[x]) {
 					continue
 				}
-				dist := (linear.Vec2{float64(x * 4), float64(y * 4)}).Sub(ent.Pos()).Mag()
-				// base.Log().Printf("pos: %2.2v, %d %d - %2.2f", ent.Pos(), x, y, dist)
-				if dist < LosPlayerHorizon {
+				seg := linear.Seg2{
+					ent.Pos(),
+					linear.Vec2{float64(x * LosGridSize), float64(y * LosGridSize)},
+				}
+				dist2 := seg.Ray().Mag2()
+				if dist2 > LosPlayerHorizon*LosPlayerHorizon {
+					continue
+				}
+				raw := losBuffer.RawAccess()
+				angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
+				index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
+				if dist2 < float64(raw[index]) {
 					g.LosTex.Pix()[x][y] = 0
 				}
-				// g.LosTex.Pix()[x][y] = 0
 			}
 		}
 	}

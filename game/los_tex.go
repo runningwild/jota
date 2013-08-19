@@ -6,6 +6,7 @@ import (
 	"runtime"
 )
 
+const LosGridSize = 8
 const LosMinVisibility = 32
 const LosVisibilityThreshold = 200
 const LosTextureSize = 256
@@ -77,16 +78,13 @@ func (lt *LosTexture) ready() bool {
 }
 
 // Updates OpenGl with any changes that have been made to the texture.
-// OpenGl calls in this method are run on the render thread
 func (lt *LosTexture) Remap() {
 	if !lt.ready() {
 		return
 	}
-	render.Queue(func() {
-		gl.Enable(gl.TEXTURE_2D)
-		gl.BindTexture(gl.TEXTURE_2D, lt.tex)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.Sizei(len(lt.p2d)), gl.Sizei(len(lt.p2d)), gl.ALPHA, gl.UNSIGNED_BYTE, gl.Pointer(&lt.pix[0]))
-	})
+	gl.Enable(gl.TEXTURE_2D)
+	gl.BindTexture(gl.TEXTURE_2D, lt.tex)
+	gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.Sizei(len(lt.p2d)), gl.Sizei(len(lt.p2d)), gl.ALPHA, gl.UNSIGNED_BYTE, gl.Pointer(&lt.pix[0]))
 }
 
 // Binds the texture, not run on the render thread

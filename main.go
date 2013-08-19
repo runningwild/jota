@@ -65,7 +65,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 
 	var engine *cgf.Engine
 	var room game.Room
-	generated := generator.GenerateRoom(1024, 1024, 100, 50, 64522029961391019)
+	generated := generator.GenerateRoom(1024, 1024, 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
 		base.Error().Fatalf("%v", err)

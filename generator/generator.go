@@ -170,14 +170,15 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 			}
 		}
 
-		// Can't intersect with a path between adjacent circles
-		// for i := range poss {
-		// 	j := (i + 1) % len(poss)
-		// 	if f := (linear.Seg2{poss[i], poss[j]}).RelIsect(seg); f >= 0 && f <= 1 {
-		// 		good = false
-		// 		break
-		// 	}
-		// }
+		// Check to make sure this segment isn't coincident with any othe segment.
+		// To avoid annoying degeneracies we'll rotate the segment slightly.
+		rot := linear.Seg2{seg.P, seg.Ray().Rotate(0.01).Add(seg.P)}
+		for _, cur := range segs {
+			if rot.DoesIsect(cur) {
+				good = false
+				break
+			}
+		}
 
 		if !good {
 			sanity--
