@@ -229,6 +229,23 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 }
 
 func (g *Game) renderLosMask(local *LocalData) {
+	g.LosTex.Bind()
+	base.EnableShader("losgrid")
+	gl.Enable(gl.TEXTURE_2D)
+	gl.Color4d(1, 1, 1, 1)
+	gl.Begin(gl.QUADS)
+	gl.TexCoord2d(0, 0)
+	gl.Vertex2i(0, 0)
+	gl.TexCoord2d(1, 0)
+	gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
+	gl.TexCoord2d(1, 1)
+	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
+	gl.TexCoord2d(0, 1)
+	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
+	gl.End()
+	gl.Disable(gl.TEXTURE_2D)
+	base.EnableShader("")
+	return
 	base.EnableShader("los")
 	gl.Enable(gl.TEXTURE_2D)
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -544,6 +561,7 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
+	g.LosTex.Remap()
 	var camera *cameraInfo
 	switch local.mode {
 	case LocalModeArchitect:

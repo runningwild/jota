@@ -226,27 +226,29 @@ func (p *Player) Draw(game *Game) {
 }
 
 func (p *Player) Think(g *Game) {
-	p.Los.Reset(p.Pos())
-	for _, _poly := range g.temp.AllWalls[p.Level()] {
-		poly := linear.Poly(_poly)
-		// maxDistSq := 0.0
-		// for i := 1; i < len(poly); i++ {
-		// 	distSq := poly[i].Sub(poly[0]).Mag2()
-		// 	if distSq > maxDistSq {
-		// 		maxDistSq = distSq
-		// 	}
-		// }
-		// if
-		for i := range poly {
-			seg := poly.Seg(i)
-			if p.Position.Sub(seg.P).Mag2()-seg.Ray().Mag2() > 4*LosPlayerHorizon*LosPlayerHorizon {
-				continue
-			}
-			if seg.Right(p.Position) {
-				continue
-			}
-			p.Los.DrawSeg(seg, "")
+	if false {
+		p.Los.Reset(p.Pos())
+		for _, _poly := range g.temp.AllWalls[p.Level()] {
+			poly := linear.Poly(_poly)
+			// maxDistSq := 0.0
+			// for i := 1; i < len(poly); i++ {
+			// 	distSq := poly[i].Sub(poly[0]).Mag2()
+			// 	if distSq > maxDistSq {
+			// 		maxDistSq = distSq
+			// 	}
+			// }
+			// if
+			for i := range poly {
+				seg := poly.Seg(i)
+				if p.Position.Sub(seg.P).Mag2()-seg.Ray().Mag2() > 4*LosPlayerHorizon*LosPlayerHorizon {
+					continue
+				}
+				if seg.Right(p.Position) {
+					continue
+				}
+				p.Los.DrawSeg(seg, "")
 
+			}
 		}
 	}
 	p.BaseEnt.Think(g)
@@ -316,6 +318,8 @@ type Game struct {
 	Ents map[Gid]Ent
 
 	GameThinks int
+
+	LosTex *LosTexture
 
 	// Game Modes - Exactly one of these will be set
 	Standard *GameModeStandard
@@ -483,6 +487,36 @@ func (g *Game) Think() {
 				}
 			})
 			g.temp.AllWalls[gid] = allWalls
+		}
+	}
+
+	pix := g.LosTex.pix
+	for i := range pix {
+		pix[i] = 200
+	}
+
+	for _, ent := range g.temp.AllEnts {
+		// continue
+		dx0 := (int(ent.Pos().X) - LosPlayerHorizon) / 4
+		dx1 := (int(ent.Pos().X) + LosPlayerHorizon) / 4
+		dy0 := (int(ent.Pos().Y) - LosPlayerHorizon) / 4
+		dy1 := (int(ent.Pos().Y) + LosPlayerHorizon) / 4
+		for x := dx0; x <= dx1; x++ {
+			// base.Log().Printf("x %d", x)
+			if x < 0 || x >= len(g.LosTex.Pix()) {
+				continue
+			}
+			for y := dy0; y <= dy1; y++ {
+				if y < 0 || y >= len(g.LosTex.Pix()[x]) {
+					continue
+				}
+				dist := (linear.Vec2{float64(x * 4), float64(y * 4)}).Sub(ent.Pos()).Mag()
+				// base.Log().Printf("pos: %2.2v, %d %d - %2.2f", ent.Pos(), x, y, dist)
+				if dist < LosPlayerHorizon {
+					g.LosTex.Pix()[x][y] = 0
+				}
+				// g.LosTex.Pix()[x][y] = 0
+			}
 		}
 	}
 
