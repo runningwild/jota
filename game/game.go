@@ -514,10 +514,10 @@ func (g *Game) Think() {
 				}
 			}
 		}
-		dx0 := (int(ent.Pos().X) - LosPlayerHorizon) / LosGridSize
-		dx1 := (int(ent.Pos().X) + LosPlayerHorizon) / LosGridSize
-		dy0 := (int(ent.Pos().Y) - LosPlayerHorizon) / LosGridSize
-		dy1 := (int(ent.Pos().Y) + LosPlayerHorizon) / LosGridSize
+		dx0 := (int(ent.Pos().X+0.5) - LosPlayerHorizon) / LosGridSize
+		dx1 := (int(ent.Pos().X+0.5) + LosPlayerHorizon) / LosGridSize
+		dy0 := (int(ent.Pos().Y+0.5) - LosPlayerHorizon) / LosGridSize
+		dy1 := (int(ent.Pos().Y+0.5) + LosPlayerHorizon) / LosGridSize
 		for x := dx0; x <= dx1; x++ {
 			if x < 0 || x >= len(g.LosTex.Pix()) {
 				continue
@@ -528,7 +528,7 @@ func (g *Game) Think() {
 				}
 				seg := linear.Seg2{
 					ent.Pos(),
-					linear.Vec2{float64(x * LosGridSize), float64(y * LosGridSize)},
+					linear.Vec2{(float64(x) + 0.5) * LosGridSize, (float64(y) + 0.5) * LosGridSize},
 				}
 				dist2 := seg.Ray().Mag2()
 				if dist2 > LosPlayerHorizon*LosPlayerHorizon {

@@ -6,7 +6,7 @@ import (
 	"runtime"
 )
 
-const LosGridSize = 8
+const LosGridSize = 16
 const LosMinVisibility = 32
 const LosVisibilityThreshold = 200
 const LosTextureSize = 256

@@ -75,7 +75,6 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
-	room.NextId = len(room.Lava) + len(room.Walls) + 3
 	var players []game.Gid
 	var localData *game.LocalData
 	var g *game.Game
@@ -165,7 +164,9 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 }
 
 func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
+	defer base.Log().Printf("HEReC")
 	defer engine.Kill()
+	defer base.Log().Printf("HEReB")
 	var profile_output *os.File
 	var contention_output *os.File
 	var num_mem_profiles int
@@ -182,9 +183,12 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 	side1Key := gin.In().GetKeyFlat(side1Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	side2Key := gin.In().GetKeyFlat(side2Index, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	defer ui.StopEventListening()
+	defer base.Log().Printf("HEReA")
+	base.Log().Printf("HERe")
 	for {
 		<-ticker
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
+			base.Log().Printf("HERe")
 			return
 		}
 		if mode == "moba" {
@@ -304,6 +308,7 @@ func standardHookup() {
 			g.StopEventListening()
 			engine, local := debugHookup(action)
 			mainLoop(engine, local, action)
+			base.Log().Printf("HERe")
 			g.RestartEventListening()
 			action = ""
 		}

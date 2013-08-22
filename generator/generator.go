@@ -144,7 +144,7 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 	var segs []linear.Seg2
 	for sanity > 0 {
 		a := linear.Vec2{r.Float64() * (dx), r.Float64() * (dy)}
-		length := r.Float64()*radius + (radius)
+		length := gridify(r.Float64()*radius+(radius), grid)
 		angle := float64(r.Intn(4)) * 3.1415926535 / 2
 		ray := (linear.Vec2{1, 0}).Rotate(angle)
 		seg := linear.Seg2{a, a.Add(ray.Scale(length))}
