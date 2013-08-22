@@ -537,8 +537,24 @@ func (g *Game) Think() {
 				raw := losBuffer.RawAccess()
 				angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
 				index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
-				if dist2 < float64(raw[index]) {
-					g.LosTex.Pix()[x][y] = 0
+				if dist2 < LosPlayerHorizon*LosPlayerHorizon {
+					val := 255.0
+					if dist2 < float64(raw[index]) {
+						val = 0
+					} else if dist2 < float64(raw[(index+1)%len(raw)]) ||
+						dist2 < float64(raw[(index+len(raw)-1)%len(raw)]) {
+						val = 100
+					} else if dist2 < float64(raw[(index+2)%len(raw)]) ||
+						dist2 < float64(raw[(index+len(raw)-2)%len(raw)]) {
+						val = 200
+					}
+					fade := 100.0
+					if dist2 > (LosPlayerHorizon-fade)*(LosPlayerHorizon-fade) {
+						val = 255 - (255-val)*(1.0-(fade-(LosPlayerHorizon-math.Sqrt(dist2)))/fade)
+					}
+					if val < float64(g.LosTex.Pix()[x][y]) {
+						g.LosTex.Pix()[x][y] = byte(val)
+					}
 				}
 			}
 		}
