@@ -631,11 +631,10 @@ func (a Accelerate) Apply(_g interface{}) {
 }
 
 type GameWindow struct {
-	Engine    *cgf.Engine
-	Local     *LocalData
-	Dims      gui.Dims
-	game      *Game
-	prev_game *Game
+	Engine *cgf.Engine
+	Local  *LocalData
+	Dims   gui.Dims
+	game   *Game
 }
 
 func (gw *GameWindow) String() string {

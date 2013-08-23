@@ -595,9 +595,11 @@ func (local *LocalData) SetLocalPlayer(ent Ent, index gin.DeviceIndex) {
 	lp.deviceIndex = index
 	lp.abs.abilities = append(
 		lp.abs.abilities,
-		ability_makers["burst"](map[string]int{
-			"frames": 2,
-			"force":  200000,
+		ability_makers["mine"](map[string]int{
+			"health":  10,
+			"damage":  100,
+			"trigger": 100,
+			"mass":    300,
 		}))
 	lp.abs.abilities = append(
 		lp.abs.abilities,
