@@ -131,7 +131,7 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *pullProcess) required() float64 {
-	return p.Force
+	return p.Force / 4
 }
 
 func (p *pullProcess) reset() {
