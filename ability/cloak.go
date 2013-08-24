@@ -2,10 +2,7 @@ package ability
 
 import (
 	"encoding/gob"
-	"fmt"
 	"github.com/runningwild/cgf"
-	"github.com/runningwild/glop/gui"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
 )
@@ -118,12 +115,12 @@ func (p *cloakProcess) ModifyBase(base stats.Base) stats.Base {
 const cloakRate = 15
 
 func (p *cloakProcess) Supply(supply game.Mana) game.Mana {
-	if supply[game.ColorBlue] > cloakRate-p.supplied {
-		supply[game.ColorBlue] -= cloakRate - p.supplied
+	if supply[game.ColorGreen] > cloakRate-p.supplied {
+		supply[game.ColorGreen] -= cloakRate - p.supplied
 		p.supplied = cloakRate
 	} else {
-		p.supplied += supply[game.ColorBlue]
-		supply[game.ColorBlue] = 0
+		p.supplied += supply[game.ColorGreen]
+		supply[game.ColorGreen] = 0
 	}
 	return supply
 }
@@ -133,7 +130,4 @@ func (p *cloakProcess) Think(g *game.Game) {
 	p.supplied = 0
 }
 
-func (p *cloakProcess) Draw(gid game.Gid, g *game.Game) {
-	player := g.Ents[p.PlayerGid].(*game.Player)
-	base.GetDictionary("luxisr").RenderString(fmt.Sprintf("%v", player.Stats().Cloaking()), 100, 100, 0, 100, gui.Left)
-}
+func (p *cloakProcess) Draw(gid game.Gid, g *game.Game) {}
