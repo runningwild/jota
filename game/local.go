@@ -610,10 +610,7 @@ func (local *LocalData) SetLocalPlayer(ent Ent, index gin.DeviceIndex) {
 		}))
 	lp.abs.abilities = append(
 		lp.abs.abilities,
-		ability_makers["vision"](map[string]int{
-			"range":   50,
-			"squeeze": 10, // 10 means 10 / 1000
-		}))
+		ability_makers["cloak"](map[string]int{}))
 	local.players = append(local.players, &lp)
 }
 

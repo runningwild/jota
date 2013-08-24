@@ -14,15 +14,15 @@ type Base struct {
 	Health float64
 	Mass   float64
 
+	// Normally at 0.0, but up to 1.0 when fully cloaked.
+	Cloaking float64
+
 	// Max rate for accelerating and turning.
 	Max_turn float64
 	Max_acc  float64
 
-	// Max_rate and Influence determine the rate that a player can drain mana
-	// from a node a distance D away:
-	// Rate(D) = max(0, Max_rate - (D / Influence) ^ 2)
-	Max_rate  float64
-	Influence float64
+	// Max rate of mana draining
+	Max_rate float64
 }
 
 type DamageKind int
@@ -88,8 +88,8 @@ func (s Inst) MaxAcc() float64 {
 func (s Inst) MaxRate() float64 {
 	return s.ModifyBase(s.inst.Base).Max_rate
 }
-func (s Inst) Influence() float64 {
-	return s.ModifyBase(s.inst.Base).Influence
+func (s Inst) Cloaking() float64 {
+	return s.ModifyBase(s.inst.Base).Cloaking
 }
 
 func (s *Inst) SetHealth(health float64) {
@@ -112,6 +112,7 @@ func (s *Inst) Think() {
 		s.ApplyDamage(condition.CauseDamage())
 	}
 	s.inst.Conditions = s.inst.Conditions[0:0]
+	s.inst.Base.Cloaking = 0.0
 }
 
 // Encoding routines - only support json and gob right now

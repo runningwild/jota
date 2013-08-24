@@ -185,7 +185,7 @@ func init() {
 
 func (p *Player) Draw(game *Game) {
 	var t *texture.Data
-	gl.Color4ub(255, 255, 255, 255)
+	gl.Color4ub(255, 255, 255, gl.Ubyte(255.0*(1.0-p.Stats().Cloaking())))
 	// if p.Id() == 1 {
 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
 	// } else if p.Id() == 2 {
