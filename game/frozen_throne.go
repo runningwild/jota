@@ -1,10 +1,9 @@
 package game
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/los"
+	"github.com/runningwild/magnus/stats"
 )
 
 // Moba base ent
@@ -23,24 +22,7 @@ func (g *Game) MakeFrozenThrones() {
 			},
 			Los: los.Make(LosMaxDist),
 		}
-		err := json.NewDecoder(bytes.NewBuffer([]byte(`
-        {
-          "Base": {
-            "Max_turn": 0.0,
-            "Max_acc": 0.0,
-            "Mass": 1000000,
-            "Max_rate": 1000,
-            "Influence": 1000,
-            "Health": 100000
-          },
-          "Dynamic": {
-            "Health": 100000
-          }
-        }
-      `))).Decode(&ft.BaseEnt.StatsInst)
-		if err != nil {
-			panic(err)
-		}
+		ft.BaseEnt.StatsInst = stats.Make(100000, 1000000, 0, 0, 1)
 		g.AddEnt(&ft)
 	}
 }

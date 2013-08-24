@@ -1,9 +1,7 @@
 package game
 
 import (
-	"bytes"
 	"encoding/gob"
-	"encoding/json"
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
@@ -137,24 +135,7 @@ func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
 	var gids []Gid
 	for i := 0; i < numPlayers; i++ {
 		var p Player
-		err := json.NewDecoder(bytes.NewBuffer([]byte(`
-	      {
-	        "Base": {
-	          "Max_turn": 0.07,
-	          "Max_acc": 0.2,
-	          "Mass": 750,
-	          "Max_rate": 10,
-	          "Influence": 75,
-	          "Health": 1000
-	        },
-	        "Dynamic": {
-	          "Health": 1000
-	        }
-	      }
-	    `))).Decode(&p.BaseEnt.StatsInst)
-		if err != nil {
-			base.Log().Fatalf("%v", err)
-		}
+		p.StatsInst = stats.Make(1000, 750, 0.2, 0.07, 0.5)
 		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.

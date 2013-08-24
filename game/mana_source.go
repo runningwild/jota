@@ -363,11 +363,12 @@ type nodeThinkData struct {
 }
 
 type playerThinkData struct {
-	minX  int
-	maxX  int
-	minY  int
-	maxY  int
-	drain Mana
+	minX       int
+	maxX       int
+	minY       int
+	maxY       int
+	drain      Mana
+	rateFactor float64
 }
 
 func (p playerThinkData) isValid() bool {
@@ -454,6 +455,8 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*Player) {
 		playerThinkData.maxX = -1
 		playerThinkData.maxY = -1
 
+		playerThinkData.rateFactor = player.Stats().MaxRate()
+
 		for x := range ms.nodes {
 			dx := ms.nodes[x][0].X - player.Pos().X
 			if dx >= -ms.options.MaxDrainDistance && playerThinkData.minX == -1 {
@@ -531,7 +534,7 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 					for c := range node.Mana {
 						amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
 						nodeThinkData.playerDrain[i][c] =
-							math.Min(amountScale*maxDrainRate, node.Mana[c]) * control
+							math.Min(amountScale*maxDrainRate*playerThinkData.rateFactor, node.Mana[c]) * control
 						playerThinkData.drain[c] += nodeThinkData.playerDrain[i][c]
 					}
 				}

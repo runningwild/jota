@@ -115,6 +115,21 @@ func (s *Inst) Think() {
 	s.inst.Base.Cloaking = 0.0
 }
 
+func Make(health, mass, acc, turn, rate float64) Inst {
+	var s Inst
+	s.inst.Base = Base{
+		Health:   health,
+		Mass:     mass,
+		Max_turn: turn,
+		Max_acc:  acc,
+		Max_rate: rate,
+	}
+	s.inst.Dynamic = Dynamic{
+		Health: health,
+	}
+	return s
+}
+
 // Encoding routines - only support json and gob right now
 
 func (si Inst) MarshalJSON() ([]byte, error) {

@@ -1,9 +1,6 @@
 package game
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
@@ -28,24 +25,7 @@ func (g *Game) MakeMine(pos linear.Vec2, health, mass, damage, trigger float64) 
 		Damage:  damage,
 		Trigger: trigger,
 	}
-	err := json.NewDecoder(bytes.NewBuffer([]byte(fmt.Sprintf(`
-    {
-      "Base": {
-        "Max_turn": 0.0,
-        "Max_acc": 0.0,
-        "Mass": %f,
-        "Max_rate": 1000,
-        "Influence": 1000,
-        "Health": 100000
-      },
-      "Dynamic": {
-        "Health": %f
-      }
-    }
-    `, mass, health)))).Decode(&mine.BaseEnt.StatsInst)
-	if err != nil {
-		panic(err)
-	}
+	mine.BaseEnt.StatsInst = stats.Make(health, mass, 0, 0, 0)
 	g.AddEnt(&mine)
 }
 
