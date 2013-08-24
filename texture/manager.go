@@ -151,7 +151,7 @@ var (
 func init() {
 	manager.registry = make(map[string]*Data)
 	manager.deleted = make(map[string]*Data)
-	go manager.Scavenger()
+	base.GoWithStackCatcher(manager.Scavenger)
 }
 
 type Manager struct {
@@ -232,6 +232,7 @@ func init() {
 	// we have one go-routine collect them all and send them along pipe any
 	// time someone is ready to receive one.
 	go func() {
+		defer base.StackCatcher()
 		var rs []loadRequest
 		var send chan loadRequest
 		var hold loadRequest

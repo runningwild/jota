@@ -17,7 +17,6 @@ import (
 	"github.com/runningwild/magnus/texture"
 	"math"
 	"path/filepath"
-	"runtime/debug"
 )
 
 // type Ability func(game *Game, player *Player, params map[string]int) Process
@@ -435,14 +434,8 @@ func (g *Game) AddEnt(ent Ent) Gid {
 }
 
 func (g *Game) Think() {
-	defer func() {
-		if r := recover(); r != nil {
-			base.Error().Printf("Panic: %v", r)
-			base.Error().Fatalf("Stack:\n%s", debug.Stack())
-		}
-	}()
 	g.GameThinks++
-
+	defer base.StackCatcher()
 	if g.temp.AllEntsByLevel == nil || g.temp.AllEntsByLevelDirty {
 		g.temp.AllEntsByLevel = make(map[Gid][]Ent)
 	}
@@ -658,12 +651,7 @@ func (gw *GameWindow) RequestedDims() gui.Dims {
 }
 
 func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
-	defer func() {
-		if r := recover(); r != nil {
-			base.Error().Printf("Panic: %v", r)
-			base.Error().Fatalf("Stack:\n%s", debug.Stack())
-		}
-	}()
+	defer base.StackCatcher()
 	defer func() {
 		// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
 		gl.Disable(gl.TEXTURE_2D)

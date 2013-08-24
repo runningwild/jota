@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -299,4 +300,26 @@ func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
 		value := mapInValue.MapIndex(key)
 		doValue.Call([]reflect.Value{key, value})
 	}
+}
+
+func StackCatcher() {
+	if r := recover(); r != nil {
+		Error().Printf("Panic: %v", r)
+		Error().Fatalf("Stack:\n%s", debug.Stack())
+	}
+}
+
+func GoWithStackCatcher(f_ interface{}, inputs_ ...interface{}) {
+	f := reflect.ValueOf(f_)
+	if f.Kind() != reflect.Func {
+		panic(fmt.Sprintf("First parameter to GoWithStackCatcher must be a Func, not %v", f.Kind()))
+	}
+	var inputs []reflect.Value
+	for i := range inputs_ {
+		inputs = append(inputs, reflect.ValueOf(inputs_[i]))
+	}
+	go func() {
+		defer StackCatcher()
+		f.Call(inputs)
+	}()
 }
