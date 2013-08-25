@@ -17,9 +17,9 @@ function doBuild {
   cp -r data/* $1.app/Contents/
 }
 
-doBuild 'standard'
-open standard.app
-false
+#doBuild 'standard'
+#open standard.app
+#false
 
 doBuild 'host'
 doBuild 'client'

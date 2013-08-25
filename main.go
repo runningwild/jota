@@ -102,30 +102,15 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		g.Levels = make(map[game.Gid]*game.Level)
 		g.Levels[game.GidInvadersStart] = &game.Level{}
 		g.Levels[game.GidInvadersStart].Room = room
-		if version == "host" || version == "standard" {
-			g.Standard = &game.GameModeStandard{}
-		} else {
-			g.Moba = &game.GameModeMoba{}
+		// g.Standard = &game.GameModeStandard{}
+		g.Moba = &game.GameModeMoba{}
+		ps := g.AddPlayers(1, 1)
+		for _, p := range ps {
+			players = append(players, p)
 		}
-		if version == "moba" {
-			ps := g.AddPlayers(2, 1)
-			for _, p := range ps {
-				players = append(players, p)
-			}
-			ps = g.AddPlayers(2, 0)
-			for _, p := range ps {
-				players = append(players, p)
-			}
-			// g.MakeFrozenThrones()
-		} else {
-			ps := g.AddPlayers(1, 1)
-			for _, p := range ps {
-				players = append(players, p)
-			}
-			ps = g.AddPlayers(1, 0)
-			for _, p := range ps {
-				players = append(players, p)
-			}
+		ps = g.AddPlayers(1, 0)
+		for _, p := range ps {
+			players = append(players, p)
 		}
 
 		g.Init()
@@ -137,12 +122,9 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		if err != nil {
 			base.Error().Fatalf("%v", err.Error())
 		}
-		if version == "moba" {
-			localData = game.NewLocalDataMoba(engine, players, gin.DeviceIndexAny, sys)
-		} else {
-			localData = game.NewLocalDataInvaders(engine, sys)
-		}
 	}
+	localData = game.NewLocalDataMoba(engine, players, gin.DeviceIndexAny, sys)
+	// localData = game.NewLocalDataInvaders(engine, sys)
 
 	// Hook the players up regardless of in we're architect or not, since we can
 	// switch between the two in debug mode.
@@ -334,6 +316,7 @@ func standardHookup() {
 }
 
 func main() {
+	defer base.StackCatcher()
 	fmt.Printf("%v\n", key_map)
 	sys.Startup()
 	err := gl.Init()
