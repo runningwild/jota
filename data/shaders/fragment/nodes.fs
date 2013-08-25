@@ -3,12 +3,13 @@ uniform int height;
 uniform int drains;
 uniform sampler2D tex0;
 uniform sampler1D tex1;
+uniform float zoom;
 //varying vec3 pos;
 
 float gridAttenuation1d(float f) {
   f = mod(f, 1.0);
   float band = 0.12;
-  float blur = 0.09;
+  float blur = 0.09 + zoom / 15.0;
   if (f < 0.5) {
     f = smoothstep(band + blur, band - blur, f);
   } else {
@@ -18,8 +19,8 @@ float gridAttenuation1d(float f) {
 }
 
 float gridAttenuation(vec2 pos) {
-  float attx = gridAttenuation1d(pos.x * float(width*2));
-  float atty = gridAttenuation1d(pos.y * float(height*2));
+  float attx = gridAttenuation1d(pos.x * float(width) / 2.0);
+  float atty = gridAttenuation1d(pos.y * float(height) / 2.0);
   return 1.0 - (1.0 - attx) * (1.0 - atty);
 }
 

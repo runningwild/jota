@@ -252,7 +252,7 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 // 	deleteNodes(src.rawNodes)
 // }
 
-func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
+func (ms *ManaSource) Draw(local *LocalData, zoom float64, dx float64, dy float64) {
 	if local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)
 		local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
@@ -273,25 +273,6 @@ func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
 			gl.Pointer(&local.nodeTextureData[0]))
-
-		//		gl.ActiveTexture(gl.TEXTURE1)
-		gl.GenTextures(1, &local.nodeWarpingTexture)
-		gl.BindTexture(gl.TEXTURE_1D, local.nodeWarpingTexture)
-		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameterf(gl.TEXTURE_1D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		local.nodeWarpingData = make([]byte, 4*10)
-		gl.TexImage1D(
-			gl.TEXTURE_1D,
-			0,
-			gl.RGBA,
-			gl.Sizei(len(local.nodeWarpingData)/4),
-			0,
-			gl.RGBA,
-			gl.UNSIGNED_BYTE,
-			gl.Pointer(&local.nodeWarpingData[0]))
 	}
 	for i := range ms.rawNodes {
 		for c := 0; c < 3; c++ {
@@ -301,7 +282,6 @@ func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 				color_frac*color_range + float64(ms.options.MinNodeBrightness))
 		}
 	}
-	gl.Enable(gl.TEXTURE_1D)
 	gl.Enable(gl.TEXTURE_2D)
 	//gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
@@ -316,32 +296,13 @@ func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 		gl.UNSIGNED_BYTE,
 		gl.Pointer(&local.nodeTextureData[0]))
 
-	gl.ActiveTexture(gl.TEXTURE1)
-	// TODO: Should probably extricate nodeWarpingData entirely
-	// for i, ent := range local.game.Ents {
-	// 	p := ent.Pos()
-	// 	local.nodeWarpingData[3*i+0] = byte(p.X / float64(local.game.Dx) * 255)
-	// 	local.nodeWarpingData[3*i+1] = -byte(p.Y / float64(local.game.Dy) * 255)
-	// 	local.nodeWarpingData[3*i+2] = 255
-	// }
-	gl.TexImage1D(
-		gl.TEXTURE_1D,
-		0,
-		gl.RGBA,
-		gl.Sizei(len(local.nodeWarpingData)/4),
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		gl.Pointer(&local.nodeWarpingData[0]))
-
 	base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", ms.options.NumNodeRows*3)
 	base.SetUniformI("nodes", "height", ms.options.NumNodeCols*3)
 	base.SetUniformI("nodes", "drains", 1)
 	base.SetUniformI("nodes", "tex0", 0)
 	base.SetUniformI("nodes", "tex1", 1)
-	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_1D, local.nodeWarpingTexture)
+	base.SetUniformF("nodes", "zoom", float32(zoom))
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
 
@@ -350,7 +311,6 @@ func (ms *ManaSource) Draw(local *LocalData, dx float64, dy float64) {
 	texture.RenderAdvanced(move, -move, dy, dx, 3.1415926535/2, true)
 	base.EnableShader("")
 	gl.Disable(gl.TEXTURE_2D)
-	gl.Disable(gl.TEXTURE_1D)
 }
 
 type nodeThinkData struct {

@@ -111,10 +111,8 @@ type LocalData struct {
 	editor    localEditorData
 
 	// For displaying the mana grid
-	nodeTextureId      gl.Uint
-	nodeTextureData    []byte
-	nodeWarpingTexture gl.Uint
-	nodeWarpingData    []byte
+	nodeTextureId   gl.Uint
+	nodeTextureData []byte
 }
 
 func (l *LocalData) DebugSetSide(side int) {
@@ -343,7 +341,8 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	level := g.Levels[GidInvadersStart]
-	level.ManaSource.Draw(local, float64(level.Room.Dx), float64(level.Room.Dy))
+	zoom := camera.current.dims.X / float64(region.Dims.Dx)
+	level.ManaSource.Draw(local, zoom, float64(level.Room.Dx), float64(level.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
@@ -512,8 +511,9 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+	zoom := local.architect.camera.current.dims.X / float64(region.Dims.Dx)
 	level := g.Levels[GidInvadersStart]
-	level.ManaSource.Draw(local, float64(level.Room.Dx), float64(level.Room.Dy))
+	level.ManaSource.Draw(local, zoom, float64(level.Room.Dx), float64(level.Room.Dy))
 
 	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
