@@ -65,7 +65,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 
 	var engine *cgf.Engine
 	var room game.Room
-	generated := generator.GenerateRoom(4096, 4096, 100, 64, 64522029961391019)
+	generated := generator.GenerateRoom(1024, 1024, 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
@@ -102,27 +102,31 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		g.Levels = make(map[game.Gid]*game.Level)
 		g.Levels[game.GidInvadersStart] = &game.Level{}
 		g.Levels[game.GidInvadersStart].Room = room
-		g.LosTex = game.MakeLosTexture()
-		pix := g.LosTex.Pix()
-		for i := range pix {
-			for j := range pix[i] {
-				pix[i][j] = 255
-			}
-		}
 		if version == "host" || version == "standard" {
 			g.Standard = &game.GameModeStandard{}
 		} else {
 			g.Moba = &game.GameModeMoba{}
 		}
 		if version == "moba" {
-			players = g.AddPlayers(2, 1)
-			players = g.AddPlayers(2, 0)
+			ps := g.AddPlayers(2, 1)
+			for _, p := range ps {
+				players = append(players, p)
+			}
+			ps = g.AddPlayers(2, 0)
+			for _, p := range ps {
+				players = append(players, p)
+			}
 			// g.MakeFrozenThrones()
 		} else {
-			players = g.AddPlayers(1, 0)
-			players = g.AddPlayers(1, 0)
+			ps := g.AddPlayers(1, 1)
+			for _, p := range ps {
+				players = append(players, p)
+			}
+			ps = g.AddPlayers(1, 0)
+			for _, p := range ps {
+				players = append(players, p)
+			}
 		}
-		// players = append(players, g.AddPest(linear.Vec2{500, 200}).Id())
 
 		g.Init()
 		if version == "host" {
@@ -134,7 +138,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			base.Error().Fatalf("%v", err.Error())
 		}
 		if version == "moba" {
-			localData = game.NewLocalDataMoba(engine, sys)
+			localData = game.NewLocalDataMoba(engine, players, gin.DeviceIndexAny, sys)
 		} else {
 			localData = game.NewLocalDataInvaders(engine, sys)
 		}
@@ -142,18 +146,18 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 
 	// Hook the players up regardless of in we're architect or not, since we can
 	// switch between the two in debug mode.
-	d := sys.GetActiveDevices()
-	n := 0
-	for _, index := range d[gin.DeviceTypeController] {
-		localData.SetLocalPlayer(g.Ents[players[n]], index)
-		n++
-		if n > len(players) {
-			break
-		}
-	}
-	if len(d[gin.DeviceTypeController]) == 0 {
-		localData.SetLocalPlayer(g.Ents[players[0]], 0)
-	}
+	// d := sys.GetActiveDevices()
+	// n := 0
+	// for _, index := range d[gin.DeviceTypeController] {
+	// 	localData.SetLocalPlayer(g.Ents[players[n]], index)
+	// 	n++
+	// 	if n > len(players) {
+	// 		break
+	// 	}
+	// }
+	// if len(d[gin.DeviceTypeController]) == 0 {
+	// 	localData.SetLocalPlayer(g.Ents[players[0]], 0)
+	// }
 
 	base.Log().Printf("Engine Id: %v", engine.Id())
 	base.Log().Printf("All Ids: %v", engine.Ids())
@@ -185,11 +189,14 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 		}
 		if mode == "moba" {
 			if side0Key.FramePressCount() > 0 {
-				local.DebugSetSide(0)
+				local.DebugCyclePlayers()
 			}
-			if side1Key.FramePressCount() > 0 {
-				local.DebugSetSide(1)
-			}
+			// if side0Key.FramePressCount() > 0 {
+			// 	local.DebugSetSide(0)
+			// }
+			// if side1Key.FramePressCount() > 0 {
+			// 	local.DebugSetSide(1)
+			// }
 		}
 		if mode == "standard" {
 			if side0Key.FramePressCount() > 0 {

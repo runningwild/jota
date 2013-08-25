@@ -13,7 +13,7 @@ import (
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	"math"
+	// "math"
 	"path/filepath"
 )
 
@@ -300,8 +300,6 @@ type Game struct {
 
 	GameThinks int
 
-	LosTex *LosTexture
-
 	// Game Modes - Exactly one of these will be set
 	Standard *GameModeStandard
 	Moba     *GameModeMoba
@@ -462,75 +460,6 @@ func (g *Game) Think() {
 				}
 			})
 			g.temp.AllWalls[gid] = allWalls
-		}
-	}
-
-	pix := g.LosTex.pix
-	for i := range pix {
-		if pix[i] < 250 {
-			pix[i] += 5
-			if pix[i] >= 250 {
-				pix[i] = 255
-			}
-		}
-	}
-
-	losBuffer := los.Make(LosPlayerHorizon)
-	for _, ent := range g.temp.AllEnts {
-		losBuffer.Reset(ent.Pos())
-		for _, walls := range g.temp.AllWalls[ent.Level()] {
-			poly := linear.Poly(walls)
-			for i := range poly {
-				wall := poly.Seg(i)
-				mid := wall.P.Add(wall.Q).Scale(0.5)
-				if mid.Sub(ent.Pos()).Mag() < LosPlayerHorizon+wall.Ray().Mag() {
-					losBuffer.DrawSeg(wall, "")
-				}
-			}
-		}
-		dx0 := (int(ent.Pos().X+0.5) - LosPlayerHorizon) / LosGridSize
-		dx1 := (int(ent.Pos().X+0.5) + LosPlayerHorizon) / LosGridSize
-		dy0 := (int(ent.Pos().Y+0.5) - LosPlayerHorizon) / LosGridSize
-		dy1 := (int(ent.Pos().Y+0.5) + LosPlayerHorizon) / LosGridSize
-		for x := dx0; x <= dx1; x++ {
-			if x < 0 || x >= len(g.LosTex.Pix()) {
-				continue
-			}
-			for y := dy0; y <= dy1; y++ {
-				if y < 0 || y >= len(g.LosTex.Pix()[x]) {
-					continue
-				}
-				seg := linear.Seg2{
-					ent.Pos(),
-					linear.Vec2{(float64(x) + 0.5) * LosGridSize, (float64(y) + 0.5) * LosGridSize},
-				}
-				dist2 := seg.Ray().Mag2()
-				if dist2 > LosPlayerHorizon*LosPlayerHorizon {
-					continue
-				}
-				raw := losBuffer.RawAccess()
-				angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
-				index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
-				if dist2 < LosPlayerHorizon*LosPlayerHorizon {
-					val := 255.0
-					if dist2 < float64(raw[index]) {
-						val = 0
-					} else if dist2 < float64(raw[(index+1)%len(raw)]) ||
-						dist2 < float64(raw[(index+len(raw)-1)%len(raw)]) {
-						val = 100
-					} else if dist2 < float64(raw[(index+2)%len(raw)]) ||
-						dist2 < float64(raw[(index+len(raw)-2)%len(raw)]) {
-						val = 200
-					}
-					fade := 100.0
-					if dist2 > (LosPlayerHorizon-fade)*(LosPlayerHorizon-fade) {
-						val = 255 - (255-val)*(1.0-(fade-(LosPlayerHorizon-math.Sqrt(dist2)))/fade)
-					}
-					if val < float64(g.LosTex.Pix()[x][y]) {
-						g.LosTex.Pix()[x][y] = byte(val)
-					}
-				}
-			}
 		}
 	}
 

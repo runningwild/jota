@@ -56,8 +56,110 @@ type localEditorData struct {
 	camera cameraInfo
 }
 
-type localMobaData struct {
+type mobaSideData struct {
+	losTex *LosTexture
+	side   int
+}
+
+func (msd *mobaSideData) updateLosTex(g *Game) {
+	pix := msd.losTex.pix
+	for i := range pix {
+		if pix[i] < 250 {
+			pix[i] += 5
+			if pix[i] >= 250 {
+				pix[i] = 255
+			}
+		}
+	}
+	losBuffer := los.Make(LosPlayerHorizon)
+	for _, ent := range g.temp.AllEnts {
+		if ent.Side() != msd.side {
+			continue
+		}
+		losBuffer.Reset(ent.Pos())
+		for _, walls := range g.temp.AllWalls[ent.Level()] {
+			poly := linear.Poly(walls)
+			for i := range poly {
+				wall := poly.Seg(i)
+				mid := wall.P.Add(wall.Q).Scale(0.5)
+				if mid.Sub(ent.Pos()).Mag() < LosPlayerHorizon+wall.Ray().Mag() {
+					losBuffer.DrawSeg(wall, "")
+				}
+			}
+		}
+		dx0 := (int(ent.Pos().X+0.5) - LosPlayerHorizon) / LosGridSize
+		dx1 := (int(ent.Pos().X+0.5) + LosPlayerHorizon) / LosGridSize
+		dy0 := (int(ent.Pos().Y+0.5) - LosPlayerHorizon) / LosGridSize
+		dy1 := (int(ent.Pos().Y+0.5) + LosPlayerHorizon) / LosGridSize
+		for x := dx0; x <= dx1; x++ {
+			if x < 0 || x >= len(msd.losTex.Pix()) {
+				continue
+			}
+			for y := dy0; y <= dy1; y++ {
+				if y < 0 || y >= len(msd.losTex.Pix()[x]) {
+					continue
+				}
+				seg := linear.Seg2{
+					ent.Pos(),
+					linear.Vec2{(float64(x) + 0.5) * LosGridSize, (float64(y) + 0.5) * LosGridSize},
+				}
+				dist2 := seg.Ray().Mag2()
+				if dist2 > LosPlayerHorizon*LosPlayerHorizon {
+					continue
+				}
+				raw := losBuffer.RawAccess()
+				angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
+				index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
+				if dist2 < LosPlayerHorizon*LosPlayerHorizon {
+					val := 255.0
+					if dist2 < float64(raw[index]) {
+						val = 0
+					} else if dist2 < float64(raw[(index+1)%len(raw)]) ||
+						dist2 < float64(raw[(index+len(raw)-1)%len(raw)]) {
+						val = 100
+					} else if dist2 < float64(raw[(index+2)%len(raw)]) ||
+						dist2 < float64(raw[(index+len(raw)-2)%len(raw)]) {
+						val = 200
+					}
+					fade := 100.0
+					if dist2 > (LosPlayerHorizon-fade)*(LosPlayerHorizon-fade) {
+						val = 255 - (255-val)*(1.0-(fade-(LosPlayerHorizon-math.Sqrt(dist2)))/fade)
+					}
+					if val < float64(msd.losTex.Pix()[x][y]) {
+						msd.losTex.Pix()[x][y] = byte(val)
+					}
+				}
+			}
+		}
+	}
+}
+
+type mobaPlayerData struct {
+	gid    Gid
 	camera cameraInfo
+	side   int
+	abs    personalAbilities
+}
+
+type localMobaData struct {
+	currentPlayer *mobaPlayerData
+	currentSide   *mobaSideData
+	players       []mobaPlayerData
+	sides         []mobaSideData
+	deviceIndex   gin.DeviceIndex
+}
+
+func (lmd *localMobaData) setCurrentPlayerByGid(gid Gid) {
+	lmd.currentPlayer = nil
+	for i := range lmd.players {
+		if lmd.players[i].gid == gid {
+			lmd.currentPlayer = &lmd.players[i]
+		}
+	}
+	if lmd.currentPlayer == nil {
+		panic(fmt.Sprintf("Didn't find a player with gid == %v.", gid))
+	}
+	lmd.currentSide = &lmd.sides[lmd.currentPlayer.side]
 }
 
 type localInvadersData struct {
@@ -87,12 +189,6 @@ type LocalData struct {
 
 	mode LocalMode
 
-	// Side of the people on this computer - this should be 0 in standard mode.
-	side int
-
-	// All of the players controlled by humans on localhost.
-	players []*localPlayer
-
 	los struct {
 		texData    [][]uint32
 		texRawData []uint32
@@ -115,8 +211,17 @@ type LocalData struct {
 	nodeTextureData []byte
 }
 
-func (l *LocalData) DebugSetSide(side int) {
-	l.side = side
+func (l *LocalData) DebugCyclePlayers() {
+	if l.mode != LocalModeMoba {
+		panic("Can't DebugCyclePlayers except in LocalModeMoba")
+	}
+	for i := range l.moba.players {
+		if l.moba.currentPlayer == &l.moba.players[i] {
+			l.moba.currentPlayer = &l.moba.players[(i+1)%len(l.moba.players)]
+			break
+		}
+	}
+	l.moba.currentSide = &l.moba.sides[l.moba.currentPlayer.side]
 }
 
 func (l *LocalData) DebugChangeMode(mode LocalMode) {
@@ -143,8 +248,51 @@ const (
 	LocalModeEditor
 )
 
-func NewLocalDataMoba(engine *cgf.Engine, sys system.System) *LocalData {
-	return newLocalDataHelper(engine, sys, LocalModeMoba)
+func NewLocalDataMoba(engine *cgf.Engine, playerGids []Gid, index gin.DeviceIndex, sys system.System) *LocalData {
+	local := newLocalDataHelper(engine, sys, LocalModeMoba)
+	game := engine.GetState().(*Game)
+	local.moba.deviceIndex = index
+	sidesSet := make(map[int]bool)
+	for _, gid := range playerGids {
+		p := game.Ents[gid]
+		var pd mobaPlayerData
+		pd.gid = gid
+		pd.side = p.Side()
+		sidesSet[pd.side] = true
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["mine"](map[string]int{
+				"health":  10,
+				"damage":  100,
+				"trigger": 100,
+				"mass":    300,
+			}))
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["pull"](map[string]int{
+				"frames": 10,
+				"force":  250,
+				"angle":  30,
+			}))
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["cloak"](map[string]int{}))
+		local.moba.players = append(local.moba.players, pd)
+	}
+	for _ = range sidesSet {
+		var sd mobaSideData
+		sd.losTex = MakeLosTexture()
+		pix := sd.losTex.pix
+		for i := range pix {
+			pix[i] = 255
+		}
+		local.moba.sides = append(local.moba.sides, sd)
+	}
+	for i := range local.moba.sides {
+		local.moba.sides[i].side = i
+	}
+	local.moba.setCurrentPlayerByGid(playerGids[0])
+	return local
 }
 
 func NewLocalDataInvaders(engine *cgf.Engine, sys system.System) *LocalData {
@@ -227,7 +375,15 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 }
 
 func (g *Game) renderLosMask(local *LocalData) {
-	g.LosTex.Bind()
+	var losTex *LosTexture
+	switch {
+	case local.mode == LocalModeMoba:
+		losTex = local.moba.currentSide.losTex
+		local.moba.currentSide.updateLosTex(g)
+	default:
+		panic("Not implemented!!!")
+	}
+	losTex.Bind()
 	base.EnableShader("losgrid")
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Color4d(1, 1, 1, 1)
@@ -246,70 +402,73 @@ func (g *Game) renderLosMask(local *LocalData) {
 	gl.End()
 	gl.Disable(gl.TEXTURE_2D)
 	base.EnableShader("")
-	return
-	base.EnableShader("los")
-	gl.Enable(gl.TEXTURE_2D)
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
-	gl.TexSubImage2D(
-		gl.TEXTURE_2D,
-		0,
-		0,
-		0,
-		los.Resolution,
-		LosMaxPlayers,
-		gl.ALPHA,
-		gl.UNSIGNED_INT,
-		gl.Pointer(&local.los.texRawData[0]))
-	base.SetUniformI("los", "tex0", 0)
-	// TODO: This has to not be hardcoded
-	base.SetUniformF("los", "dx", float32(g.Levels[GidInvadersStart].Room.Dx))
-	base.SetUniformF("los", "dy", float32(g.Levels[GidInvadersStart].Room.Dy))
-	base.SetUniformF("los", "losMaxDist", LosMaxDist)
-	base.SetUniformF("los", "losResolution", los.Resolution)
-	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-	if local.mode == LocalModeArchitect {
-		base.SetUniformI("los", "architect", 1)
-	} else {
-		base.SetUniformI("los", "architect", 0)
-	}
-	var playerPos []linear.Vec2
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == LocalModeArchitect) {
-			playerPos = append(playerPos, ent.Pos())
-		}
-	})
-	if len(playerPos) == 0 {
-		// TODO: Probably shouldn't have even gotten here
-		return
-	}
-	base.SetUniformV2Array("los", "playerPos", playerPos)
-	base.SetUniformI("los", "losNumPlayers", len(playerPos))
-	gl.Color4d(0, 0, 1, 1)
-	gl.Begin(gl.QUADS)
-	gl.TexCoord2d(0, 1)
-	gl.Vertex2i(0, 0)
-	gl.TexCoord2d(0, 0)
-	gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-	gl.TexCoord2d(1, 0)
-	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-	gl.TexCoord2d(1, 1)
-	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
-	gl.End()
-	base.EnableShader("")
 }
 
+// func (g *Game) renderLosMaskOldSchool(local *LocalData) {
+// 	base.EnableShader("los")
+// 	gl.Enable(gl.TEXTURE_2D)
+// 	gl.ActiveTexture(gl.TEXTURE0)
+// 	gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
+// 	gl.TexSubImage2D(
+// 		gl.TEXTURE_2D,
+// 		0,
+// 		0,
+// 		0,
+// 		los.Resolution,
+// 		LosMaxPlayers,
+// 		gl.ALPHA,
+// 		gl.UNSIGNED_INT,
+// 		gl.Pointer(&local.los.texRawData[0]))
+// 	base.SetUniformI("los", "tex0", 0)
+// 	// TODO: This has to not be hardcoded
+// 	base.SetUniformF("los", "dx", float32(g.Levels[GidInvadersStart].Room.Dx))
+// 	base.SetUniformF("los", "dy", float32(g.Levels[GidInvadersStart].Room.Dy))
+// 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
+// 	base.SetUniformF("los", "losResolution", los.Resolution)
+// 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
+// 	if local.mode == LocalModeArchitect {
+// 		base.SetUniformI("los", "architect", 1)
+// 	} else {
+// 		base.SetUniformI("los", "architect", 0)
+// 	}
+// 	var playerPos []linear.Vec2
+// 	g.DoForEnts(func(gid Gid, ent Ent) {
+// 		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == LocalModeArchitect) {
+// 			playerPos = append(playerPos, ent.Pos())
+// 		}
+// 	})
+// 	if len(playerPos) == 0 {
+// 		// TODO: Probably shouldn't have even gotten here
+// 		return
+// 	}
+// 	base.SetUniformV2Array("los", "playerPos", playerPos)
+// 	base.SetUniformI("los", "losNumPlayers", len(playerPos))
+// 	gl.Color4d(0, 0, 1, 1)
+// 	gl.Begin(gl.QUADS)
+// 	gl.TexCoord2d(0, 1)
+// 	gl.Vertex2i(0, 0)
+// 	gl.TexCoord2d(0, 0)
+// 	gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
+// 	gl.TexCoord2d(1, 0)
+// 	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
+// 	gl.TexCoord2d(1, 1)
+// 	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
+// 	gl.End()
+// 	base.EnableShader("")
+// }
+
 func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
-	g.renderLocalHelper(region, local, &local.invaders.camera)
+	panic("Need to keep track of side for local invaders")
+	// g.renderLocalHelper(region, local, &local.invaders.camera)
 }
 
 func (g *Game) renderLocalMoba(region g2.Region, local *LocalData) {
-	g.renderLocalHelper(region, local, &local.moba.camera)
+	g.renderLocalHelper(region, local, &local.moba.currentPlayer.camera, local.moba.currentPlayer.side)
 }
 
 // For invaders or moba, does a lot of basic stuff common to both
-func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo) {
-	camera.doInvadersFocusRegion(g, local.side)
+func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
+	camera.doInvadersFocusRegion(g, side)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -372,7 +531,7 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	gl.Color4d(1, 1, 1, 1)
 	losCount := 0
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok && p.Side() == local.side {
+		if p, ok := ent.(*Player); ok && p.Side() == side {
 			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
 			losCount++
 		}
@@ -383,13 +542,18 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
-	g.renderLosMask(local)
-	for _, p := range local.players {
+	if local.mode != LocalModeMoba {
+		panic("Need to implement drawing players from standard mode data")
+	}
+	for i := range local.moba.players {
+		p := &local.moba.players[i]
 		if p.abs.activeAbility != nil {
 			p.abs.activeAbility.Draw(p.gid, g)
 		}
 	}
 	gl.Color4ub(0, 0, 255, 200)
+
+	g.renderLosMask(local)
 }
 
 func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
@@ -564,7 +728,15 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
-	g.LosTex.Remap()
+	var losTex *LosTexture
+	switch {
+	case local.mode == LocalModeMoba:
+		losTex = local.moba.currentSide.losTex
+
+	default:
+		panic("Not implemented!!!")
+	}
+	losTex.Remap()
 	var camera *cameraInfo
 	switch local.mode {
 	case LocalModeArchitect:
@@ -572,7 +744,7 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	case LocalModeInvaders:
 		camera = &local.invaders.camera
 	case LocalModeMoba:
-		camera = &local.moba.camera
+		camera = &local.moba.currentPlayer.camera
 	case LocalModeEditor:
 		camera = &local.editor.camera
 	}
@@ -586,32 +758,6 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	case LocalModeMoba:
 		g.renderLocalMoba(region, local)
 	}
-}
-
-func (local *LocalData) SetLocalPlayer(ent Ent, index gin.DeviceIndex) {
-	var lp localPlayer
-	lp.gid = ent.Id()
-	lp.side = ent.Side()
-	lp.deviceIndex = index
-	lp.abs.abilities = append(
-		lp.abs.abilities,
-		ability_makers["mine"](map[string]int{
-			"health":  10,
-			"damage":  100,
-			"trigger": 100,
-			"mass":    300,
-		}))
-	lp.abs.abilities = append(
-		lp.abs.abilities,
-		ability_makers["pull"](map[string]int{
-			"frames": 10,
-			"force":  250,
-			"angle":  30,
-		}))
-	lp.abs.abilities = append(
-		lp.abs.abilities,
-		ability_makers["cloak"](map[string]int{}))
-	local.players = append(local.players, &lp)
 }
 
 func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
@@ -678,26 +824,27 @@ func (l *LocalData) localThinkArchitect(g *Game) {
 	l.thinkAbility(g, &l.architect.abs, "")
 }
 func (l *LocalData) localThinkInvaders(g *Game) {
-	for _, player := range l.players {
-		l.thinkAbility(g, &player.abs, player.gid)
-		down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, player.deviceIndex)
-		up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, player.deviceIndex)
-		right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, player.deviceIndex)
-		left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, player.deviceIndex)
-		down_axis = gin.In().GetKeyFlat(gin.KeyS, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		up_axis = gin.In().GetKeyFlat(gin.KeyW, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		right_axis = gin.In().GetKeyFlat(gin.KeyD, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		left_axis = gin.In().GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		up := axisControl(up_axis.CurPressAmt())
-		down := axisControl(down_axis.CurPressAmt())
-		left := axisControl(left_axis.CurPressAmt())
-		right := axisControl(right_axis.CurPressAmt())
-		if up-down != 0 {
-			l.engine.ApplyEvent(Accelerate{player.gid, 2 * (up - down)})
-		}
-		if left-right != 0 {
-			l.engine.ApplyEvent(Turn{player.gid, (right - left)})
-		}
+	if l.mode != LocalModeMoba {
+		panic("Need to implement controls for multiple players on a single screen")
+	}
+	l.thinkAbility(g, &l.moba.currentPlayer.abs, l.moba.currentPlayer.gid)
+	down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, l.moba.deviceIndex)
+	up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, l.moba.deviceIndex)
+	right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, l.moba.deviceIndex)
+	left_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, l.moba.deviceIndex)
+	down_axis = gin.In().GetKeyFlat(gin.KeyS, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	up_axis = gin.In().GetKeyFlat(gin.KeyW, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	right_axis = gin.In().GetKeyFlat(gin.KeyD, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	left_axis = gin.In().GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	up := axisControl(up_axis.CurPressAmt())
+	down := axisControl(down_axis.CurPressAmt())
+	left := axisControl(left_axis.CurPressAmt())
+	right := axisControl(right_axis.CurPressAmt())
+	if up-down != 0 {
+		l.engine.ApplyEvent(Accelerate{l.moba.currentPlayer.gid, 2 * (up - down)})
+	}
+	if left-right != 0 {
+		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
 	}
 }
 
@@ -789,26 +936,27 @@ func (l *LocalData) handleEventGroupArchitect(group gin.EventGroup) {
 }
 
 func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
-	for _, player := range l.players {
-		k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-		if found, event := group.FindEvent(k0.Id()); found {
-			l.activateAbility(&player.abs, player.gid, 0, event.Type == gin.Press)
+	if l.mode != LocalModeMoba {
+		panic("Need to implement controls for multiple players on a single screen")
+	}
+	k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	if found, event := group.FindEvent(k0.Id()); found {
+		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 0, event.Type == gin.Press)
+		return
+	}
+	if found, event := group.FindEvent(k1.Id()); found {
+		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 1, event.Type == gin.Press)
+		return
+	}
+	if found, event := group.FindEvent(k2.Id()); found {
+		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 2, event.Type == gin.Press)
+		return
+	}
+	if l.moba.currentPlayer.abs.activeAbility != nil {
+		if l.moba.currentPlayer.abs.activeAbility.Respond(l.moba.currentPlayer.gid, group) {
 			return
-		}
-		if found, event := group.FindEvent(k1.Id()); found {
-			l.activateAbility(&player.abs, player.gid, 1, event.Type == gin.Press)
-			return
-		}
-		if found, event := group.FindEvent(k2.Id()); found {
-			l.activateAbility(&player.abs, player.gid, 2, event.Type == gin.Press)
-			return
-		}
-		if player.abs.activeAbility != nil {
-			if player.abs.activeAbility.Respond(player.gid, group) {
-				return
-			}
 		}
 	}
 }
