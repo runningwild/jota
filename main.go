@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gos"
 	"github.com/runningwild/glop/gui"
@@ -94,26 +93,9 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	} else {
 		sys.Think()
 		g = new(game.Game)
-		g.Rng = cmwc.MakeGoodCmwc()
-		g.Rng.SeedWithDevRand()
-		g.Ents = make(map[game.Gid]game.Ent)
-		g.Friction = 0.97
-		g.Friction_lava = 0.85
-		g.Levels = make(map[game.Gid]*game.Level)
-		g.Levels[game.GidInvadersStart] = &game.Level{}
-		g.Levels[game.GidInvadersStart].Room = room
-		// g.Standard = &game.GameModeStandard{}
-		g.Moba = &game.GameModeMoba{}
-		ps := g.AddPlayers(1, 1)
-		for _, p := range ps {
-			players = append(players, p)
-		}
-		ps = g.AddPlayers(1, 0)
-		for _, p := range ps {
-			players = append(players, p)
-		}
-
-		g.Init()
+		g.Setup = &game.Setup{}
+		g.Setup.Mode = "moba"
+		g.Setup.Sides = make(map[int64]int)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 50001, base.Log())
 		} else {
@@ -123,7 +105,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			base.Error().Fatalf("%v", err.Error())
 		}
 	}
-	localData = game.NewLocalDataMoba(engine, players, gin.DeviceIndexAny, sys)
+	localData = game.NewLocalDataMoba(engine, gin.DeviceIndexAny, sys)
 	// localData = game.NewLocalDataInvaders(engine, sys)
 
 	// Hook the players up regardless of in we're architect or not, since we can

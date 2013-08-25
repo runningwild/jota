@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
@@ -9,6 +10,7 @@ import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/generator"
 	"github.com/runningwild/magnus/gui"
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
@@ -119,7 +121,7 @@ type Player struct {
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side
 // should be zero, otherwise it should be between 0 and number of side - 1,
 // inclusive.
-func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
+func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 	switch {
 	case g.Standard != nil:
 		if side != 0 {
@@ -133,19 +135,19 @@ func (g *Game) AddPlayers(numPlayers int, side int) []Gid {
 		base.Error().Fatalf("Cannot add players without first specifying a game mode.")
 	}
 	var gids []Gid
-	for i := 0; i < numPlayers; i++ {
+	for i, engineId := range engineIds {
 		var p Player
 		p.StatsInst = stats.Make(1000, 750, 0.2, 0.07, 0.5)
 		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.
-		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(numPlayers))
+		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(engineIds)))
 		p.Position = g.Levels[GidInvadersStart].Room.Starts[side].Add(rot)
 
 		// NEXT: REthing Gids and how the levels are laid out - should they just
 		// be indexed by gids?
 		p.Side_ = side
-		p.Gid = g.NextGid()
+		p.Gid = Gid(fmt.Sprintf("Engine:%d", engineId))
 		p.Processes = make(map[int]Process)
 		p.Los = los.Make(LosPlayerHorizon)
 		p.SetLevel(GidInvadersStart)
@@ -207,31 +209,6 @@ func (p *Player) Draw(game *Game) {
 }
 
 func (p *Player) Think(g *Game) {
-	if false {
-		p.Los.Reset(p.Pos())
-		for _, _poly := range g.temp.AllWalls[p.Level()] {
-			poly := linear.Poly(_poly)
-			// maxDistSq := 0.0
-			// for i := 1; i < len(poly); i++ {
-			// 	distSq := poly[i].Sub(poly[0]).Mag2()
-			// 	if distSq > maxDistSq {
-			// 		maxDistSq = distSq
-			// 	}
-			// }
-			// if
-			for i := range poly {
-				seg := poly.Seg(i)
-				if p.Position.Sub(seg.P).Mag2()-seg.Ray().Mag2() > 4*LosPlayerHorizon*LosPlayerHorizon {
-					continue
-				}
-				if seg.Right(p.Position) {
-					continue
-				}
-				p.Los.DrawSeg(seg, "")
-
-			}
-		}
-	}
 	p.BaseEnt.Think(g)
 }
 
@@ -285,7 +262,95 @@ type Level struct {
 	Room       Room
 }
 
+// Used before the 'game' starts to choose sides and characters and whatnot.
+type Setup struct {
+	Mode      string        // should be "moba" or "standard"
+	EngineIds []int64       // engine ids of the engines currently joined
+	Sides     map[int64]int // map from engineid to side
+}
+
+type SetupSetEngineIds struct {
+	EngineIds []int64
+}
+
+func (s SetupSetEngineIds) Apply(_g interface{}) {
+	g := _g.(*Game)
+	if g.Setup == nil {
+		return
+	}
+	g.Setup.EngineIds = s.EngineIds
+	for _, id := range g.Setup.EngineIds {
+		if _, ok := g.Setup.Sides[id]; !ok {
+			g.Setup.Sides[id] = 0
+		}
+	}
+}
+func init() {
+	gob.Register(SetupSetEngineIds{})
+}
+
+type SetupChangeSides struct {
+	EngineId int64
+	Side     int
+}
+
+func (s SetupChangeSides) Apply(_g interface{}) {
+	g := _g.(*Game)
+	if g.Setup == nil {
+		return
+	}
+	g.Setup.Sides[s.EngineId] = s.Side
+}
+func init() {
+	gob.Register(SetupChangeSides{})
+}
+
+type SetupComplete struct{}
+
+func (u SetupComplete) Apply(_g interface{}) {
+	g := _g.(*Game)
+	if g.Setup == nil {
+		return
+	}
+
+	var room Room
+	generated := generator.GenerateRoom(1024, 1024, 100, 64, 64522029961391019)
+	data, err := json.Marshal(generated)
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	err = json.Unmarshal(data, &room)
+	// err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
+	if err != nil {
+		base.Error().Fatalf("%v", err)
+	}
+	g.Levels = make(map[Gid]*Level)
+	g.Levels[GidInvadersStart] = &Level{}
+	g.Levels[GidInvadersStart].Room = room
+	g.Rng = cmwc.MakeGoodCmwc()
+	g.Rng.Seed(12313131)
+	g.Ents = make(map[Gid]Ent)
+	g.Friction = 0.97
+	g.Friction_lava = 0.85
+	// g.Standard = &GameModeStandard{}
+	g.Moba = &GameModeMoba{}
+	sides := make(map[int][]int64)
+	for engineId, side := range g.Setup.Sides {
+		sides[side] = append(sides[side], engineId)
+	}
+	for side, ids := range sides {
+		g.AddPlayers(ids, side)
+	}
+	g.Init()
+	g.Setup = nil
+}
+func init() {
+	gob.Register(SetupComplete{})
+}
+
 type Game struct {
+	Setup *Setup
+
 	Levels map[Gid]*Level
 
 	Rng *cmwc.Cmwc
@@ -414,6 +479,9 @@ func (g *Game) AddEnt(ent Ent) Gid {
 
 func (g *Game) Think() {
 	g.GameThinks++
+	if g.Setup != nil {
+		return
+	}
 	defer base.StackCatcher()
 	if g.temp.AllEntsByLevel == nil || g.temp.AllEntsByLevelDirty {
 		g.temp.AllEntsByLevel = make(map[Gid][]Ent)
@@ -551,7 +619,12 @@ func (gw *GameWindow) Requested() gui.Dims {
 }
 func (gw *GameWindow) Think(g *gui.Gui) {
 	gw.Engine.Pause()
-	gw.Local.Think(gw.Engine.GetState().(*Game))
+	game := gw.Engine.GetState().(*Game)
+	if game.Setup != nil {
+		gw.Local.Setup(game)
+	} else {
+		gw.Local.Think(game)
+	}
 	gw.Engine.Unpause()
 }
 func (gw *GameWindow) Respond(group gin.EventGroup) {
@@ -583,7 +656,8 @@ func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
 	}()
 
 	gw.Engine.Pause()
-	gw.Engine.GetState().(*Game).RenderLocal(region, gw.Local)
+	game := gw.Engine.GetState().(*Game)
+	game.RenderLocal(region, gw.Local)
 	gw.Engine.Unpause()
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

@@ -175,13 +175,9 @@ type localArchitectData struct {
 	place linear.Poly
 }
 
-type viewMode int
-
-const (
-	viewArchitect viewMode = iota
-	viewInvaders
-	viewEditor
-)
+type localSetupData struct {
+	index int
+}
 
 type LocalData struct {
 	// The engine running this game, so that the game can apply events to itself.
@@ -199,6 +195,8 @@ type LocalData struct {
 		texRawData []uint32
 		texId      gl.Uint
 	}
+
+	setup *localSetupData
 
 	sys       system.System
 	architect localArchitectData
@@ -248,50 +246,9 @@ const (
 	LocalModeEditor
 )
 
-func NewLocalDataMoba(engine *cgf.Engine, playerGids []Gid, index gin.DeviceIndex, sys system.System) *LocalData {
+func NewLocalDataMoba(engine *cgf.Engine, index gin.DeviceIndex, sys system.System) *LocalData {
 	local := newLocalDataHelper(engine, sys, LocalModeMoba)
-	game := engine.GetState().(*Game)
 	local.moba.deviceIndex = index
-	sidesSet := make(map[int]bool)
-	for _, gid := range playerGids {
-		p := game.Ents[gid]
-		var pd mobaPlayerData
-		pd.gid = gid
-		pd.side = p.Side()
-		sidesSet[pd.side] = true
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["mine"](map[string]int{
-				"health":  10,
-				"damage":  100,
-				"trigger": 100,
-				"mass":    300,
-			}))
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["pull"](map[string]int{
-				"frames": 10,
-				"force":  250,
-				"angle":  30,
-			}))
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["cloak"](map[string]int{}))
-		local.moba.players = append(local.moba.players, pd)
-	}
-	for _ = range sidesSet {
-		var sd mobaSideData
-		sd.losTex = MakeLosTexture()
-		pix := sd.losTex.pix
-		for i := range pix {
-			pix[i] = 255
-		}
-		local.moba.sides = append(local.moba.sides, sd)
-	}
-	for i := range local.moba.sides {
-		local.moba.sides[i].side = i
-	}
-	local.moba.setCurrentPlayerByGid(playerGids[0])
 	return local
 }
 
@@ -310,6 +267,7 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 	}
 	local.engine = engine
 	local.mode = mode
+	local.setup = &localSetupData{}
 	if mode == LocalModeArchitect {
 		// local.architect.abs.abilities =
 		// 	append(
@@ -724,10 +682,40 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	}
 }
 
+func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
+	dict := base.GetDictionary("luxisr")
+	size := 60.0
+	y := 100.0
+	gui.SetFontColor(1, 1, 1, 1)
+	dict.RenderString("Engines:", size, y, 0, size, gui.Left)
+	for i, id := range g.Setup.EngineIds {
+		y += size
+		dict.RenderString(fmt.Sprintf("Engine %d, Side %d", id, g.Setup.Sides[id]), size, y, 0, size, gui.Left)
+		if i == local.setup.index {
+			dict.RenderString(">", 50, y, 0, size, gui.Right)
+		}
+	}
+	y += size
+	dict.RenderString("Start!", size, y, 0, size, gui.Left)
+	if local.setup.index == len(g.Setup.EngineIds) {
+		dict.RenderString(">", 50, y, 0, size, gui.Right)
+	}
+	ids := local.engine.Ids()
+	if len(ids) > 0 {
+		// This is the host engine - so update the list of ids in case it's changed
+		local.engine.ApplyEvent(SetupSetEngineIds{ids})
+	}
+
+}
+
 // Draws everything that is relevant to the players on a computer, but not the
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
+	if g.Setup != nil {
+		g.RenderLocalSetup(region, local)
+		return
+	}
 	var losTex *LosTexture
 	switch {
 	case local.mode == LocalModeMoba:
@@ -823,9 +811,61 @@ func axisControl(v float64) float64 {
 func (l *LocalData) localThinkArchitect(g *Game) {
 	l.thinkAbility(g, &l.architect.abs, "")
 }
+
+func (local *LocalData) setupMobaData(g *Game) {
+	sidesSet := make(map[int]bool)
+	for _, ent := range g.Ents {
+		p, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		base.Log().Printf("Player: %v", p.Gid)
+		var pd mobaPlayerData
+		pd.gid = p.Gid
+		pd.side = p.Side()
+		sidesSet[pd.side] = true
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["mine"](map[string]int{
+				"health":  10,
+				"damage":  100,
+				"trigger": 100,
+				"mass":    300,
+			}))
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["pull"](map[string]int{
+				"frames": 10,
+				"force":  250,
+				"angle":  30,
+			}))
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["cloak"](map[string]int{}))
+		local.moba.players = append(local.moba.players, pd)
+	}
+	for _ = range sidesSet {
+		var sd mobaSideData
+		sd.losTex = MakeLosTexture()
+		pix := sd.losTex.pix
+		for i := range pix {
+			pix[i] = 255
+		}
+		local.moba.sides = append(local.moba.sides, sd)
+	}
+	for i := range local.moba.sides {
+		local.moba.sides[i].side = i
+	}
+	local.moba.setCurrentPlayerByGid(Gid(fmt.Sprintf("Engine:%d", local.engine.Id())))
+	local.setup = nil
+}
+
 func (l *LocalData) localThinkInvaders(g *Game) {
 	if l.mode != LocalModeMoba {
 		panic("Need to implement controls for multiple players on a single screen")
+	}
+	if l.setup != nil {
+		l.setupMobaData(g)
 	}
 	l.thinkAbility(g, &l.moba.currentPlayer.abs, l.moba.currentPlayer.gid)
 	down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, l.moba.deviceIndex)
@@ -912,7 +952,35 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 	}
 }
 
+func (l *LocalData) Setup(g *Game) {
+	if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
+		l.setup.index--
+		if l.setup.index < 0 {
+			l.setup.index = 0
+		}
+	}
+	if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
+		l.setup.index++
+		if l.setup.index > len(g.Setup.EngineIds) {
+			l.setup.index = len(g.Setup.EngineIds)
+		}
+	}
+	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
+		if l.setup.index < len(g.Setup.EngineIds) {
+			id := g.Setup.EngineIds[l.setup.index]
+			side := (g.Setup.Sides[id] + 1) % 2
+			l.engine.ApplyEvent(SetupChangeSides{id, side})
+		} else {
+			l.engine.ApplyEvent(SetupComplete{})
+		}
+	}
+}
+
 func (l *LocalData) Think(g *Game) {
+	if g.Setup != nil {
+		l.Setup(g)
+		return
+	}
 	switch l.mode {
 	case LocalModeArchitect:
 		l.localThinkArchitect(g)
@@ -962,6 +1030,10 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 }
 
 func (l *LocalData) HandleEventGroup(group gin.EventGroup) {
+	// TODO: Should probably handle event groups and do proper even handling on setup
+	if l.setup != nil {
+		return
+	}
 	switch l.mode {
 	case LocalModeArchitect:
 		l.handleEventGroupArchitect(group)
