@@ -165,9 +165,15 @@ func init() {
 // 	p.Los.ReleaseResources()
 // }
 
-func (p *Player) Draw(game *Game) {
+func (p *Player) Draw(game *Game, ally bool) {
 	var t *texture.Data
-	gl.Color4ub(255, 255, 255, gl.Ubyte(255.0*(1.0-p.Stats().Cloaking())))
+	var alpha gl.Ubyte
+	if ally {
+		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()/2))
+	} else {
+		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()))
+	}
+	gl.Color4ub(255, 255, 255, alpha)
 	// if p.Id() == 1 {
 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
 	// } else if p.Id() == 2 {
@@ -192,16 +198,16 @@ func (p *Player) Draw(game *Game) {
 	base.SetUniformF("status_bar", "buffer", 0.01)
 
 	base.SetUniformF("status_bar", "frac", 1.0)
-	gl.Color4ub(125, 125, 125, 100)
+	gl.Color4ub(125, 125, 125, alpha/2)
 	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
 
 	health_frac := float32(p.Stats().HealthCur() / p.Stats().HealthMax())
 	if health_frac > 0.5 {
 		color_frac := 1.0 - (health_frac-0.5)*2.0
-		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
+		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, alpha)
 	} else {
 		color_frac := health_frac * 2.0
-		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
+		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, alpha)
 	}
 	base.SetUniformF("status_bar", "frac", health_frac)
 	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
@@ -220,7 +226,7 @@ func (p *Player) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-	Draw(g *Game)
+	Draw(g *Game, ally bool)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 

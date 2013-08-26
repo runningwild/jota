@@ -20,7 +20,7 @@ func init() {
 	gob.Register(&Pest{})
 }
 
-func (p *Pest) Draw(g *Game) {
+func (p *Pest) Draw(g *Game, ally bool) {
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.01)
 	base.SetUniformF("status_bar", "outer", 0.03)

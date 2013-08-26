@@ -49,7 +49,7 @@ func (m *Mine) Think(g *Game) {
 	}
 }
 
-func (m *Mine) Draw(g *Game) {
+func (m *Mine) Draw(g *Game, ally bool) {
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.01)
 	base.SetUniformF("status_bar", "outer", 0.03)

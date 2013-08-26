@@ -496,7 +496,7 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	})
 	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		ent.Draw(g)
+		ent.Draw(g, ent.Side() == side)
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
@@ -672,7 +672,7 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	})
 	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		ent.Draw(g)
+		ent.Draw(g, false)
 	})
 	gl.Disable(gl.TEXTURE_2D)
 

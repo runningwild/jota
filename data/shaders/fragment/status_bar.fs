@@ -32,7 +32,7 @@ void main(void) {
     return;
   }
   vec4 c = gl_Color;
-  c.a = alpha;
+  c.a = c.a * alpha;
   gl_FragColor = c;
   return;
 }
