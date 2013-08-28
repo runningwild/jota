@@ -509,8 +509,11 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 			p.abs.activeAbility.Draw(p.gid, g)
 		}
 	}
-	gl.Color4ub(0, 0, 255, 200)
+	for _, proc := range g.Processes {
+		proc.Draw(Gid(""), g)
+	}
 
+	gl.Color4ub(0, 0, 255, 200)
 	g.renderLosMask(local)
 }
 
@@ -842,6 +845,9 @@ func (local *LocalData) setupMobaData(g *Game) {
 		pd.abs.abilities = append(
 			pd.abs.abilities,
 			ability_makers["cloak"](map[string]int{}))
+		pd.abs.abilities = append(
+			pd.abs.abilities,
+			ability_makers["fire"](map[string]int{}))
 		local.moba.players = append(local.moba.players, pd)
 	}
 	for _ = range sidesSet {
@@ -1007,9 +1013,10 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 	if l.mode != LocalModeMoba {
 		panic("Need to implement controls for multiple players on a single screen")
 	}
-	k0 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-	k1 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-	k2 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k0 := gin.In().GetKeyFlat(gin.KeyY, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k1 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k2 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k3 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 	if found, event := group.FindEvent(k0.Id()); found {
 		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 0, event.Type == gin.Press)
 		return
@@ -1020,6 +1027,10 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 	}
 	if found, event := group.FindEvent(k2.Id()); found {
 		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 2, event.Type == gin.Press)
+		return
+	}
+	if found, event := group.FindEvent(k3.Id()); found {
+		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 3, event.Type == gin.Press)
 		return
 	}
 	if l.moba.currentPlayer.abs.activeAbility != nil {

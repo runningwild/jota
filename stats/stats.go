@@ -46,9 +46,6 @@ type Condition interface {
 	// Called any time the entity with this condition takes damage.
 	ModifyDamage(damage Damage) Damage
 
-	// Returns true if this condition should be removed.
-	Terminated() bool
-
 	// Run every frame, this damage is applied to the entity with this condition.
 	CauseDamage() Damage
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
+	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/generator"
@@ -366,6 +367,9 @@ type Game struct {
 
 	GameThinks int
 
+	// All effects that are not tied to a player.
+	Processes []Process
+
 	// Game Modes - Exactly one of these will be set
 	Standard *GameModeStandard
 	Moba     *GameModeMoba
@@ -504,6 +508,11 @@ func (g *Game) Think() {
 	g.DoForLevels(func(gid Gid, level *Level) {
 		level.ManaSource.Think(g.Ents)
 	})
+
+	for _, proc := range g.Processes {
+		proc.Think(g)
+	}
+	algorithm.Choose(&g.Processes, func(proc Process) bool { return proc.Phase() != PhaseComplete })
 
 	// Advance players, check for collisions, add segments
 	for _, ent := range g.temp.AllEnts {
