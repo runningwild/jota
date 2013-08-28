@@ -90,14 +90,9 @@ type Thinker interface {
 	Phase() Phase
 }
 
-// TODO: Might want to be able to respond to events directly for Ui stuff
-type Responder interface {
-}
-
 type Process interface {
 	Drain
 	Thinker
-	Responder
 	stats.Condition
 	Draw(id Gid, game *Game)
 }
