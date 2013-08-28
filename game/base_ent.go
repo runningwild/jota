@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
 )
@@ -72,18 +73,17 @@ func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
 	b.StatsInst.Think()
 	var dead []int
-	for i, process := range b.Processes {
-		process.Think(g)
-		if process.Phase() == PhaseComplete {
-			dead = append(dead, i)
+	base.DoOrdered(b.Processes, func(a, b int) bool { return a < b }, func(id int, proc Process) {
+		proc.Think(g)
+		if proc.Phase() == PhaseComplete {
+			dead = append(dead, id)
+		} else {
+			b.StatsInst.ApplyCondition(proc)
 		}
-	}
-	for _, i := range dead {
-		delete(b.Processes, i)
-	}
-	// And here we add back in all processes that are still alive.
-	for _, process := range b.Processes {
-		b.StatsInst.ApplyCondition(process)
+	})
+	// Removed dead processes from the ent
+	for _, id := range dead {
+		delete(b.Processes, id)
 	}
 
 	if b.Delta.Speed > b.StatsInst.MaxAcc() {
