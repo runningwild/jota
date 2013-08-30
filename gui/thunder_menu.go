@@ -2,7 +2,7 @@ package gui
 
 import (
 	gl "github.com/chsc/gogl/gl21"
-	fmod "github.com/runningwild/fmod/ex"
+	// fmod "github.com/runningwild/fmod/ex"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
@@ -12,23 +12,24 @@ import (
 )
 
 var soundInit sync.Once
-var sound *fmod.Sound
-var fmodSys *fmod.System
+
+// var sound *fmod.Sound
+// var fmodSys *fmod.System
 
 func setupSound() {
 	soundInit.Do(func() {
 		var err error
-		fmodSys, err = fmod.CreateSystem()
+		// fmodSys, err = fmod.CreateSystem()
 		if err != nil {
-			base.Error().Fatalf("Unable to initialize fmod: %v", err)
+			// base.Error().Fatalf("Unable to initialize fmod: %v", err)
 		}
-		err = fmodSys.Init(2, 0, nil)
+		// err = fmodSys.Init(2, 0, nil)
 		if err != nil {
-			base.Error().Fatalf("Unable to initialize fmod: %v", err)
+			// base.Error().Fatalf("Unable to initialize fmod: %v", err)
 		}
 		target := filepath.Join(base.GetDataDir(), "sound/ping.wav")
 		base.Log().Printf("Trying to load ", target)
-		sound, err = fmodSys.CreateSound_FromFilename(target, fmod.MODE_DEFAULT)
+		// sound, err = fmodSys.CreateSound_FromFilename(target, fmod.MODE_DEFAULT)
 		if err != nil {
 			base.Error().Fatalf("Unable to load sound: %v", err)
 		}
@@ -155,7 +156,7 @@ func (tm *ThunderMenu) Think(gui *Gui) {
 }
 
 func (tm *ThunderMenu) Push(target string) {
-	fmodSys.PlaySound(0, sound, false)
+	// fmodSys.PlaySound(0, sound, false)
 	tm.delta -= 1.0
 	tm.current++
 	if len(tm.menuStack) > tm.current {
@@ -166,7 +167,7 @@ func (tm *ThunderMenu) Push(target string) {
 }
 
 func (tm *ThunderMenu) Pop() {
-	fmodSys.PlaySound(0, sound, false)
+	// fmodSys.PlaySound(0, sound, false)
 	tm.delta += 1.0
 	tm.current--
 }
