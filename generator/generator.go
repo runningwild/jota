@@ -192,6 +192,12 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 		s2 := linear.Seg2{s.Q.Add(right), s.P.Add(right)}
 		room.Walls[nextId()] = linear.Poly{s.P, s.Q, s2.P, s2.Q}
 	}
+	room.Walls[nextId()] = linear.Poly{
+		linear.Vec2{0, 0},
+		linear.Vec2{dx, 0},
+		linear.Vec2{dx, dy},
+		linear.Vec2{0, dy},
+	}
 	room.NextId = nextIdInt
 	return room
 }
