@@ -5,11 +5,13 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
+	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	"math"
+	// "math"
 	"math/rand"
 )
 
@@ -32,16 +34,18 @@ type fire struct {
 }
 
 func (f *fire) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
-	if !keyPress {
-		return nil, false
-	}
-	ret := []cgf.Event{
-		addFireEvent{
+	var ret []cgf.Event
+	if keyPress {
+		ret = append(ret, addFireEvent{
 			PlayerGid: gid,
 			Id:        f.id,
-		},
+		})
+	} else {
+		ret = append(ret, addFireExplodeEvent{
+			PlayerGid: gid,
+			Id:        f.id,
+		})
 	}
-	base.Log().Printf("Activate")
 	return ret, false
 }
 
@@ -74,6 +78,59 @@ func (e addFireEvent) Apply(_g interface{}) {
 	}
 }
 
+type fireExplosion struct {
+	Pos    linear.Vec2
+	Radius float64
+	Timer  int
+	Start  int
+	Peak   int
+	End    int
+}
+
+func (fe fireExplosion) Draw(test bool) {
+	base.EnableShader("circle")
+	base.SetUniformF("circle", "edge", 0.7)
+	if test {
+		gl.Color4ub(200, 200, 200, gl.Ubyte(150*fe.Alpha()))
+	} else {
+		gl.Color4ub(255, 50, 10, gl.Ubyte(150*fe.Alpha()))
+	}
+	texture.Render(
+		fe.Pos.X-fe.Size(),
+		fe.Pos.Y-fe.Size(),
+		2*fe.Size(),
+		2*fe.Size())
+	base.EnableShader("")
+}
+
+func (f *fireExplosion) Think() {
+	f.Timer++
+}
+
+func (f *fireExplosion) Done() bool {
+	return f.Timer > f.End
+}
+
+func (fe fireExplosion) Size() float64 {
+	if fe.Timer < fe.Start || fe.Timer > fe.End {
+		return 0.0
+	}
+	if fe.Timer > fe.Peak {
+		return fe.Radius
+	}
+	return fe.Radius * (0.5 + 0.5*float64(fe.Timer-fe.Start)/float64(fe.Peak-fe.Start))
+}
+
+func (fe fireExplosion) Alpha() float64 {
+	if fe.Timer < fe.Peak {
+		return 1.0
+	}
+	if fe.Timer > fe.End {
+		return 0.0
+	}
+	return 1.0 - float64(fe.Timer-fe.Peak)/float64(fe.End-fe.Peak)/2.0
+}
+
 type fireProcess struct {
 	BasicPhases
 	NullCondition
@@ -88,9 +145,9 @@ type fireProcess struct {
 
 	// Sample projectiles - just for display, the real ones are calculated when
 	// the process is actually complete.
-	proj   []linear.Seg2
-	thinks int
-	rng    *cmwc.Cmwc
+	explosions []fireExplosion
+	thinks     int
+	rng        *cmwc.Cmwc
 }
 
 func (f *fireProcess) Supply(supply game.Mana) game.Mana {
@@ -107,21 +164,23 @@ func (f *fireProcess) Think(g *game.Game) {
 		f.rng = cmwc.MakeGoodCmwc()
 		f.rng.SeedWithDevRand()
 	}
-	max := 10
-	if len(f.proj) > 0 && f.thinks%3 == 0 {
-		f.proj = f.proj[1:]
+	max := 10 + int(f.Stored/10)
+	algorithm.Choose(&f.explosions, func(e fireExplosion) bool { return !e.Done() })
+	if len(f.explosions) < max {
+		f.explosions = append(f.explosions, fireDoLine(f.rng, player.Position, player.Angle, f.Stored, 3, g.Levels[player.CurrentLevel]))
 	}
-	for len(f.proj) < max {
-		f.proj = append(f.proj, fireDoLine(f.rng, player.Position, player.Angle, f.Stored, g.Levels[player.CurrentLevel]))
+	for i := range f.explosions {
+		f.explosions[i].Think()
 	}
 	f.thinks++
 }
 
-func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle float64, stored float64, level *game.Level) linear.Seg2 {
+func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle, stored float64, speed int, level *game.Level) fireExplosion {
 	rng := rand.New(c)
 	ray := (linear.Vec2{1, 0})
-	ray.Scale(math.Abs(rng.NormFloat64() / 2))
-	ray = ray.Rotate(angle).Rotate(rng.NormFloat64() / 5).Scale(stored)
+	// ray.Scale(math.Abs(rng.NormFloat64()/10) + 50)
+	scale := (stored/5 + 50) * (1 + rng.Float64()*(0.2+stored/2000))
+	ray = ray.Rotate(angle).Rotate(rng.NormFloat64() * (0.2 + stored/7500)).Scale(scale)
 	seg := linear.Seg2{pos, pos.Add(ray)}
 	base.DoOrdered(level.Room.Walls, func(a, b string) bool { return a < b }, func(_ string, poly linear.Poly) {
 		for i := range poly {
@@ -131,38 +190,90 @@ func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle float64, stored float64, le
 			}
 		}
 	})
-	return seg
+	p1 := rng.Intn(speed)
+	p2 := rng.Intn(speed)
+	p3 := rng.Intn(speed)
+	return fireExplosion{
+		Pos:    seg.Q,
+		Radius: rng.Float64()*40 + 30,
+		Timer:  0,
+		Start:  1*speed + p1,
+		Peak:   4*speed + p1 + p2,
+		End:    5*speed + p1 + p2 + p3,
+	}
 }
 
 func (f *fireProcess) Draw(gid game.Gid, g *game.Game) {
-	gl.Disable(gl.TEXTURE_2D)
-	gl.Begin(gl.TRIANGLES)
-	for i, line := range f.proj {
-		angle := 0.02
-		v1 := line.Ray().Rotate(-angle).Add(f.Pos)
-		v2 := line.Ray().Rotate(angle).Add(f.Pos)
-		gl.Color4d(0, 0, 0, 0)
-		gl.Vertex2i(gl.Int(line.P.X), gl.Int(line.P.Y))
-		gl.Color4d(0.7, 0.7, 0.7, gl.Double(float64(i)/float64(len(f.proj))))
-		gl.Vertex2i(gl.Int(v1.X), gl.Int(v1.Y))
-		gl.Vertex2i(gl.Int(v2.X), gl.Int(v2.Y))
+	for _, expl := range f.explosions {
+		expl.Draw(true)
 	}
-	gl.End()
-	player := g.Ents[gid].(*game.Player)
-	ray := (linear.Vec2{1, 0}).Rotate(player.Angle).Scale(f.Stored)
-	center := ray.Add(player.Position)
+}
 
-	return
-	base.EnableShader("fire")
-	gl.Color4ub(255, 255, 255, 255)
-	base.SetUniformF("fire", "inner", f.Inner/f.Outer*0.5)
-	base.SetUniformF("fire", "outer", 0.5)
-	base.SetUniformF("fire", "frac", 1)
-	base.SetUniformF("fire", "heading", 0)
-	texture.Render(
-		center.X-float64(f.Outer),
-		center.Y-float64(f.Outer),
-		2*float64(f.Outer),
-		2*float64(f.Outer))
+type addFireExplodeEvent struct {
+	PlayerGid game.Gid
+	Id        int
+}
+
+func init() {
+	gob.Register(addFireExplodeEvent{})
+}
+
+func (e addFireExplodeEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player := g.Ents[e.PlayerGid].(*game.Player)
+	prevProc := player.Processes[100+e.Id].(*fireProcess)
+	var fpe fireProcessExplosion
+	fpe.The_phase = game.PhaseRunning
+	num := int(g.Rng.Int63()%20 + int64(prevProc.Stored/10))
+	base.Log().Printf("NUM: %d", num)
+	for i := 0; i < num; i++ {
+		fpe.Explosions = append(fpe.Explosions,
+			fireDoLine(g.Rng, player.Position, player.Angle, prevProc.Stored, 10, g.Levels[player.CurrentLevel]))
+	}
+	player.Processes[100+e.Id] = &fpe
+}
+
+type fireProcessExplosion struct {
+	BasicPhases
+	NullCondition
+	Explosions []fireExplosion
+}
+
+func (f *fireProcessExplosion) Supply(supply game.Mana) game.Mana {
+	return supply
+}
+
+func (f *fireProcessExplosion) Think(g *game.Game) {
+	g.DoForEnts(func(gid game.Gid, ent game.Ent) {
+		for _, expl := range f.Explosions {
+			if expl.Size() == 0 {
+				continue
+			}
+			if expl.Pos.Sub(ent.Pos()).Mag() <= expl.Size() {
+				ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 1})
+			}
+		}
+	})
+	done := true
+	for i := range f.Explosions {
+		f.Explosions[i].Think()
+		if !f.Explosions[i].Done() {
+			done = false
+		}
+	}
+	if done {
+		f.The_phase = game.PhaseComplete
+	}
+}
+
+func (f *fireProcessExplosion) Draw(gid game.Gid, g *game.Game) {
+	// player := g.Ents[gid].(*game.Player)
+	// ray := (linear.Vec2{1, 0}).Rotate(player.Angle).Scale(f.Stored)
+	// center := ray.Add(player.Position)
+	base.EnableShader("circle")
+	base.SetUniformF("circle", "edge", 0.7)
+	for _, expl := range f.Explosions {
+		expl.Draw(false)
+	}
 	base.EnableShader("")
 }
