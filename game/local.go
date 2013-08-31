@@ -11,13 +11,12 @@ import (
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	g2 "github.com/runningwild/magnus/gui"
-	"github.com/runningwild/magnus/los"
 	"math"
 )
 
 const LosMaxPlayers = 32
 const LosMaxDist = 1000
-const LosPlayerHorizon = 700
+const LosPlayerHorizon = 900
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -57,8 +56,9 @@ type localEditorData struct {
 }
 
 type mobaSideData struct {
-	losTex *LosTexture
-	side   int
+	losTex   *LosTexture
+	losCache *losCache
+	side     int
 }
 
 func (msd *mobaSideData) updateLosTex(g *Game) {
@@ -71,64 +71,17 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 			}
 		}
 	}
-	losBuffer := los.Make(LosPlayerHorizon)
+	msd.losCache.SetWalls(g.temp.AllWalls[GidInvadersStart])
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != msd.side {
 			continue
 		}
-		losBuffer.Reset(ent.Pos())
-		for _, walls := range g.temp.AllWalls[ent.Level()] {
-			poly := linear.Poly(walls)
-			for i := range poly {
-				wall := poly.Seg(i)
-				mid := wall.P.Add(wall.Q).Scale(0.5)
-				if mid.Sub(ent.Pos()).Mag() < LosPlayerHorizon+wall.Ray().Mag() {
-					losBuffer.DrawSeg(wall, "")
-				}
-			}
-		}
-		dx0 := (int(ent.Pos().X+0.5) - LosPlayerHorizon) / LosGridSize
-		dx1 := (int(ent.Pos().X+0.5) + LosPlayerHorizon) / LosGridSize
-		dy0 := (int(ent.Pos().Y+0.5) - LosPlayerHorizon) / LosGridSize
-		dy1 := (int(ent.Pos().Y+0.5) + LosPlayerHorizon) / LosGridSize
-		for x := dx0; x <= dx1; x++ {
-			if x < 0 || x >= len(msd.losTex.Pix()) {
-				continue
-			}
-			for y := dy0; y <= dy1; y++ {
-				if y < 0 || y >= len(msd.losTex.Pix()[x]) {
-					continue
-				}
-				seg := linear.Seg2{
-					ent.Pos(),
-					linear.Vec2{(float64(x) + 0.5) * LosGridSize, (float64(y) + 0.5) * LosGridSize},
-				}
-				dist2 := seg.Ray().Mag2()
-				if dist2 > LosPlayerHorizon*LosPlayerHorizon {
-					continue
-				}
-				raw := losBuffer.RawAccess()
-				angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
-				index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
-				if dist2 < LosPlayerHorizon*LosPlayerHorizon {
-					val := 255.0
-					if dist2 < float64(raw[index]) {
-						val = 0
-					} else if dist2 < float64(raw[(index+1)%len(raw)]) ||
-						dist2 < float64(raw[(index+len(raw)-1)%len(raw)]) {
-						val = 100
-					} else if dist2 < float64(raw[(index+2)%len(raw)]) ||
-						dist2 < float64(raw[(index+len(raw)-2)%len(raw)]) {
-						val = 200
-					}
-					fade := 100.0
-					if dist2 > (LosPlayerHorizon-fade)*(LosPlayerHorizon-fade) {
-						val = 255 - (255-val)*(1.0-(fade-(LosPlayerHorizon-math.Sqrt(dist2)))/fade)
-					}
-					if val < float64(msd.losTex.Pix()[x][y]) {
-						msd.losTex.Pix()[x][y] = byte(val)
-					}
-				}
+		res := msd.losCache.Get(int(ent.Pos().X), int(ent.Pos().Y), LosPlayerHorizon)
+		losTex := msd.losTex.Pix()
+		for i := range res {
+			cur := losTex[res[i].X][res[i].Y]
+			if res[i].Val < cur {
+				losTex[res[i].X][res[i].Y] = res[i].Val
 			}
 		}
 	}
@@ -748,6 +701,7 @@ func (local *LocalData) setupMobaData(g *Game) {
 		for i := range pix {
 			pix[i] = 255
 		}
+		sd.losCache = makeLosCache(len(sd.losTex.Pix()), len(sd.losTex.Pix()[0]))
 		local.moba.sides = append(local.moba.sides, sd)
 	}
 	for i := range local.moba.sides {
