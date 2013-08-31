@@ -6,7 +6,7 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
-	"github.com/runningwild/glop/render"
+	// "github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
@@ -17,7 +17,7 @@ import (
 
 const LosMaxPlayers = 32
 const LosMaxDist = 1000
-const LosPlayerHorizon = 400
+const LosPlayerHorizon = 700
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -185,17 +185,6 @@ type LocalData struct {
 
 	mode LocalMode
 
-	los struct {
-		texData    [][]uint32
-		texRawData []uint32
-		texId      gl.Uint
-	}
-	back struct {
-		texData    [][]uint32
-		texRawData []uint32
-		texId      gl.Uint
-	}
-
 	setup *localSetupData
 
 	sys       system.System
@@ -285,50 +274,6 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 	}
 	local.sys = sys
 	gin.In().RegisterEventListener(&gameResponderWrapper{&local})
-
-	local.los.texRawData = make([]uint32, los.Resolution*LosMaxPlayers)
-	local.los.texData = make([][]uint32, LosMaxPlayers)
-	for i := range local.los.texData {
-		start := i * los.Resolution
-		end := (i + 1) * los.Resolution
-		local.los.texData[i] = local.los.texRawData[start:end]
-	}
-	render.Queue(func() {
-		gl.GenTextures(1, &local.los.texId)
-		gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
-		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gl.TexImage2D(
-			gl.TEXTURE_2D,
-			0,
-			gl.ALPHA,
-			los.Resolution,
-			LosMaxPlayers,
-			0,
-			gl.ALPHA,
-			gl.UNSIGNED_INT,
-			gl.Pointer(&local.los.texRawData[0]))
-	})
-
-	local.back.texRawData = make([]uint32, los.Resolution*LosMaxPlayers)
-	local.back.texData = make([][]uint32, LosMaxPlayers)
-	for i := range local.back.texData {
-		start := i * los.Resolution
-		end := (i + 1) * los.Resolution
-		local.back.texData[i] = local.back.texRawData[start:end]
-	}
-	render.Queue(func() {
-		gl.GenTextures(1, &local.back.texId)
-		gl.BindTexture(gl.TEXTURE_2D, local.back.texId)
-		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	})
 	return &local
 }
 
@@ -487,14 +432,6 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	}
 
 	gl.Color4d(1, 1, 1, 1)
-	losCount := 0
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok && p.Side() == side {
-			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
-			losCount++
-		}
-	})
-	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		ent.Draw(g, ent.Side() == side)
 	})
@@ -515,44 +452,6 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 
 	gl.Color4ub(0, 0, 255, 200)
 	g.renderLosMask(local)
-}
-
-func (g *Game) IsExistingPolyVisible(polyIndex string) bool {
-	visible := false
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if player, ok := ent.(*Player); ok {
-			if player.Los.CountSource(polyIndex) > 0.0 {
-				visible = true
-			}
-		}
-	})
-	return visible
-}
-
-func (g *Game) IsPolyPlaceable(poly linear.Poly) bool {
-	placeable := true
-	// Not placeable it any player can see it
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if player, ok := ent.(*Player); ok {
-			for i := 0; i < len(poly); i++ {
-				if player.Los.TestSeg(poly.Seg(i)) > 0.0 {
-					placeable = false
-				}
-			}
-		}
-	})
-	if !placeable {
-		return false
-	}
-
-	// Not placeable if it intersects with any walls
-	for _, wall := range g.Levels[GidInvadersStart].Room.Walls {
-		if linear.ConvexPolysOverlap(poly, wall) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (camera *cameraInfo) doArchitectFocusRegion(g *Game, sys system.System) {
@@ -665,14 +564,6 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
 	}
 
-	gl.Color4d(1, 1, 1, 1)
-	losCount := 0
-	g.DoForEnts(func(gid Gid, ent Ent) {
-		if p, ok := ent.(*Player); ok {
-			p.Los.WriteDepthBuffer(local.los.texData[losCount], LosMaxDist)
-			losCount++
-		}
-	})
 	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
 		ent.Draw(g, false)

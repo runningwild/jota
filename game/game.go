@@ -13,7 +13,6 @@ import (
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/generator"
 	"github.com/runningwild/magnus/gui"
-	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	// "math"
@@ -111,7 +110,6 @@ func init() {
 
 type Player struct {
 	BaseEnt
-	Los *los.Los
 }
 
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side
@@ -145,7 +143,6 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.Side_ = side
 		p.Gid = Gid(fmt.Sprintf("Engine:%d", engineId))
 		p.Processes = make(map[int]Process)
-		p.Los = los.Make(LosPlayerHorizon)
 		p.SetLevel(GidInvadersStart)
 		g.Ents[p.Gid] = &p
 		gids = append(gids, p.Gid)
