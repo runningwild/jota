@@ -31,11 +31,24 @@ func (g *Game) MakeControlPoints() {
 				Side_:        -1,
 				CurrentLevel: GidInvadersStart,
 				Position:     towerPos,
-				StatsInst:    stats.Make(100000, 1000000, 0, 0, 1, 50),
+				StatsInst: stats.Make(stats.Base{
+					Health: 100000,
+					Mass:   1000000,
+					Rate:   1,
+					Size:   50,
+					Vision: 900,
+				}),
 			},
 		}
 		g.AddEnt(&cp)
 	}
+}
+
+func (cp *ControlPoint) Side() int {
+	if cp.Controlled {
+		return cp.Controller
+	}
+	return cp.BaseEnt.Side()
 }
 
 func (cp *ControlPoint) Think(g *Game) {
@@ -57,7 +70,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	if len(sides) != 1 {
 		return
 	}
-	amt := 0.001 * float64(sides[theSide])
+	amt := 0.003 * float64(sides[theSide])
 	if !cp.Controlled || theSide == cp.Controller {
 		if cp.Control < 1.0 {
 			cp.Control += amt

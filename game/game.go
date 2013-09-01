@@ -131,7 +131,15 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 	var gids []Gid
 	for i, engineId := range engineIds {
 		var p Player
-		p.StatsInst = stats.Make(1000, 750, 0.2, 0.07, 0.5, 12)
+		p.StatsInst = stats.Make(stats.Base{
+			Health: 1000,
+			Mass:   750,
+			Acc:    0.2,
+			Turn:   0.07,
+			Rate:   0.5,
+			Size:   12,
+			Vision: 600,
+		})
 		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.
@@ -313,7 +321,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	generated := generator.GenerateRoom(1024, 1024, 100, 64, 64522029961391019)
+	generated := generator.GenerateRoom(2048, 2048, 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
 		base.Error().Fatalf("%v", err)

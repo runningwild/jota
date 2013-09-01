@@ -11,12 +11,12 @@ import (
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
 	g2 "github.com/runningwild/magnus/gui"
+	"github.com/runningwild/magnus/stats"
 	"math"
 )
 
 const LosMaxPlayers = 32
 const LosMaxDist = 1000
-const LosPlayerHorizon = 900
 
 type personalAbilities struct {
 	// All of the abilities that this player can activate.
@@ -76,7 +76,7 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 		if ent.Side() != msd.side {
 			continue
 		}
-		res := msd.losCache.Get(int(ent.Pos().X), int(ent.Pos().Y), LosPlayerHorizon)
+		res := msd.losCache.Get(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
 		losTex := msd.losTex.Pix()
 		for i := range res {
 			cur := losTex[res[i].X][res[i].Y]
@@ -762,16 +762,16 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 			}
 		}
 	})
-	min.X -= LosPlayerHorizon
-	min.Y -= LosPlayerHorizon
+	min.X -= stats.LosPlayerHorizon
+	min.Y -= stats.LosPlayerHorizon
 	if min.X < 0 {
 		min.X = 0
 	}
 	if min.Y < 0 {
 		min.Y = 0
 	}
-	max.X += LosPlayerHorizon
-	max.Y += LosPlayerHorizon
+	max.X += stats.LosPlayerHorizon
+	max.Y += stats.LosPlayerHorizon
 	if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
 		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
 	}

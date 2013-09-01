@@ -3,6 +3,7 @@ package game
 import (
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/los"
+	"github.com/runningwild/magnus/stats"
 	"math"
 	"sort"
 )
@@ -16,7 +17,7 @@ type losCache struct {
 
 func makeLosCache(dx, dy int) *losCache {
 	var lc losCache
-	lc.losBuffer = los.Make(LosPlayerHorizon)
+	lc.losBuffer = los.Make(stats.LosPlayerHorizon)
 	lc.cache = make(map[losCacheViewerPos]visiblePosSlice)
 	lc.dx = dx
 	lc.dy = dy
@@ -58,15 +59,15 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 		for i := range poly {
 			wall := poly.Seg(i)
 			mid := wall.P.Add(wall.Q).Scale(0.5)
-			if mid.Sub(pos).Mag() < LosPlayerHorizon+wall.Ray().Mag() {
+			if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
 				lc.losBuffer.DrawSeg(wall, "")
 			}
 		}
 	}
-	dx0 := (int(pos.X+0.5) - LosPlayerHorizon) / LosGridSize
-	dx1 := (int(pos.X+0.5) + LosPlayerHorizon) / LosGridSize
-	dy0 := (int(pos.Y+0.5) - LosPlayerHorizon) / LosGridSize
-	dy1 := (int(pos.Y+0.5) + LosPlayerHorizon) / LosGridSize
+	dx0 := (int(pos.X+0.5) - stats.LosPlayerHorizon) / LosGridSize
+	dx1 := (int(pos.X+0.5) + stats.LosPlayerHorizon) / LosGridSize
+	dy0 := (int(pos.Y+0.5) - stats.LosPlayerHorizon) / LosGridSize
+	dy1 := (int(pos.Y+0.5) + stats.LosPlayerHorizon) / LosGridSize
 	for x := dx0; x <= dx1; x++ {
 		if x < 0 || x >= lc.dx {
 			continue
@@ -80,13 +81,13 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 				linear.Vec2{(float64(x) + 0.5) * LosGridSize, (float64(y) + 0.5) * LosGridSize},
 			}
 			dist2 := seg.Ray().Mag2()
-			if dist2 > LosPlayerHorizon*LosPlayerHorizon {
+			if dist2 > stats.LosPlayerHorizon*stats.LosPlayerHorizon {
 				continue
 			}
 			raw := lc.losBuffer.RawAccess()
 			angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
 			index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
-			if dist2 < LosPlayerHorizon*LosPlayerHorizon {
+			if dist2 < stats.LosPlayerHorizon*stats.LosPlayerHorizon {
 				val := 255.0
 				if dist2 < float64(raw[index]) {
 					val = 0
@@ -98,8 +99,8 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 					val = 200
 				}
 				fade := 100.0
-				if dist2 > (LosPlayerHorizon-fade)*(LosPlayerHorizon-fade) {
-					val = 255 - (255-val)*(1.0-(fade-(LosPlayerHorizon-math.Sqrt(dist2)))/fade)
+				if dist2 > (stats.LosPlayerHorizon-fade)*(stats.LosPlayerHorizon-fade) {
+					val = 255 - (255-val)*(1.0-(fade-(stats.LosPlayerHorizon-math.Sqrt(dist2)))/fade)
 				}
 				if val < 255 {
 					vps = append(vps, visiblePos{

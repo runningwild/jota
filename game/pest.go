@@ -89,7 +89,7 @@ func init() {
 }
 
 func (*Sludge) ModifyBase(b stats.Base) stats.Base {
-	b.Max_acc /= 2
+	b.Acc /= 2
 	return b
 }
 func (*Sludge) ModifyDamage(damage stats.Damage) stats.Damage {

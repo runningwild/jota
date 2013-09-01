@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 )
 
+const LosPlayerHorizon = 900
+
 type Dynamic struct {
 	Health float64
 }
@@ -18,13 +20,18 @@ type Base struct {
 	Cloaking float64
 
 	// Max rate for accelerating and turning.
-	Max_turn float64
-	Max_acc  float64
+	Turn float64
+	Acc  float64
 
 	// Max rate of mana draining
-	Max_rate float64
+	Rate float64
 
+	// Ent's radius
 	Size float64
+
+	// Maximum vision distance, for technical reasons this value will always be
+	// reported as LosPlayerHorizon if it ever exceeds LosPlayerHorizon.
+	Vision float64
 }
 
 type DamageKind int
@@ -79,19 +86,26 @@ func (s Inst) Mass() float64 {
 	return s.ModifyBase(s.inst.Base).Mass
 }
 func (s Inst) MaxTurn() float64 {
-	return s.ModifyBase(s.inst.Base).Max_turn
+	return s.ModifyBase(s.inst.Base).Turn
 }
 func (s Inst) MaxAcc() float64 {
-	return s.ModifyBase(s.inst.Base).Max_acc
+	return s.ModifyBase(s.inst.Base).Acc
 }
 func (s Inst) MaxRate() float64 {
-	return s.ModifyBase(s.inst.Base).Max_rate
+	return s.ModifyBase(s.inst.Base).Rate
 }
 func (s Inst) Cloaking() float64 {
 	return s.ModifyBase(s.inst.Base).Cloaking
 }
 func (s Inst) Size() float64 {
 	return s.inst.Base.Size
+}
+func (s Inst) Vision() float64 {
+	vision := s.ModifyBase(s.inst.Base).Vision
+	if vision > LosPlayerHorizon {
+		return LosPlayerHorizon
+	}
+	return vision
 }
 
 func (s *Inst) SetHealth(health float64) {
@@ -117,18 +131,11 @@ func (s *Inst) Think() {
 	s.inst.Base.Cloaking = 0.0
 }
 
-func Make(health, mass, acc, turn, rate, size float64) Inst {
+func Make(base Base) Inst {
 	var s Inst
-	s.inst.Base = Base{
-		Health:   health,
-		Mass:     mass,
-		Max_turn: turn,
-		Max_acc:  acc,
-		Max_rate: rate,
-		Size:     size,
-	}
+	s.inst.Base = base
 	s.inst.Dynamic = Dynamic{
-		Health: health,
+		Health: s.inst.Base.Health,
 	}
 	return s
 }

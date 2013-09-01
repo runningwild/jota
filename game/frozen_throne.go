@@ -22,7 +22,13 @@ func (g *Game) MakeFrozenThrones() {
 			},
 			Los: los.Make(LosMaxDist),
 		}
-		ft.BaseEnt.StatsInst = stats.Make(100000, 1000000, 0, 0, 1, 100)
+		ft.BaseEnt.StatsInst = stats.Make(stats.Base{
+			Health: 100000,
+			Mass:   1000000,
+			Rate:   1,
+			Size:   100,
+			Vision: 900,
+		})
 		g.AddEnt(&ft)
 	}
 }
