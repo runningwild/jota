@@ -56,12 +56,12 @@ type localEditorData struct {
 }
 
 type mobaSideData struct {
-	losTex   *LosTexture
-	losCache *losCache
-	side     int
+	losTex *LosTexture
+	side   int
 }
 
 func (msd *mobaSideData) updateLosTex(g *Game) {
+	cache := g.Moba.Sides[msd.side].losCache
 	pix := msd.losTex.pix
 	for i := range pix {
 		if pix[i] < 250 {
@@ -71,12 +71,12 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 			}
 		}
 	}
-	msd.losCache.SetWalls(g.temp.AllWalls[GidInvadersStart])
+	cache.SetWalls(g.temp.AllWalls[GidInvadersStart])
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != msd.side {
 			continue
 		}
-		res := msd.losCache.Get(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
+		res := cache.Get(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
 		losTex := msd.losTex.Pix()
 		for i := range res {
 			cur := losTex[res[i].X][res[i].Y]
@@ -701,7 +701,6 @@ func (local *LocalData) setupMobaData(g *Game) {
 		for i := range pix {
 			pix[i] = 255
 		}
-		sd.losCache = makeLosCache(len(sd.losTex.Pix()), len(sd.losTex.Pix()[0]))
 		local.moba.sides = append(local.moba.sides, sd)
 	}
 	for i := range local.moba.sides {

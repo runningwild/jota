@@ -321,7 +321,8 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	generated := generator.GenerateRoom(2048, 2048, 100, 64, 64522029961391019)
+	dx, dy := 2048, 2048
+	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
@@ -340,13 +341,18 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Friction = 0.97
 	g.Friction_lava = 0.85
 	// g.Standard = &GameModeStandard{}
-	g.Moba = &GameModeMoba{}
+	g.Moba = &GameModeMoba{
+		Sides: make(map[int]*GameModeMobaSideData),
+	}
 	sides := make(map[int][]int64)
 	for engineId, side := range g.Setup.Sides {
 		sides[side] = append(sides[side], engineId)
 	}
 	for side, ids := range sides {
 		g.AddPlayers(ids, side)
+		g.Moba.Sides[side] = &GameModeMobaSideData{
+			losCache: makeLosCache(dx, dy),
+		}
 	}
 	g.MakeControlPoints()
 	g.Init()
@@ -406,6 +412,11 @@ type GameModeStandard struct {
 	Invaders  invadersData
 }
 type GameModeMoba struct {
+	// Map from side to the moba data for that side
+	Sides map[int]*GameModeMobaSideData
+}
+type GameModeMobaSideData struct {
+	losCache *losCache
 }
 
 func (g *Game) NextGid() Gid {
