@@ -100,6 +100,7 @@ func init() {
 type cloakProcess struct {
 	BasicPhases
 	NullCondition
+	nonRendering
 	Id        int
 	PlayerGid game.Gid
 
@@ -129,5 +130,3 @@ func (p *cloakProcess) Think(g *game.Game) {
 	p.alpha = 1.0 - float64(p.supplied)/float64(cloakRate)
 	p.supplied = 0
 }
-
-func (p *cloakProcess) Draw(gid game.Gid, g *game.Game) {}

@@ -386,7 +386,7 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 
 	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		ent.Draw(g, ent.Side() == side)
+		ent.Draw(g, side)
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
@@ -396,11 +396,11 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	for i := range local.moba.players {
 		p := &local.moba.players[i]
 		if p.abs.activeAbility != nil {
-			p.abs.activeAbility.Draw(p.gid, g)
+			p.abs.activeAbility.Draw(p.gid, g, side)
 		}
 	}
 	for _, proc := range g.Processes {
-		proc.Draw(Gid(""), g)
+		proc.Draw(Gid(""), g, side)
 	}
 
 	gl.Color4ub(0, 0, 255, 200)
@@ -519,13 +519,13 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 
 	gl.Color4d(1, 1, 1, 1)
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		ent.Draw(g, false)
+		ent.Draw(g, -1) // TODO: Side isn't defined for architect yet
 	})
 	gl.Disable(gl.TEXTURE_2D)
 
 	g.renderLosMask(local)
 	if local.architect.abs.activeAbility != nil {
-		local.architect.abs.activeAbility.Draw("", g)
+		local.architect.abs.activeAbility.Draw("", g, -1) // TODO: side not defined for architect
 	}
 }
 

@@ -203,7 +203,11 @@ func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle, stored float64, speed int,
 	}
 }
 
-func (f *fireProcess) Draw(gid game.Gid, g *game.Game) {
+func (f *fireProcess) Draw(gid game.Gid, g *game.Game, side int) {
+	player := g.Ents[f.Gid].(*game.Player)
+	if side != player.Side() {
+		return
+	}
 	for _, expl := range f.explosions {
 		expl.Draw(true)
 	}
@@ -225,7 +229,6 @@ func (e addFireExplodeEvent) Apply(_g interface{}) {
 	var fpe fireProcessExplosion
 	fpe.The_phase = game.PhaseRunning
 	num := int(g.Rng.Int63()%20 + int64(prevProc.Stored/10))
-	base.Log().Printf("NUM: %d", num)
 	for i := 0; i < num; i++ {
 		fpe.Explosions = append(fpe.Explosions,
 			fireDoLine(g.Rng, player.Position, player.Angle, prevProc.Stored, 10, g.Levels[player.CurrentLevel]))
@@ -266,7 +269,7 @@ func (f *fireProcessExplosion) Think(g *game.Game) {
 	}
 }
 
-func (f *fireProcessExplosion) Draw(gid game.Gid, g *game.Game) {
+func (f *fireProcessExplosion) Draw(gid game.Gid, g *game.Game, side int) {
 	// player := g.Ents[gid].(*game.Player)
 	// ray := (linear.Vec2{1, 0}).Rotate(player.Angle).Scale(f.Stored)
 	// center := ray.Add(player.Position)

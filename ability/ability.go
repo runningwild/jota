@@ -35,7 +35,7 @@ func (nonThinker) Think(game.Gid, *game.Game, linear.Vec2) ([]cgf.Event, bool) {
 
 type nonRendering struct{}
 
-func (nonRendering) Draw(gid game.Gid, game *game.Game) {}
+func (nonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
 
 type BasicPhases struct {
 	The_phase game.Phase

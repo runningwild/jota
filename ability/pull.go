@@ -168,10 +168,13 @@ func (p *pullProcess) Think(g *game.Game) {
 	})
 }
 
-func (p *pullProcess) Draw(gid game.Gid, g *game.Game) {
+func (p *pullProcess) Draw(gid game.Gid, g *game.Game, side int) {
+	player := g.Ents[p.PlayerGid].(*game.Player)
+	if side != player.Side() {
+		return
+	}
 	gl.Color4d(1, 1, 1, 1)
 	gl.Disable(gl.TEXTURE_2D)
-	player := g.Ents[p.PlayerGid].(*game.Player)
 	v1 := player.Pos()
 	v2 := v1.Add(linear.Vec2{1000, 0})
 	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)

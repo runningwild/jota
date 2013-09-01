@@ -27,8 +27,8 @@ func (g *Game) MakeFrozenThrones() {
 	}
 }
 
-func (ft *FrozenThrone) Draw(g *Game, ally bool) {}
-func (ft *FrozenThrone) Supply(mana Mana) Mana   { return Mana{} }
+func (ft *FrozenThrone) Draw(g *Game, side int) {}
+func (ft *FrozenThrone) Supply(mana Mana) Mana  { return Mana{} }
 func (ft *FrozenThrone) Walls() [][]linear.Vec2 {
 	return [][]linear.Vec2{
 		[]linear.Vec2{

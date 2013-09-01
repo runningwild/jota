@@ -28,7 +28,7 @@ func (g *Game) MakeControlPoints() {
 	}
 }
 
-func (cp *ControlPoint) Draw(g *Game, ally bool) {
+func (cp *ControlPoint) Draw(g *Game, side int) {
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.95)
 	gl.Color4ub(0, 200, 0, 250)

@@ -44,7 +44,7 @@ type Ability interface {
 	Think(gid Gid, game *Game, mouse linear.Vec2) ([]cgf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
-	Draw(gid Gid, game *Game)
+	Draw(gid Gid, game *Game, side int)
 }
 
 type AbilityMaker func(params map[string]int) Ability
@@ -94,7 +94,7 @@ type Process interface {
 	Drain
 	Thinker
 	stats.Condition
-	Draw(id Gid, game *Game)
+	Draw(id Gid, game *Game, side int)
 }
 
 type Color int
@@ -158,10 +158,10 @@ func init() {
 // 	p.Los.ReleaseResources()
 // }
 
-func (p *Player) Draw(game *Game, ally bool) {
+func (p *Player) Draw(game *Game, side int) {
 	var t *texture.Data
 	var alpha gl.Ubyte
-	if ally {
+	if side == p.Side() {
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()/2))
 	} else {
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()))
@@ -183,7 +183,7 @@ func (p *Player) Draw(game *Game, ally bool) {
 		false)
 
 	for _, proc := range p.Processes {
-		proc.Draw(p.Id(), game)
+		proc.Draw(p.Id(), game, side)
 	}
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.08)
@@ -219,7 +219,7 @@ func (p *Player) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-	Draw(g *Game, ally bool)
+	Draw(g *Game, side int)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 

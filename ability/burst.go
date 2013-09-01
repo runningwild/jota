@@ -151,7 +151,7 @@ func (p *burstProcess) Think(g *game.Game) {
 	}
 }
 
-func (p *burstProcess) Draw(gid game.Gid, g *game.Game) {
+func (p *burstProcess) Draw(gid game.Gid, g *game.Game, side int) {
 	player := g.Ents[p.PlayerGid].(*game.Player)
 	base.EnableShader("circle")
 	prog := p.Remaining_initial.Magnitude() / p.Initial.Magnitude()
