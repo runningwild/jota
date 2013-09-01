@@ -321,7 +321,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 2048, 2048
+	dx, dy := 1024, 1024
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
@@ -416,7 +416,8 @@ type GameModeMoba struct {
 	Sides map[int]*GameModeMobaSideData
 }
 type GameModeMobaSideData struct {
-	losCache *losCache
+	AppeaseGob struct{}
+	losCache   *losCache
 }
 
 func (g *Game) NextGid() Gid {
