@@ -122,9 +122,16 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 	for _, start := range room.Starts {
 		var data mobaRoomSideData
 		data.Base = start
-		data.Towers = append(data.Towers, start.Add(linear.Vec2{10, 0}))
 		room.Moba.SideData = append(room.Moba.SideData, data)
 	}
+	var data mobaRoomSideData
+	for i, pos := range poss {
+		if i == a || i == b {
+			continue
+		}
+		data.Towers = append(data.Towers, pos)
+	}
+	room.Moba.SideData = append(room.Moba.SideData, data)
 
 	for i, p := range poss {
 		if i == a || i == b {

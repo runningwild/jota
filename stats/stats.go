@@ -23,6 +23,8 @@ type Base struct {
 
 	// Max rate of mana draining
 	Max_rate float64
+
+	Size float64
 }
 
 type DamageKind int
@@ -88,6 +90,9 @@ func (s Inst) MaxRate() float64 {
 func (s Inst) Cloaking() float64 {
 	return s.ModifyBase(s.inst.Base).Cloaking
 }
+func (s Inst) Size() float64 {
+	return s.inst.Base.Size
+}
 
 func (s *Inst) SetHealth(health float64) {
 	s.inst.Dynamic.Health = health
@@ -112,7 +117,7 @@ func (s *Inst) Think() {
 	s.inst.Base.Cloaking = 0.0
 }
 
-func Make(health, mass, acc, turn, rate float64) Inst {
+func Make(health, mass, acc, turn, rate, size float64) Inst {
 	var s Inst
 	s.inst.Base = Base{
 		Health:   health,
@@ -120,6 +125,7 @@ func Make(health, mass, acc, turn, rate float64) Inst {
 		Max_turn: turn,
 		Max_acc:  acc,
 		Max_rate: rate,
+		Size:     size,
 	}
 	s.inst.Dynamic = Dynamic{
 		Health: health,

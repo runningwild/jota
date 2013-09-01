@@ -23,8 +23,8 @@ function doBuild {
 
 doBuild 'host'
 open host.app
-false
 doBuild 'client'
+false
 
 open host.app
 sleep 0.9

@@ -131,7 +131,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 	var gids []Gid
 	for i, engineId := range engineIds {
 		var p Player
-		p.StatsInst = stats.Make(1000, 750, 0.2, 0.07, 0.5)
+		p.StatsInst = stats.Make(1000, 750, 0.2, 0.07, 0.5, 12)
 		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.
@@ -340,6 +340,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	for side, ids := range sides {
 		g.AddPlayers(ids, side)
 	}
+	g.MakeControlPoints()
 	g.Init()
 	g.Setup = nil
 }
@@ -538,13 +539,13 @@ func (g *Game) Think() {
 		}
 	}
 
-	for _, outerEnt := range g.temp.AllEnts {
-		for _, innerEnt := range g.temp.AllEnts {
-			if innerEnt == outerEnt {
-				continue
-			}
+	for i := 0; i < len(g.temp.AllEnts); i++ {
+		for j := i + 1; j < len(g.temp.AllEnts); j++ {
+			outerEnt := g.temp.AllEnts[i]
+			innerEnt := g.temp.AllEnts[j]
 			dist := outerEnt.Pos().Sub(innerEnt.Pos()).Mag()
-			if dist > 25 {
+			colDist := outerEnt.Stats().Size() + innerEnt.Stats().Size()
+			if dist > colDist {
 				continue
 			}
 			if dist < 0.01 {
@@ -553,8 +554,9 @@ func (g *Game) Think() {
 			if dist <= 0.5 {
 				dist = 0.5
 			}
-			force := 20.0 * (25 - dist)
+			force := 50.0 * (colDist - dist)
 			outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Norm().Scale(force))
+			innerEnt.ApplyForce(innerEnt.Pos().Sub(outerEnt.Pos()).Norm().Scale(force))
 		}
 	}
 

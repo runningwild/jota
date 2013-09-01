@@ -25,7 +25,7 @@ func (g *Game) MakeMine(pos linear.Vec2, health, mass, damage, trigger float64) 
 		Damage:  damage,
 		Trigger: trigger,
 	}
-	mine.BaseEnt.StatsInst = stats.Make(health, mass, 0, 0, 0)
+	mine.BaseEnt.StatsInst = stats.Make(health, mass, 0, 0, 0, 5)
 	g.AddEnt(&mine)
 }
 
