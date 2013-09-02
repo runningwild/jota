@@ -10,7 +10,7 @@ import (
 
 type losCache struct {
 	losBuffer *los.Los
-	walls     []linear.Seg2
+	wallCache *wallCache
 	cache     map[losCacheViewerPos]visiblePosSlice
 	dx, dy    int
 }
@@ -19,6 +19,7 @@ func makeLosCache(dx, dy int) *losCache {
 	var lc losCache
 	lc.losBuffer = los.Make(stats.LosPlayerHorizon)
 	lc.cache = make(map[losCacheViewerPos]visiblePosSlice)
+	lc.wallCache = &wallCache{}
 	lc.dx = dx
 	lc.dy = dy
 	return &lc
@@ -40,9 +41,11 @@ func (vps visiblePosSlice) Len() int           { return len(vps) }
 func (vps visiblePosSlice) Less(i, j int) bool { return vps[i].Dist < vps[j].Dist }
 func (vps visiblePosSlice) Swap(i, j int)      { vps[i], vps[j] = vps[j], vps[i] }
 
-func (lc *losCache) SetWalls(walls []linear.Seg2) {
-	lc.walls = walls
+func (lc *losCache) SetWallCache(wc *wallCache) {
+	lc.wallCache = wc
+	lc.cache = make(map[losCacheViewerPos]visiblePosSlice)
 }
+
 func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 	vp := losCacheViewerPos{i, j}
 	if vps, ok := lc.cache[vp]; ok {
@@ -54,7 +57,7 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 	pos := linear.Vec2{float64(i), float64(j)}
 	lc.losBuffer.Reset(pos)
 	var vps visiblePosSlice
-	for _, wall := range lc.walls {
+	for _, wall := range lc.wallCache.GetWalls(i, j) {
 		mid := wall.P.Add(wall.Q).Scale(0.5)
 		if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
 			lc.losBuffer.DrawSeg(wall, "")

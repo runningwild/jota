@@ -323,7 +323,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 4096, 4096
+	dx, dy := 2048, 2048
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
@@ -395,6 +395,10 @@ type Game struct {
 		// AllWallsGrid  map[Gid][][][][]linear.Vec2
 		AllWallsDirty bool
 		WallCache     map[Gid]*wallCache
+		// VisibleWallCache is like WallCache but returns all segments visible from
+		// a location, rather than all segments that should be checked for
+		// collision.
+		VisibleWallCache map[Gid]*wallCache
 
 		// List of all ents, in the order that they should be iterated in.
 		AllEnts      []Ent
@@ -513,6 +517,7 @@ func (g *Game) Think() {
 	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
 		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
 		g.temp.WallCache = make(map[Gid]*wallCache)
+		g.temp.VisibleWallCache = make(map[Gid]*wallCache)
 		for gid := range g.Levels {
 			var allWalls []linear.Seg2
 			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
@@ -531,8 +536,13 @@ func (g *Game) Think() {
 			// })
 			g.temp.AllWalls[gid] = allWalls
 			g.temp.WallCache[gid] = &wallCache{}
-			g.temp.WallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls)
+			g.temp.WallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, 100)
+			g.temp.VisibleWallCache[gid] = &wallCache{}
+			g.temp.VisibleWallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, stats.LosPlayerHorizon)
 			base.Log().Printf("WallCache: %v", g.temp.WallCache)
+		}
+		for _, data := range g.Moba.Sides {
+			data.losCache.SetWallCache(g.temp.VisibleWallCache[GidInvadersStart])
 		}
 	}
 
@@ -602,9 +612,6 @@ func (g *Game) Think() {
 }
 
 func (g *Game) ThinkMoba() {
-	for _, data := range g.Moba.Sides {
-		data.losCache.SetWalls(g.temp.AllWalls[GidInvadersStart])
-	}
 }
 
 func clamp(v, low, high float64) float64 {
