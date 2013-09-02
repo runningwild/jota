@@ -217,10 +217,6 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 		// local.architect.abs.abilities =
 		// 	append(
 		// 		local.architect.abs.abilities,
-		// 		ability_makers["placePoly"](map[string]int{"lava": 1}))
-		// local.architect.abs.abilities =
-		// 	append(
-		// 		local.architect.abs.abilities,
 		// 		ability_makers["placePoly"](map[string]int{"pests": 1}))
 		// local.architect.abs.abilities = append(local.architect.abs.abilities, ability_makers["removePoly"](nil))
 	}
@@ -369,15 +365,6 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	}
 	gl.End()
 
-	gl.Color4d(1, 0, 0, 1)
-	for _, poly := range g.Levels[GidInvadersStart].Room.Lava {
-		gl.Begin(gl.TRIANGLE_FAN)
-		for _, v := range poly {
-			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		}
-		gl.End()
-	}
-
 	gui.SetFontColor(0, 255, 0, 255)
 	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
@@ -501,15 +488,6 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 		}
 	}
 	gl.End()
-
-	gl.Color4d(1, 0, 0, 1)
-	for _, poly := range g.Levels[GidInvadersStart].Room.Lava {
-		gl.Begin(gl.TRIANGLE_FAN)
-		for _, v := range poly {
-			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		}
-		gl.End()
-	}
 
 	gl.Color4ub(0, 255, 0, 255)
 	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {

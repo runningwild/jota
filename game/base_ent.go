@@ -99,24 +99,10 @@ func (b *BaseEnt) Think(g *Game) {
 		b.Delta.Angle = b.StatsInst.MaxTurn()
 	}
 
-	room := g.Levels[b.CurrentLevel].Room
-	inLava := false
-	for _, lava := range room.Lava {
-		if linear.VecInsideConvexPoly(b.Pos(), lava) {
-			inLava = true
-		}
-	}
-	if inLava {
-		b.StatsInst.ApplyDamage(stats.Damage{stats.DamageFire, 5})
-	}
-
 	delta := (linear.Vec2{1, 0}).Rotate(b.Angle).Scale(b.Delta.Speed)
 	b.Velocity = b.Velocity.Add(delta)
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
-	if inLava {
-		friction = g.Friction_lava
-	}
 	b.Velocity = b.Velocity.Scale(
 		math.Pow(friction, 1+3*math.Abs(math.Sin(b.Angle-mangle))))
 

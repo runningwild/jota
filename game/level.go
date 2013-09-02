@@ -12,7 +12,6 @@ type Portal struct {
 
 type Room struct {
 	Walls   map[string]linear.Poly
-	Lava    map[string]linear.Poly
 	Starts  []linear.Vec2
 	End     linear.Vec2
 	Portals map[string]Portal
@@ -33,9 +32,5 @@ type mobaRoomSideData struct {
 
 func (r *Room) AddWall(wall linear.Poly) {
 	r.Walls[fmt.Sprintf("%d", r.NextId)] = wall
-	r.NextId++
-}
-func (r *Room) AddLava(lava linear.Poly) {
-	r.Lava[fmt.Sprintf("%d", r.NextId)] = lava
 	r.NextId++
 }

@@ -11,7 +11,6 @@ import (
 
 type Room struct {
 	Walls  map[string]linear.Poly
-	Lava   map[string]linear.Poly
 	Starts []linear.Vec2
 	Dx, Dy int
 	NextId int
@@ -58,7 +57,6 @@ func gridify(f float64, grid int) float64 {
 
 func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 	var room Room
-	room.Lava = make(map[string]linear.Poly)
 	room.Walls = make(map[string]linear.Poly)
 	nextIdInt = 0
 	room.Dx = int(dx)
@@ -132,20 +130,6 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 		data.Towers = append(data.Towers, pos)
 	}
 	room.Moba.SideData = append(room.Moba.SideData, data)
-
-	for i, p := range poss {
-		if i == a || i == b {
-			continue
-		}
-		p = linear.Vec2{gridify(p.X, grid), gridify(p.Y, grid)}
-		g := float64(grid)
-		room.Lava[nextId()] = linear.Poly{
-			linear.Vec2{p.X, p.Y},
-			linear.Vec2{p.X, p.Y + g},
-			linear.Vec2{p.X + g, p.Y + g},
-			linear.Vec2{p.X + g, p.Y},
-		}
-	}
 
 	sanity = int(math.Pow(dx*dy, 0.20))
 	var segs []linear.Seg2

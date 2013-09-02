@@ -340,7 +340,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Rng.Seed(12313131)
 	g.Ents = make(map[Gid]Ent)
 	g.Friction = 0.97
-	g.Friction_lava = 0.85
 	// g.Standard = &GameModeStandard{}
 	g.Moba = &GameModeMoba{
 		Sides: make(map[int]*GameModeMobaSideData),
@@ -370,8 +369,7 @@ type Game struct {
 
 	Rng *cmwc.Cmwc
 
-	Friction      float64
-	Friction_lava float64
+	Friction float64
 
 	// Last Id assigned to an entity
 	NextGidValue int

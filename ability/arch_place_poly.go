@@ -18,9 +18,6 @@ package ability
 // 	if _, ok := params["wall"]; ok {
 // 		p.Payload = placeWall
 // 	}
-// 	if _, ok := params["lava"]; ok {
-// 		p.Payload = placeLava
-// 	}
 // 	if _, ok := params["pests"]; ok {
 // 		p.Payload = placePests
 // 	}
@@ -35,7 +32,6 @@ package ability
 
 // const (
 // 	placeWall placementPayload = iota
-// 	placeLava
 // 	placePests
 // )
 
@@ -121,8 +117,6 @@ package ability
 // 	switch p.Payload {
 // 	case placeWall:
 // 		g.Room.AddWall(p.Poly)
-// 	case placeLava:
-// 		g.Room.AddLava(p.Poly)
 // 	case placePests:
 // 		numPests := 5
 // 		mid := p.Poly[0].Add(p.Poly[2]).Scale(0.5)
