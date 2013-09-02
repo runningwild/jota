@@ -71,7 +71,6 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 			}
 		}
 	}
-	cache.SetWalls(g.temp.AllWalls[GidInvadersStart])
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != msd.side {
 			continue

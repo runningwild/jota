@@ -582,11 +582,17 @@ func (g *Game) Think() {
 
 	switch {
 	case g.Moba != nil:
-		// Do moba thinking
+		g.ThinkMoba()
 	case g.Standard != nil:
 		// Do standard thinking
 	default:
 		panic("Game mode not set")
+	}
+}
+
+func (g *Game) ThinkMoba() {
+	for _, data := range g.Moba.Sides {
+		data.losCache.SetWalls(g.temp.AllWalls[GidInvadersStart])
 	}
 }
 
