@@ -132,7 +132,8 @@ func (b *BaseEnt) Think(g *Game) {
 	sizeSq := size * size
 	prev := b.Position
 	b.Position = b.Position.Add(b.Velocity)
-	walls := g.temp.AllWalls[b.CurrentLevel]
+	// walls := g.temp.AllWalls[b.CurrentLevel]
+	walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
 	for _, wall := range walls {
 		// Don't bother with back-facing segments
 		if wall.Right(b.Position) {

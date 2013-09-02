@@ -322,7 +322,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 1024, 1024
+	dx, dy := 4096, 4096
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
@@ -395,6 +395,7 @@ type Game struct {
 		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
 		// AllWallsGrid  map[Gid][][][][]linear.Vec2
 		AllWallsDirty bool
+		WallCache     map[Gid]*wallCache
 
 		// Map from level to list of ents on that level, in the order that they
 		// should be iterated in.
@@ -510,6 +511,35 @@ func (g *Game) Think() {
 		return
 	}
 	defer base.StackCatcher()
+
+	// cache wall data
+	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
+		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
+		g.temp.WallCache = make(map[Gid]*wallCache)
+		for gid := range g.Levels {
+			var allWalls []linear.Seg2
+			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
+				for i := range walls {
+					allWalls = append(allWalls, walls.Seg(i))
+				}
+			})
+			// g.DoForEnts(func(entGid Gid, ent Ent) {
+			// 	if ent.Level() == gid {
+			// 		for _, walls := range ent.Walls() {
+			// 			for i := range walls {
+			// 				allWalls = append(allWalls, walls.Seg(i))
+			// 			}
+			// 		}
+			// 	}
+			// })
+			g.temp.AllWalls[gid] = allWalls
+			g.temp.WallCache[gid] = &wallCache{}
+			g.temp.WallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls)
+			base.Log().Printf("WallCache: %v", g.temp.WallCache)
+		}
+	}
+
+	// cache ent data
 	if g.temp.AllEntsByLevel == nil || g.temp.AllEntsByLevelDirty {
 		g.temp.AllEntsByLevel = make(map[Gid][]Ent)
 	}
@@ -543,28 +573,6 @@ func (g *Game) Think() {
 		pos.X = clamp(pos.X, 0, float64(g.Levels[ent.Level()].Room.Dx))
 		pos.Y = clamp(pos.Y, 0, float64(g.Levels[ent.Level()].Room.Dy))
 		ent.SetPos(pos)
-	}
-
-	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
-		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
-		for gid := range g.Levels {
-			var allWalls []linear.Seg2
-			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
-				for i := range walls {
-					allWalls = append(allWalls, walls.Seg(i))
-				}
-			})
-			// g.DoForEnts(func(entGid Gid, ent Ent) {
-			// 	if ent.Level() == gid {
-			// 		for _, walls := range ent.Walls() {
-			// 			for i := range walls {
-			// 				allWalls = append(allWalls, walls.Seg(i))
-			// 			}
-			// 		}
-			// 	}
-			// })
-			g.temp.AllWalls[gid] = allWalls
-		}
 	}
 
 	for i := 0; i < len(g.temp.AllEnts); i++ {
