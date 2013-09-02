@@ -233,7 +233,8 @@ type Ent interface {
 
 	// If this Ent is immovable it may provide walls that will be considered just
 	// like normal walls.
-	Walls() [][]linear.Vec2
+	// TODO: Decide whether or not to actually support this
+	// Walls() [][]linear.Vec2
 
 	// Stats based methods
 	OnDeath(g *Game)
@@ -389,7 +390,10 @@ type Game struct {
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
 		// ents in that room.
-		AllWalls      map[Gid][][]linear.Vec2
+		AllWalls map[Gid][]linear.Seg2
+		// It looks silly, but this is...
+		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
+		// AllWallsGrid  map[Gid][][][][]linear.Vec2
 		AllWallsDirty bool
 
 		// Map from level to list of ents on that level, in the order that they
@@ -542,19 +546,23 @@ func (g *Game) Think() {
 	}
 
 	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
-		g.temp.AllWalls = make(map[Gid][][]linear.Vec2)
+		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
 		for gid := range g.Levels {
-			var allWalls [][]linear.Vec2
+			var allWalls []linear.Seg2
 			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
-				allWalls = append(allWalls, []linear.Vec2(walls))
-			})
-			g.DoForEnts(func(entGid Gid, ent Ent) {
-				if ent.Level() == gid {
-					for _, walls := range ent.Walls() {
-						allWalls = append(allWalls, walls)
-					}
+				for i := range walls {
+					allWalls = append(allWalls, walls.Seg(i))
 				}
 			})
+			// g.DoForEnts(func(entGid Gid, ent Ent) {
+			// 	if ent.Level() == gid {
+			// 		for _, walls := range ent.Walls() {
+			// 			for i := range walls {
+			// 				allWalls = append(allWalls, walls.Seg(i))
+			// 			}
+			// 		}
+			// 	}
+			// })
 			g.temp.AllWalls[gid] = allWalls
 		}
 	}

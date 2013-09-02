@@ -10,7 +10,7 @@ import (
 
 type losCache struct {
 	losBuffer *los.Los
-	walls     [][]linear.Vec2
+	walls     []linear.Seg2
 	cache     map[losCacheViewerPos]visiblePosSlice
 	dx, dy    int
 }
@@ -40,7 +40,7 @@ func (vps visiblePosSlice) Len() int           { return len(vps) }
 func (vps visiblePosSlice) Less(i, j int) bool { return vps[i].Dist < vps[j].Dist }
 func (vps visiblePosSlice) Swap(i, j int)      { vps[i], vps[j] = vps[j], vps[i] }
 
-func (lc *losCache) SetWalls(walls [][]linear.Vec2) {
+func (lc *losCache) SetWalls(walls []linear.Seg2) {
 	lc.walls = walls
 }
 func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
@@ -54,14 +54,10 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 	pos := linear.Vec2{float64(i), float64(j)}
 	lc.losBuffer.Reset(pos)
 	var vps visiblePosSlice
-	for _, walls := range lc.walls {
-		poly := linear.Poly(walls)
-		for i := range poly {
-			wall := poly.Seg(i)
-			mid := wall.P.Add(wall.Q).Scale(0.5)
-			if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
-				lc.losBuffer.DrawSeg(wall, "")
-			}
+	for _, wall := range lc.walls {
+		mid := wall.P.Add(wall.Q).Scale(0.5)
+		if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
+			lc.losBuffer.DrawSeg(wall, "")
 		}
 	}
 	dx0 := (int(pos.X+0.5) - stats.LosPlayerHorizon) / LosGridSize
