@@ -371,9 +371,9 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	}
 
 	gl.Color4d(1, 1, 1, 1)
-	g.DoForEnts(func(gid Gid, ent Ent) {
+	for _, ent := range g.temp.AllEnts {
 		ent.Draw(g, side)
-	})
+	}
 	gl.Disable(gl.TEXTURE_2D)
 
 	if local.mode != LocalModeMoba {
@@ -495,9 +495,9 @@ func (g *Game) renderLocalArchitect(region g2.Region, local *LocalData) {
 	}
 
 	gl.Color4d(1, 1, 1, 1)
-	g.DoForEnts(func(gid Gid, ent Ent) {
+	for _, ent := range g.temp.AllEnts {
 		ent.Draw(g, -1) // TODO: Side isn't defined for architect yet
-	})
+	}
 	gl.Disable(gl.TEXTURE_2D)
 
 	g.renderLosMask(local)
@@ -643,7 +643,6 @@ func (local *LocalData) setupMobaData(g *Game) {
 		if !ok {
 			continue
 		}
-		base.Log().Printf("Player: %v", p.Gid)
 		var pd mobaPlayerData
 		pd.gid = p.Gid
 		pd.side = p.Side()
@@ -718,9 +717,9 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
-	g.DoForEnts(func(gid Gid, ent Ent) {
+	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != side {
-			return
+			continue
 		}
 		if player, ok := ent.(*Player); ok {
 			pos := player.Pos()
@@ -737,7 +736,7 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 				max.Y = pos.Y
 			}
 		}
-	})
+	}
 	min.X -= stats.LosPlayerHorizon
 	min.Y -= stats.LosPlayerHorizon
 	if min.X < 0 {

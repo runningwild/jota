@@ -152,7 +152,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.Gid = Gid(fmt.Sprintf("Engine:%d", engineId))
 		p.Processes = make(map[int]Process)
 		p.SetLevel(GidInvadersStart)
-		g.Ents[p.Gid] = &p
+		g.AddEnt(&p)
 		gids = append(gids, p.Gid)
 	}
 	return gids
@@ -243,6 +243,7 @@ type Ent interface {
 	Vel() linear.Vec2
 
 	Id() Gid
+	SetId(Gid)
 	Pos() linear.Vec2
 	Level() Gid
 	Side() int // which side the ent belongs to
@@ -395,11 +396,6 @@ type Game struct {
 		AllWallsDirty bool
 		WallCache     map[Gid]*wallCache
 
-		// Map from level to list of ents on that level, in the order that they
-		// should be iterated in.
-		AllEntsByLevel      map[Gid][]Ent
-		AllEntsByLevelDirty bool
-
 		// List of all ents, in the order that they should be iterated in.
 		AllEnts      []Ent
 		AllEntsDirty bool
@@ -495,12 +491,15 @@ func (g *Game) DoForLevels(f func(Gid, *Level)) {
 
 func (g *Game) RemoveEnt(gid Gid) {
 	delete(g.Ents, gid)
+	g.temp.AllEntsDirty = true
 }
 
-func (g *Game) AddEnt(ent Ent) Gid {
-	gid := g.NextGid()
-	g.Ents[gid] = ent
-	return gid
+func (g *Game) AddEnt(ent Ent) {
+	if ent.Id() == "" {
+		ent.SetId(g.NextGid())
+	}
+	g.Ents[ent.Id()] = ent
+	g.temp.AllEntsDirty = true
 }
 
 func (g *Game) Think() {
@@ -538,22 +537,20 @@ func (g *Game) Think() {
 	}
 
 	// cache ent data
-	if g.temp.AllEntsByLevel == nil || g.temp.AllEntsByLevelDirty {
-		g.temp.AllEntsByLevel = make(map[Gid][]Ent)
-	}
-	for gid := range g.temp.AllEntsByLevel {
-		g.temp.AllEntsByLevel[gid] = g.temp.AllEntsByLevel[gid][0:0]
-	}
-	g.temp.AllEnts = g.temp.AllEnts[0:0]
-	g.DoForEnts(func(gid Gid, ent Ent) {
+	for _, ent := range g.temp.AllEnts {
 		if ent.Stats().HealthCur() <= 0 {
 			ent.OnDeath(g)
-			g.RemoveEnt(gid)
-		} else {
-			g.temp.AllEntsByLevel[gid] = append(g.temp.AllEntsByLevel[gid], ent)
-			g.temp.AllEnts = append(g.temp.AllEnts, ent)
+			g.RemoveEnt(ent.Id())
 		}
-	})
+	}
+	if g.temp.AllEnts == nil || g.temp.AllEntsDirty {
+		g.temp.AllEnts = g.temp.AllEnts[0:0]
+		g.DoForEnts(func(gid Gid, ent Ent) {
+			base.Log().Printf("Appending %v", ent.Id())
+			g.temp.AllEnts = append(g.temp.AllEnts, ent)
+		})
+		g.temp.AllEntsDirty = false
+	}
 
 	g.DoForLevels(func(gid Gid, level *Level) {
 		level.ManaSource.Think(g.Ents)

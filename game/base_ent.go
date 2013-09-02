@@ -49,6 +49,10 @@ func (b *BaseEnt) Id() Gid {
 	return b.Gid
 }
 
+func (b *BaseEnt) SetId(gid Gid) {
+	b.Gid = gid
+}
+
 func (b *BaseEnt) Pos() linear.Vec2 {
 	return b.Position
 }
