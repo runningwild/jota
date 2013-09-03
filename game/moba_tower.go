@@ -63,11 +63,15 @@ func (cp *ControlPoint) Think(g *Game) {
 	// Find the first side that isn't -1
 	side := -1
 	count := 0
+	controlRangeSquared := 4 * cp.Stats().Size() * cp.Stats().Size()
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() == -1 {
 			continue
 		}
-		if ent.Pos().Sub(cp.Position).Mag2() > 4*cp.Stats().Size()*cp.Stats().Size() {
+		if _, ok := ent.(*Player); !ok {
+			continue
+		}
+		if ent.Pos().Sub(cp.Position).Mag2() > controlRangeSquared {
 			continue
 		}
 		if side == -1 {

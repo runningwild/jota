@@ -2,9 +2,9 @@ package game
 
 import (
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/stats"
 	"math"
+	"sort"
 )
 
 type BaseEnt struct {
@@ -76,15 +76,25 @@ func (b *BaseEnt) SetLevel(level Gid) {
 func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
 	b.StatsInst.Think()
+
 	var dead []int
-	base.DoOrdered(b.Processes, func(a, b int) bool { return a < b }, func(id int, proc Process) {
+	// Calling DoOrdered is too slow, so we just sort the Gids ourselves and go
+	// through them in order.
+	pids := make([]int, len(b.Processes))[0:0]
+	for pid := range b.Processes {
+		pids = append(pids, pid)
+	}
+	sort.Ints(pids)
+	for _, pid := range pids {
+		proc := b.Processes[pid]
 		proc.Think(g)
 		if proc.Phase() == PhaseComplete {
-			dead = append(dead, id)
+			dead = append(dead, pid)
 		} else {
 			b.StatsInst.ApplyCondition(proc)
 		}
-	})
+	}
+
 	// Removed dead processes from the ent
 	for _, id := range dead {
 		delete(b.Processes, id)

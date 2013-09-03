@@ -15,7 +15,7 @@ import (
 	"github.com/runningwild/magnus/gui"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	// "math"
+	"math"
 	"path/filepath"
 )
 
@@ -580,20 +580,21 @@ func (g *Game) Think() {
 		for j := i + 1; j < len(g.temp.AllEnts); j++ {
 			outerEnt := g.temp.AllEnts[i]
 			innerEnt := g.temp.AllEnts[j]
-			dist := outerEnt.Pos().Sub(innerEnt.Pos()).Mag()
+			distSq := outerEnt.Pos().Sub(innerEnt.Pos()).Mag2()
 			colDist := outerEnt.Stats().Size() + innerEnt.Stats().Size()
-			if dist > colDist {
+			if distSq > colDist*colDist {
 				continue
 			}
-			if dist < 0.01 {
+			if distSq < 0.0001 {
 				continue
 			}
-			if dist <= 0.5 {
-				dist = 0.5
+			if distSq <= 0.25 {
+				distSq = 0.25
 			}
+			dist := math.Sqrt(distSq)
 			force := 50.0 * (colDist - dist)
-			outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Norm().Scale(force))
-			innerEnt.ApplyForce(innerEnt.Pos().Sub(outerEnt.Pos()).Norm().Scale(force))
+			outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Scale(force / dist))
+			innerEnt.ApplyForce(innerEnt.Pos().Sub(outerEnt.Pos()).Scale(force / dist))
 		}
 	}
 
