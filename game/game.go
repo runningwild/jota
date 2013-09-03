@@ -323,7 +323,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 2048, 2048
+	dx, dy := 4096, 4096
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {
@@ -562,10 +562,6 @@ func (g *Game) Think() {
 		g.temp.AllEntsDirty = false
 	}
 
-	g.DoForLevels(func(gid Gid, level *Level) {
-		level.ManaSource.Think(g.Ents)
-	})
-
 	for _, proc := range g.Processes {
 		proc.Think(g)
 	}
@@ -605,6 +601,7 @@ func (g *Game) Think() {
 	case g.Moba != nil:
 		g.ThinkMoba()
 	case g.Standard != nil:
+		panic("Thinkgs aren't implemented, like thinking on mana sources")
 		// Do standard thinking
 	default:
 		panic("Game mode not set")
@@ -612,6 +609,7 @@ func (g *Game) Think() {
 }
 
 func (g *Game) ThinkMoba() {
+	g.Levels[GidInvadersStart].ManaSource.Think(g.Ents)
 }
 
 func clamp(v, low, high float64) float64 {

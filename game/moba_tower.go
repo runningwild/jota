@@ -60,28 +60,38 @@ func (cp *ControlPoint) Think(g *Game) {
 	cp.BaseEnt.Think(g)
 
 	// All of this is basic logic for capturing control points
-	sides := make(map[int]int)
-	var theSide int
+	// Find the first side that isn't -1
+	side := -1
+	count := 0
 	for _, ent := range g.temp.AllEnts {
-		if _, ok := ent.(*Player); !ok {
+		if ent.Side() == -1 {
 			continue
 		}
-		if ent.Pos().Sub(cp.Position).Mag() > 2*cp.Stats().Size() {
+		if ent.Pos().Sub(cp.Position).Mag2() > 4*cp.Stats().Size()*cp.Stats().Size() {
 			continue
 		}
-		sides[ent.Side()]++
-		theSide = ent.Side()
+		if side == -1 {
+			side = ent.Side()
+			count++
+		} else {
+			if ent.Side() != side {
+				side = -1
+				break
+			}
+			count++
+		}
 	}
-	if len(sides) == 1 {
-		// amt := 0.003 * float64(sides[theSide])
-		amt := 0.03 * float64(sides[theSide])
-		if !cp.Controlled || theSide == cp.Controller {
+
+	if side != -1 {
+		// amt := 0.003 * float64(count)
+		amt := 0.003 * float64(count)
+		if !cp.Controlled || side == cp.Controller {
 			if cp.Control < 1.0 {
 				cp.Control += amt
 				if cp.Control >= 0.999 {
 					cp.Control = 1.0
 					cp.Controlled = true
-					cp.Controller = theSide
+					cp.Controller = side
 				}
 			}
 		} else {

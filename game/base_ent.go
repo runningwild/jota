@@ -110,67 +110,71 @@ func (b *BaseEnt) Think(g *Game) {
 	b.Velocity = b.Velocity.Scale(
 		math.Pow(friction, 1+3*math.Abs(math.Sin(b.Angle-mangle))))
 
-	// We pretend that the player is started from a little behind wherever they
-	// actually are.  This makes it a lot easier to get collisions to make sense
-	// from frame to frame.
-	var epsilon linear.Vec2
-	if b.Velocity.Mag2() > 0 {
-		epsilon = b.Velocity.Norm().Scale(0.1)
-	}
-	move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
-	size := 12.0
-	sizeSq := size * size
-	prev := b.Position
-	b.Position = b.Position.Add(b.Velocity)
-	// walls := g.temp.AllWalls[b.CurrentLevel]
-	walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
-	for _, wall := range walls {
-		// Don't bother with back-facing segments
-		if wall.Right(b.Position) {
-			continue
+	if b.Velocity.Mag2() < 0.01 {
+		b.Velocity = linear.Vec2{0, 0}
+	} else {
+		// We pretend that the player is started from a little behind wherever they
+		// actually are.  This makes it a lot easier to get collisions to make sense
+		// from frame to frame.
+		var epsilon linear.Vec2
+		if b.Velocity.Mag2() > 0 {
+			epsilon = b.Velocity.Norm().Scale(0.1)
 		}
-		// First check against the leading vertex
-		{
-			v := wall.P
-			distSq := v.DistSquaredToLine(move)
-			if v.Sub(move.Q).Mag2() < sizeSq {
-				distSq = v.Sub(move.Q).Mag2()
-				// If for some dumb reason an ent is on a vertex this will asplode,
-				// so just ignore that case.
-				if distSq == 0 {
-					continue
+		move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
+		size := b.Stats().Size()
+		sizeSq := size * size
+		prev := b.Position
+		b.Position = b.Position.Add(b.Velocity)
+		// walls := g.temp.AllWalls[b.CurrentLevel]
+		walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
+		for _, wall := range walls {
+			// Don't bother with back-facing segments
+			if wall.Right(b.Position) {
+				continue
+			}
+			// First check against the leading vertex
+			{
+				v := wall.P
+				distSq := v.DistSquaredToLine(move)
+				if v.Sub(move.Q).Mag2() < sizeSq {
+					distSq = v.Sub(move.Q).Mag2()
+					// If for some dumb reason an ent is on a vertex this will asplode,
+					// so just ignore that case.
+					if distSq == 0 {
+						continue
+					}
+					// Add a little extra here otherwise a player can sneak into geometry
+					// through the corners
+					ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
+					final := v.Add(ray)
+					move.Q = final
+				} else if distSq < sizeSq {
+					// TODO: This tries to prevent passthrough but has other problems
+					// cross := move.Ray().Cross()
+					// perp := linear.Seg2{v, cross.Sub(v)}
+					// if perb.Left(move.P) != perb.Left(move.Q) {
+					//   shift := perb.Ray().Norm().Scale(size - dist)
+					//   move.Q.X += shift.X
+					//   move.Q.Y += shift.Y
+					// }
 				}
-				// Add a little extra here otherwise a player can sneak into geometry
-				// through the corners
-				ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
-				final := v.Add(ray)
-				move.Q = final
-			} else if distSq < sizeSq {
-				// TODO: This tries to prevent passthrough but has other problems
-				// cross := move.Ray().Cross()
-				// perp := linear.Seg2{v, cross.Sub(v)}
-				// if perb.Left(move.P) != perb.Left(move.Q) {
-				//   shift := perb.Ray().Norm().Scale(size - dist)
-				//   move.Q.X += shift.X
-				//   move.Q.Y += shift.Y
-				// }
 			}
-		}
 
-		// Now check against the segment itself
-		if wall.Ray().Cross().Dot(move.Ray()) <= 0 {
-			shift := wall.Ray().Cross().Norm().Scale(size)
-			col := linear.Seg2{shift.Add(wall.P), shift.Add(wall.Q)}
-			if move.DoesIsect(col) {
-				cross := col.Ray().Cross()
-				fix := linear.Seg2{move.Q, cross.Add(move.Q)}
-				isect := fix.Isect(col)
-				move.Q = isect
+			// Now check against the segment itself
+			if wall.Ray().Cross().Dot(move.Ray()) <= 0 {
+				shift := wall.Ray().Cross().Norm().Scale(size)
+				col := linear.Seg2{shift.Add(wall.P), shift.Add(wall.Q)}
+				if move.DoesIsect(col) {
+					cross := col.Ray().Cross()
+					fix := linear.Seg2{move.Q, cross.Add(move.Q)}
+					isect := fix.Isect(col)
+					move.Q = isect
+				}
 			}
 		}
+		b.Position = move.Q
+		b.Velocity = b.Position.Sub(prev)
 	}
-	b.Position = move.Q
-	b.Velocity = b.Position.Sub(prev)
 
 	// b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
 	// b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
