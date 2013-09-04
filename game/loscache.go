@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/los"
 	"github.com/runningwild/magnus/stats"
 	"math"
@@ -46,7 +47,24 @@ func (lc *losCache) SetWallCache(wc *wallCache) {
 	lc.cache = make(map[losCacheViewerPos]visiblePosSlice)
 }
 
-func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
+// Includes all possible visiblePos values in order of distance
+var maxVps visiblePosSlice
+
+func init() {
+	max := stats.LosPlayerHorizon / LosGridSize
+	for x := -max; x <= max; x++ {
+		for y := -max; y <= max; y++ {
+			maxVps = append(maxVps, visiblePos{
+				X:    x,
+				Y:    y,
+				Dist: math.Sqrt(float64(x*x + y*y)),
+			})
+		}
+	}
+	sort.Sort(maxVps)
+}
+
+func (lc *losCache) Get2(i, j int, maxDist float64) []visiblePos {
 	vp := losCacheViewerPos{i, j}
 	if vps, ok := lc.cache[vp]; ok {
 		var max int
@@ -113,6 +131,73 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 		}
 	}
 	sort.Sort(vps)
+	lc.cache[vp] = vps
+	base.Log().Printf("%d,%d: %2.2v", i, j, vps[0:3])
+	// Call this function again because now the values are cached.  We do this
+	// because we also need to slice the return value appropriately for maxDist
+	// and shouldn't have that logic in two places.
+	return lc.Get(i, j, maxDist)
+}
+
+func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
+	vp := losCacheViewerPos{i, j}
+	if vps, ok := lc.cache[vp]; ok {
+		var max int
+		for max = 0; max < len(vps) && vps[max].Dist <= maxDist; max++ {
+		}
+		return vps[0:max]
+	}
+	pos := linear.Vec2{float64(i), float64(j)}
+	lc.losBuffer.Reset(pos)
+	// TODO: how to allocate at the beginning?
+	vps := make(visiblePosSlice, stats.LosPlayerHorizon/LosGridSize)[0:0]
+	for _, wall := range lc.wallCache.GetWalls(i, j) {
+		mid := wall.P.Add(wall.Q).Scale(0.5)
+		if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
+			lc.losBuffer.DrawSeg(wall, "")
+		}
+	}
+	for _, v := range maxVps {
+		x := int(pos.X/LosGridSize+0.5) + v.X
+		y := int(pos.Y/LosGridSize+0.5) + v.Y
+		if x < 0 || x >= lc.dx {
+			continue
+		}
+		if y < 0 || y >= lc.dy {
+			continue
+		}
+		seg := linear.Seg2{
+			linear.Vec2{0, 0},
+			linear.Vec2{(float64(v.X)) * LosGridSize, (float64(v.Y)) * LosGridSize},
+		}
+		raw := lc.losBuffer.RawAccess()
+		angle := math.Atan2(seg.Ray().Y, seg.Ray().X)
+		index := int(((angle/(2*math.Pi))+0.5)*float64(len(raw))) % len(raw)
+		val := 255.0
+		dist := v.Dist * LosGridSize
+		distSq := dist * dist
+		if distSq < float64(raw[index]) {
+			val = 0
+			// } else if distSq < float64(raw[(index+1)%len(raw)]) ||
+			// 	distSq < float64(raw[(index+len(raw)-1)%len(raw)]) {
+			// 	val = 100
+			// } else if distSq < float64(raw[(index+2)%len(raw)]) ||
+			// 	distSq < float64(raw[(index+len(raw)-2)%len(raw)]) {
+			// 	val = 200
+		}
+		// fade := 100.0
+		// if dist > stats.LosPlayerHorizon-fade {
+		// 	val = 255 - (255-val)*(1.0-(fade-(stats.LosPlayerHorizon-dist))/fade)
+		// }
+		if val < 255 {
+			vps = append(vps, visiblePos{
+				X:    x,
+				Y:    y,
+				Val:  byte(val),
+				Dist: dist,
+			})
+		}
+	}
 	lc.cache[vp] = vps
 	// Call this function again because now the values are cached.  We do this
 	// because we also need to slice the return value appropriately for maxDist
