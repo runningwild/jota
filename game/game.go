@@ -323,7 +323,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 4096, 4096
+	dx, dy := 1024, 2048
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
 	data, err := json.Marshal(generated)
 	if err != nil {

@@ -1,7 +1,7 @@
 # Run from magnus root directory.
 cd $GOPATH/src/github.com/runningwild/magnus
 
-if go build --tags host . ; then
+if CGO_LDFLAGS=-L/home/runningwild/code/src/github.com/runningwild/glop/gos/linux/lib/ go build --tags client . ; then
 		rm -rf bin
 		mkdir -p bin/fail
 
