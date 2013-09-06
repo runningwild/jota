@@ -69,7 +69,10 @@ func init() {
 
 func (e addMineEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	pos := player.Position.Add((linear.Vec2{40, 0}).Rotate(player.Angle))
 	g.MakeMine(pos, e.Health, e.Mass, e.Damage, e.Trigger)
 }

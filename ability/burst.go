@@ -56,8 +56,11 @@ func init() {
 
 func (e addBurstEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
-	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
+	player,ok := g.Ents[e.PlayerGid].(*game.Player)
+		if !ok {
+		return
+	}
+initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
 	player.Processes[100+e.Id] = &burstProcess{
 		Frames:            int32(e.Frames),
 		Force:             float64(e.Force),
@@ -128,7 +131,10 @@ func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *burstProcess) Think(g *game.Game) {
-	player := g.Ents[p.PlayerGid].(*game.Player)
+	player,ok := g.Ents[p.PlayerGid].(*game.Player)
+		if !ok {
+		return
+	}
 	if p.Remaining_initial.Magnitude() == 0 {
 		if p.count > 0 {
 			p.count = -1
@@ -152,7 +158,10 @@ func (p *burstProcess) Think(g *game.Game) {
 }
 
 func (p *burstProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player := g.Ents[p.PlayerGid].(*game.Player)
+	player,ok := g.Ents[p.PlayerGid].(*game.Player)
+		if !ok {
+		return
+	}
 	base.EnableShader("circle")
 	prog := p.Remaining_initial.Magnitude() / p.Initial.Magnitude()
 	base.SetUniformF("circle", "progress", 1-float32(prog))

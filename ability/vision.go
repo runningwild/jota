@@ -67,7 +67,10 @@ package ability
 
 // func (e addVisionEvent) Apply(_g interface{}) {
 // 	g := _g.(*game.Game)
-// 	player := g.Ents[e.PlayerGid].(*game.Player)
+// 	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+//  if !ok {
+//    return
+//  }
 // 	if !e.Press {
 // 		if proc := player.Processes[100+e.Id]; proc != nil {
 // 			proc.Kill(g)
@@ -95,7 +98,10 @@ package ability
 
 // func (e removeVisionEvent) Apply(_g interface{}) {
 // 	g := _g.(*game.Game)
-// 	player := g.Ents[e.PlayerGid].(*game.Player)
+// 	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+//  if !ok {
+//    return
+//  }
 // 	proc := player.Processes[100+e.Id]
 // 	if proc != nil {
 // 		proc.Kill(g)
@@ -191,7 +197,10 @@ package ability
 // func (p *visionProcess) Think(g *game.Game) {
 // 	defer p.reset()
 // 	horizon := maxDistFromManaCost(p.Squeeze, p.Distance, p.supplied)
-// 	player := g.Ents[p.PlayerGid].(*game.Player)
+// 	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+//  if !ok {
+//    return
+//  }
 // 	zbuffer := player.Los.RawAccess()
 // 	for i := range zbuffer {
 // 		bufferAngle := float64(i) / float64(len(zbuffer)) * 2 * math.Pi

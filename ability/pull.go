@@ -68,7 +68,10 @@ func init() {
 
 func (e addPullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	if !e.Press {
 		if proc := player.Processes[100+e.Id]; proc != nil {
 			proc.Kill(g)
@@ -96,7 +99,10 @@ func init() {
 
 func (e removePullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	proc := player.Processes[100+e.Id]
 	if proc != nil {
 		proc.Kill(g)
@@ -140,7 +146,10 @@ func (p *pullProcess) reset() {
 
 func (p *pullProcess) Think(g *game.Game) {
 	defer p.reset()
-	player := g.Ents[p.PlayerGid].(*game.Player)
+	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 
 	base_force := p.Force * p.supplied / p.required()
 	g.DoForEnts(func(gid game.Gid, ent game.Ent) {
@@ -169,7 +178,10 @@ func (p *pullProcess) Think(g *game.Game) {
 }
 
 func (p *pullProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player := g.Ents[p.PlayerGid].(*game.Player)
+	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	if side != player.Side() {
 		return
 	}

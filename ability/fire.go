@@ -64,7 +64,10 @@ func init() {
 
 func (e addFireEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	pos := player.Position.Add((linear.Vec2{40, 0}).Rotate(player.Angle))
 	player.Processes[100+e.Id] = &fireProcess{
 		BasicPhases: BasicPhases{game.PhaseRunning},
@@ -157,14 +160,17 @@ func (f *fireProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (f *fireProcess) Think(g *game.Game) {
-	player := g.Ents[f.Gid].(*game.Player)
+	player, ok := g.Ents[f.Gid].(*game.Player)
+	if !ok {
+		return
+	}
 	f.Pos = player.Position
 	f.Stored *= 0.97
 	if f.rng == nil {
 		f.rng = cmwc.MakeGoodCmwc()
 		f.rng.SeedWithDevRand()
 	}
-	max := 10 + int(f.Stored/10)
+	max := int(f.Stored / 15)
 	algorithm.Choose(&f.explosions, func(e fireExplosion) bool { return !e.Done() })
 	if len(f.explosions) < max {
 		f.explosions = append(f.explosions, fireDoLine(f.rng, player.Position, player.Angle, f.Stored, 3, g.Levels[player.CurrentLevel]))
@@ -204,7 +210,10 @@ func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle, stored float64, speed int,
 }
 
 func (f *fireProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player := g.Ents[f.Gid].(*game.Player)
+	player, ok := g.Ents[f.Gid].(*game.Player)
+	if !ok {
+		return
+	}
 	if side != player.Side() {
 		return
 	}
@@ -224,16 +233,23 @@ func init() {
 
 func (e addFireExplodeEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	prevProc := player.Processes[100+e.Id].(*fireProcess)
 	var fpe fireProcessExplosion
 	fpe.The_phase = game.PhaseRunning
-	num := int(g.Rng.Int63()%20 + int64(prevProc.Stored/10))
+	delete(player.Processes, 100+e.Id)
+	if int(prevProc.Stored/10) == 0 {
+		return
+	}
+	num := int(g.Rng.Int63()%int64(prevProc.Stored/10)) + int(prevProc.Stored/10)
 	for i := 0; i < num; i++ {
 		fpe.Explosions = append(fpe.Explosions,
 			fireDoLine(g.Rng, player.Position, player.Angle, prevProc.Stored, 10, g.Levels[player.CurrentLevel]))
 	}
-	player.Processes[100+e.Id] = &fpe
+	g.Processes = append(g.Processes, &fpe)
 }
 
 type fireProcessExplosion struct {
@@ -270,9 +286,6 @@ func (f *fireProcessExplosion) Think(g *game.Game) {
 }
 
 func (f *fireProcessExplosion) Draw(gid game.Gid, g *game.Game, side int) {
-	// player := g.Ents[gid].(*game.Player)
-	// ray := (linear.Vec2{1, 0}).Rotate(player.Angle).Scale(f.Stored)
-	// center := ray.Add(player.Position)
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.7)
 	for _, expl := range f.Explosions {

@@ -59,7 +59,10 @@ func init() {
 
 func (e addCloakEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	if !e.Press {
 		if proc := player.Processes[100+e.Id]; proc != nil {
 			proc.Kill(g)
@@ -85,7 +88,10 @@ func init() {
 
 func (e removeCloakEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
 	proc := player.Processes[100+e.Id]
 	if proc != nil {
 		proc.Kill(g)

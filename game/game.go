@@ -634,7 +634,10 @@ func init() {
 
 func (t Turn) Apply(_g interface{}) {
 	g := _g.(*Game)
-	player := g.Ents[t.Gid].(*Player)
+	player, ok := g.Ents[t.Gid].(*Player)
+	if !ok {
+		return
+	}
 	player.Delta.Angle = t.Delta
 }
 
@@ -649,7 +652,10 @@ func init() {
 
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
-	player := g.Ents[a.Gid].(*Player)
+	player, ok := g.Ents[a.Gid].(*Player)
+	if !ok {
+		return
+	}
 	player.Delta.Speed = a.Delta / 2
 }
 
