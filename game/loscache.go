@@ -108,7 +108,7 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 	}
 	lc.losBuffersMutex.Unlock()
 
-	pos := linear.Vec2{float64(i), float64(j)}
+	pos := linear.Vec2{float64(i) + 0.5, float64(j) + 0.5}
 	losBuffer.Reset(pos)
 	vps = make([]visiblePos, len(maxVps))[0:0]
 	for _, wall := range lc.wallCache.GetWalls(i, j) {
