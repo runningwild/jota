@@ -9,7 +9,7 @@ package ability
 
 // func makeVision(params map[string]int) game.Ability {
 // 	var b vision
-// 	b.id = nextAbilityId()
+// 	b.id = NextAbilityId()
 // 	b.distance = float64(params["range"])
 // 	b.squeeze = float64(params["squeeze"]) / 1000
 // 	return &b
@@ -20,9 +20,9 @@ package ability
 // }
 
 // type vision struct {
-// 	nonResponder
-// 	nonThinker
-// 	nonRendering
+// 	NonResponder
+// 	NonThinker
+// 	NonRendering
 
 // 	id       int
 // 	distance float64

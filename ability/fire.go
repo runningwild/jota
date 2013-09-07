@@ -17,7 +17,7 @@ import (
 
 func makeFire(params map[string]int) game.Ability {
 	var f fire
-	f.id = nextAbilityId()
+	f.id = NextAbilityId()
 	return &f
 }
 
@@ -26,9 +26,9 @@ func init() {
 }
 
 type fire struct {
-	nonResponder
-	nonThinker
-	nonRendering
+	NonResponder
+	NonThinker
+	NonRendering
 
 	id int
 }

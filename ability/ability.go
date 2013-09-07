@@ -12,30 +12,30 @@ import (
 var abilityId int
 var abilityIdMutex sync.Mutex
 
-func nextAbilityId() int {
+func NextAbilityId() int {
 	abilityIdMutex.Lock()
 	defer abilityIdMutex.Unlock()
 	abilityId++
 	return abilityId
 }
 
-type nonResponder struct{}
+type NonResponder struct{}
 
-func (nonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
+func (NonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
 
-type neverActive struct {
-	nonResponder
+type NeverActive struct {
+	NonResponder
 }
 
-func (neverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
+func (NeverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
 
-type nonThinker struct{}
+type NonThinker struct{}
 
-func (nonThinker) Think(game.Gid, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
+func (NonThinker) Think(game.Gid, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
 
-type nonRendering struct{}
+type NonRendering struct{}
 
-func (nonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
+func (NonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
 
 type BasicPhases struct {
 	The_phase game.Phase

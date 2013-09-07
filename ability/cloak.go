@@ -9,7 +9,7 @@ import (
 
 func makeCloak(params map[string]int) game.Ability {
 	var c cloak
-	c.id = nextAbilityId()
+	c.id = NextAbilityId()
 	return &c
 }
 
@@ -18,9 +18,9 @@ func init() {
 }
 
 type cloak struct {
-	nonResponder
-	nonThinker
-	nonRendering
+	NonResponder
+	NonThinker
+	NonRendering
 
 	id int
 }
@@ -106,7 +106,7 @@ func init() {
 type cloakProcess struct {
 	BasicPhases
 	NullCondition
-	nonRendering
+	NonRendering
 	Id        int
 	PlayerGid game.Gid
 

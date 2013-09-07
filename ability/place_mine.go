@@ -9,7 +9,7 @@ import (
 
 func makeMine(params map[string]int) game.Ability {
 	var b mine
-	b.id = nextAbilityId()
+	b.id = NextAbilityId()
 	b.health = float64(params["health"])
 	b.damage = float64(params["damage"])
 	b.trigger = float64(params["trigger"])
@@ -22,9 +22,9 @@ func init() {
 }
 
 type mine struct {
-	nonResponder
-	nonThinker
-	nonRendering
+	NonResponder
+	NonThinker
+	NonRendering
 
 	id      int
 	health  float64

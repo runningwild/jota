@@ -11,7 +11,7 @@ import (
 
 func makePull(params map[string]int) game.Ability {
 	var b pull
-	b.id = nextAbilityId()
+	b.id = NextAbilityId()
 	b.force = float64(params["force"])
 	b.angle = float64(params["angle"]) / 180 * 3.14159
 	return &b
@@ -22,9 +22,9 @@ func init() {
 }
 
 type pull struct {
-	nonResponder
-	nonThinker
-	nonRendering
+	NonResponder
+	NonThinker
+	NonRendering
 
 	id    int
 	force float64

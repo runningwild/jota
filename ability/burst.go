@@ -13,7 +13,7 @@ import (
 
 func makeBurst(params map[string]int) game.Ability {
 	var b burst
-	b.id = nextAbilityId()
+	b.id = NextAbilityId()
 	b.force = params["force"]
 	b.frames = params["frames"]
 	return &b
@@ -24,10 +24,10 @@ func init() {
 }
 
 type burst struct {
-	neverActive
-	nonResponder
-	nonThinker
-	nonRendering
+	NeverActive
+	NonResponder
+	NonThinker
+	NonRendering
 
 	id            int
 	force, frames int
