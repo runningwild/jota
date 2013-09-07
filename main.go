@@ -78,7 +78,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	var localData *game.LocalData
 	var g *game.Game
 	if version == "client" {
-		engine, err = cgf.NewClientEngine(17, "thunderingvictory.dyndns.org", 50001, base.Log())
+		engine, err = cgf.NewClientEngine(17, "127.0.0.1", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())

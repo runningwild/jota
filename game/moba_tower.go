@@ -14,7 +14,8 @@ type ControlPoint struct {
 	// 0.0 - 1.0, measured controlledness of the point
 	Control float64
 
-	// The side that controls the point
+	// If Controlled, this is the side that controls this point.
+	// If not Controlled, this is the side that is currently capping it.
 	Controller int
 
 	// Whether or not the point is currently controlled.  This is always true when
@@ -87,26 +88,30 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 
 	if side != -1 {
-		// amt := 0.003 * float64(count)
 		amt := 0.003 * float64(count)
-		if !cp.Controlled || side == cp.Controller {
-			if cp.Control < 1.0 {
-				cp.Control += amt
-				if cp.Control >= 0.999 {
-					cp.Control = 1.0
-					cp.Controlled = true
-					cp.Controller = side
-				}
-			}
-		} else {
-			if cp.Control > 0.0 {
-				cp.Control -= amt
-				if cp.Control <= 0.0001 {
-					cp.Control = 0
-					cp.Controlled = false
-					cp.Controller = -1
-				}
-			}
+		switch {
+		case cp.Controlled && side == cp.Controller:
+			// Can't recap something you already control.
+
+		case cp.Controlled && side != cp.Controller:
+			// Can't recap something you already control.
+			cp.Control -= amt
+
+		case !cp.Controlled && side == cp.Controller:
+			cp.Control += amt
+
+		case !cp.Controlled && side != cp.Controller:
+			cp.Control -= amt
+		}
+		if cp.Control <= 0.0001 {
+			cp.Control = 0
+			cp.Controlled = false
+			cp.Controller = side
+		}
+		if cp.Control >= 0.999 {
+			cp.Control = 1.0
+			cp.Controlled = true
+			cp.Controller = side
 		}
 	}
 
@@ -121,7 +126,6 @@ func (cp *ControlPoint) Think(g *Game) {
 			}
 			x := int(ent.Pos().X+0.5) / LosGridSize
 			y := int(ent.Pos().Y+0.5) / LosGridSize
-			// NEXT: This is somehow not stopping it from hitting targets without LOS
 			res := g.Moba.Sides[cp.Side()].losCache.Get(int(cp.Position.X), int(cp.Position.Y), cp.Stats().Vision())
 			hit := false
 			for _, v := range res {
@@ -179,11 +183,13 @@ func (cp *ControlPoint) Draw(g *Game, side int) {
 	} else {
 		gl.Color4ub(100, 100, 100, 255)
 	}
-	texture.Render(
+	texture.RenderAdvanced(
 		cp.Position.X-cp.Stats().Size(),
 		cp.Position.Y-cp.Stats().Size(),
 		2*cp.Stats().Size(),
-		2*cp.Stats().Size())
+		2*cp.Stats().Size(),
+		0,
+		side == cp.Controller)
 	base.EnableShader("")
 }
 func (cp *ControlPoint) Supply(mana Mana) Mana { return Mana{} }
@@ -258,18 +264,13 @@ func (controlPointAttackProcess) CauseDamage() stats.Damage {
 	return stats.Damage{}
 }
 func (cpap *controlPointAttackProcess) Draw(id Gid, g *Game, side int) {
-	target, ok := g.Ents[cpap.Target].(*Player)
-	if !ok {
-		return
-	}
-	position := target.Position
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.9)
-	if cpap.Side == side {
+	if cpap.Side == side && cpap.Timer >= cpap.LockTime {
 		gl.Color4ub(200, 200, 200, 80)
 		texture.Render(
-			position.X-50,
-			position.Y-50,
+			cpap.LockPos.X-50,
+			cpap.LockPos.Y-50,
 			2*50,
 			2*50)
 	}
@@ -281,7 +282,5 @@ func (cpap *controlPointAttackProcess) Draw(id Gid, g *Game, side int) {
 			2*5,
 			2*5)
 	}
-
 	base.EnableShader("")
-
 }
