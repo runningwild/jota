@@ -57,13 +57,12 @@ type localEditorData struct {
 }
 
 type mobaSideData struct {
-	losTex *LosTexture
-	side   int
+	side int
 }
 
-func (msd *mobaSideData) updateLosTex(g *Game) {
-	cache := g.Moba.Sides[msd.side].losCache
-	pix := msd.losTex.pix
+func (lmd *localMobaData) updateLosTex(g *Game, side int) {
+	cache := g.Moba.losCache
+	pix := lmd.losTex.pix
 	for i := range pix {
 		if pix[i] < 250 {
 			pix[i] += 5
@@ -78,7 +77,7 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 	vpchan := make(chan []visiblePos)
 	count := 0
 	for _, ent := range g.temp.AllEnts {
-		if ent.Side() != msd.side {
+		if ent.Side() != side {
 			continue
 		}
 		count++
@@ -91,7 +90,7 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 
 	// Results from los calculations are collected here and are used to update the
 	// losTex.
-	losTex := msd.losTex.Pix()
+	losTex := lmd.losTex.Pix()
 	for i := 0; i < count; i++ {
 		res := <-vpchan
 		for i := range res {
@@ -116,6 +115,7 @@ type localMobaData struct {
 	players       []mobaPlayerData
 	sides         []mobaSideData
 	deviceIndex   gin.DeviceIndex
+	losTex        *LosTexture
 }
 
 func (lmd *localMobaData) setCurrentPlayerByGid(gid Gid) {
@@ -243,15 +243,13 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 }
 
 func (g *Game) renderLosMask(local *LocalData) {
-	var losTex *LosTexture
 	switch {
 	case local.mode == LocalModeMoba:
-		losTex = local.moba.currentSide.losTex
-		local.moba.currentSide.updateLosTex(g)
+		local.moba.updateLosTex(g, local.moba.currentSide.side)
 	default:
 		panic("Not implemented!!!")
 	}
-	losTex.Bind()
+	local.moba.losTex.Bind()
 	base.EnableShader("losgrid")
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Color4d(1, 1, 1, 1)
@@ -557,15 +555,12 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 		g.RenderLocalSetup(region, local)
 		return
 	}
-	var losTex *LosTexture
 	switch {
 	case local.mode == LocalModeMoba:
-		losTex = local.moba.currentSide.losTex
-
 	default:
 		panic("Not implemented!!!")
 	}
-	losTex.Remap()
+	local.moba.losTex.Remap()
 	var camera *cameraInfo
 	switch local.mode {
 	case LocalModeArchitect:
@@ -689,15 +684,15 @@ func (local *LocalData) setupMobaData(g *Game) {
 	}
 	for _ = range sidesSet {
 		var sd mobaSideData
-		sd.losTex = MakeLosTexture()
-		pix := sd.losTex.pix
-		for i := range pix {
-			pix[i] = 255
-		}
 		local.moba.sides = append(local.moba.sides, sd)
 	}
 	for i := range local.moba.sides {
 		local.moba.sides[i].side = i
+	}
+	local.moba.losTex = MakeLosTexture()
+	pix := local.moba.losTex.pix
+	for i := range pix {
+		pix[i] = 255
 	}
 	local.moba.setCurrentPlayerByGid(Gid(fmt.Sprintf("Engine:%d", local.engine.Id())))
 	local.setup = nil

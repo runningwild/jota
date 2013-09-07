@@ -354,10 +354,10 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 	for side, ids := range sides {
 		g.AddPlayers(ids, side)
-		g.Moba.Sides[side] = &GameModeMobaSideData{
-			losCache: makeLosCache(dx, dy),
-		}
+		g.Moba.Sides[side] = &GameModeMobaSideData{}
 	}
+	g.Moba.losCache = makeLosCache(dx, dy)
+
 	g.MakeControlPoints()
 	g.Init()
 	g.Setup = nil
@@ -419,11 +419,11 @@ type GameModeStandard struct {
 }
 type GameModeMoba struct {
 	// Map from side to the moba data for that side
-	Sides map[int]*GameModeMobaSideData
+	Sides    map[int]*GameModeMobaSideData
+	losCache *losCache
 }
 type GameModeMobaSideData struct {
 	AppeaseGob struct{}
-	losCache   *losCache
 }
 
 func (g *Game) NextGid() Gid {
@@ -544,9 +544,7 @@ func (g *Game) Think() {
 			g.temp.VisibleWallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, stats.LosPlayerHorizon)
 			base.Log().Printf("WallCache: %v", g.temp.WallCache)
 		}
-		for _, data := range g.Moba.Sides {
-			data.losCache.SetWallCache(g.temp.VisibleWallCache[GidInvadersStart])
-		}
+		g.Moba.losCache.SetWallCache(g.temp.VisibleWallCache[GidInvadersStart])
 	}
 
 	// cache ent data

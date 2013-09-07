@@ -126,7 +126,7 @@ func (cp *ControlPoint) Think(g *Game) {
 			}
 			x := int(ent.Pos().X+0.5) / LosGridSize
 			y := int(ent.Pos().Y+0.5) / LosGridSize
-			res := g.Moba.Sides[cp.Side()].losCache.Get(int(cp.Position.X), int(cp.Position.Y), cp.Stats().Vision())
+			res := g.Moba.losCache.Get(int(cp.Position.X), int(cp.Position.Y), cp.Stats().Vision())
 			hit := false
 			for _, v := range res {
 				if v.X == x && v.Y == y {
