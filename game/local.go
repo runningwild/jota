@@ -6,6 +6,7 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
+	"time"
 	// "github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
@@ -797,7 +798,7 @@ func (l *LocalData) Setup(g *Game) {
 			side := (g.Setup.Sides[id] + 1) % 2
 			l.engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
-			l.engine.ApplyEvent(SetupComplete{})
+			l.engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
 		}
 	}
 }

@@ -276,6 +276,7 @@ type Setup struct {
 	Mode      string        // should be "moba" or "standard"
 	EngineIds []int64       // engine ids of the engines currently joined
 	Sides     map[int64]int // map from engineid to side
+	Seed      int64         // random seed
 }
 
 type SetupSetEngineIds struct {
@@ -314,7 +315,9 @@ func init() {
 	gob.Register(SetupChangeSides{})
 }
 
-type SetupComplete struct{}
+type SetupComplete struct {
+	Seed int64
+}
 
 func (u SetupComplete) Apply(_g interface{}) {
 	g := _g.(*Game)
@@ -323,8 +326,8 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	var room Room
-	dx, dy := 1024, 2048
-	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, 64522029961391019)
+	dx, dy := 2048, 2048
+	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, u.Seed)
 	data, err := json.Marshal(generated)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
