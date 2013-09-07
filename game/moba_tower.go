@@ -183,6 +183,11 @@ func (cp *ControlPoint) Draw(g *Game, side int) {
 	} else {
 		gl.Color4ub(100, 100, 100, 255)
 	}
+
+	// The texture is flipped if this is being drawn for the controlling side.
+	// This makes it look a little nicer when someone neutralizes a control point
+	// because it makes the angle of the pie slice thingy continue going in the
+	// same direction as it passes the neutralization point.
 	texture.RenderAdvanced(
 		cp.Position.X-cp.Stats().Size(),
 		cp.Position.Y-cp.Stats().Size(),
@@ -266,6 +271,9 @@ func (controlPointAttackProcess) CauseDamage() stats.Damage {
 func (cpap *controlPointAttackProcess) Draw(id Gid, g *Game, side int) {
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.9)
+
+	// For people on the controlling side this will draw a circle around the area
+	// that is being targeted by the control point.
 	if cpap.Side == side && cpap.Timer >= cpap.LockTime {
 		gl.Color4ub(200, 200, 200, 80)
 		texture.Render(
@@ -274,6 +282,8 @@ func (cpap *controlPointAttackProcess) Draw(id Gid, g *Game, side int) {
 			2*50,
 			2*50)
 	}
+
+	// This draws the projectile itself.
 	if cpap.Timer >= cpap.FireTime {
 		gl.Color4ub(255, 50, 50, 240)
 		texture.Render(
