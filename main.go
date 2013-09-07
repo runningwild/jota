@@ -316,7 +316,7 @@ func main() {
 		}
 	})
 	base.InitShaders()
-	runtime.GOMAXPROCS(2)
+	runtime.GOMAXPROCS(10)
 	sys.Think()
 	base.LoadAllDictionaries()
 

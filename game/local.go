@@ -72,12 +72,28 @@ func (msd *mobaSideData) updateLosTex(g *Game) {
 			}
 		}
 	}
+
+	// Calculating los is the most expensive part of the game, so the los for all
+	// ents are done in parallel.
+	vpchan := make(chan []visiblePos)
+	count := 0
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != msd.side {
 			continue
 		}
-		res := cache.Get(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
-		losTex := msd.losTex.Pix()
+		count++
+		// Calls to losCache.Get() are launched in separate go routines and their
+		// results are collected on vpchan.
+		go func(x, y int, vision float64) {
+			vpchan <- cache.Get(x, y, vision)
+		}(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
+	}
+
+	// Results from los calculations are collected here and are used to update the
+	// losTex.
+	losTex := msd.losTex.Pix()
+	for i := 0; i < count; i++ {
+		res := <-vpchan
 		for i := range res {
 			cur := losTex[res[i].X][res[i].Y]
 			if res[i].Val < cur {

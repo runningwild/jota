@@ -6,18 +6,23 @@ import (
 	"github.com/runningwild/magnus/stats"
 	"math"
 	"sort"
+	"sync"
 )
 
 type losCache struct {
-	losBuffer *los.Los
+	losBuffers      []*los.Los
+	losBuffersMutex sync.Mutex
+
+	cache      map[losCacheViewerPos][]visiblePos
+	cacheMutex sync.Mutex
+
+	// These values are read-only after creation so not mutexes are needed.
 	wallCache *wallCache
-	cache     map[losCacheViewerPos][]visiblePos
 	dx, dy    int
 }
 
 func makeLosCache(dx, dy int) *losCache {
 	var lc losCache
-	lc.losBuffer = los.Make(stats.LosPlayerHorizon)
 	lc.cache = make(map[losCacheViewerPos][]visiblePos)
 	lc.wallCache = &wallCache{}
 	lc.dx = dx / LosGridSize
@@ -78,21 +83,38 @@ func init() {
 	sort.Sort(maxVps)
 }
 
+// losCache.Get() is Thread-Safe
 func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 	vp := losCacheViewerPos{i, j}
-	if vps, ok := lc.cache[vp]; ok {
+	var vps []visiblePos
+	var ok bool
+	lc.cacheMutex.Lock()
+	vps, ok = lc.cache[vp]
+	lc.cacheMutex.Unlock()
+	if ok {
 		var max int
 		for max = 0; max < len(vps) && vps[max].Dist <= maxDist; max++ {
 		}
 		return vps[0:max]
 	}
+
+	lc.losBuffersMutex.Lock()
+	var losBuffer *los.Los
+	if len(lc.losBuffers) > 0 {
+		losBuffer = lc.losBuffers[0]
+		lc.losBuffers = lc.losBuffers[1:]
+	} else {
+		losBuffer = los.Make(stats.LosPlayerHorizon)
+	}
+	lc.losBuffersMutex.Unlock()
+
 	pos := linear.Vec2{float64(i), float64(j)}
-	lc.losBuffer.Reset(pos)
-	vps := make([]visiblePos, len(maxVps))[0:0]
+	losBuffer.Reset(pos)
+	vps = make([]visiblePos, len(maxVps))[0:0]
 	for _, wall := range lc.wallCache.GetWalls(i, j) {
 		mid := wall.P.Add(wall.Q).Scale(0.5)
 		if mid.Sub(pos).Mag() < stats.LosPlayerHorizon+wall.Ray().Mag() {
-			lc.losBuffer.DrawSeg(wall, "")
+			losBuffer.DrawSeg(wall, "")
 		}
 	}
 	ix := int(pos.X / LosGridSize)
@@ -106,7 +128,7 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 		if y < 0 || y >= lc.dy {
 			continue
 		}
-		raw := lc.losBuffer.RawAccess()
+		raw := losBuffer.RawAccess()
 		val := 255.0
 		dist := v.Dist * LosGridSize
 		distSq := dist * dist
@@ -132,7 +154,14 @@ func (lc *losCache) Get(i, j int, maxDist float64) []visiblePos {
 			})
 		}
 	}
+	lc.cacheMutex.Lock()
 	lc.cache[vp] = vps
+	lc.cacheMutex.Unlock()
+
+	lc.losBuffersMutex.Lock()
+	lc.losBuffers = append(lc.losBuffers, losBuffer)
+	lc.losBuffersMutex.Unlock()
+
 	// Call this function again because now the values are cached.  We do this
 	// because we also need to slice the return value appropriately for maxDist
 	// and shouldn't have that logic in two places.
