@@ -22,10 +22,12 @@ function doBuild {
 #false
 
 doBuild 'host'
-open host.app
+#open host.app
 doBuild 'client'
-false
+doBuild 'client2'
+#false
 
 open host.app
 sleep 0.9
 open client.app
+open client2.app

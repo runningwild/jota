@@ -105,6 +105,8 @@ const (
 	ColorBlue
 )
 
+var AllColors = []Color{ColorRed, ColorGreen, ColorBlue}
+
 func init() {
 }
 
@@ -612,6 +614,23 @@ func (g *Game) Think() {
 
 func (g *Game) ThinkMoba() {
 	g.Levels[GidInvadersStart].ManaSource.Think(g.Ents)
+}
+
+// Returns true iff a has los to b, regardless of distance, except that nothing
+// can ever have los to something that is beyond stats.LosPlayerHorizon.
+func (g *Game) ExistsLos(a, b linear.Vec2) bool {
+	if g.Moba == nil {
+		panic("Not implemented except in mobas")
+	}
+	vps := g.Moba.losCache.Get(int(a.X), int(a.Y), stats.LosPlayerHorizon)
+	x := int(b.X / LosGridSize)
+	y := int(b.Y / LosGridSize)
+	for _, vp := range vps {
+		if vp.X == x && vp.Y == y {
+			return true
+		}
+	}
+	return false
 }
 
 func clamp(v, low, high float64) float64 {

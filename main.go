@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"github.com/runningwild/cgf"
 	_ "github.com/runningwild/magnus/ability"
+	_ "github.com/runningwild/magnus/ability/kassadin"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/generator"
@@ -51,11 +52,10 @@ func init() {
 	base.SetDefaultKeyMap(key_map)
 }
 
-// versions are 'standard', 'moba', 'host', 'client'
 func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
-	if version != "standard" && version != "moba" && version != "host" && version != "client" {
-		base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
-	}
+	// if version != "standard" && version != "moba" && version != "host" && version != "client" {
+	// 	base.Log().Fatalf("Unable to handle Version() == '%s'", Version())
+	// }
 
 	for false && len(sys.GetActiveDevices()[gin.DeviceTypeController]) < 2 {
 		time.Sleep(time.Millisecond * 100)
@@ -77,7 +77,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	var players []game.Gid
 	var localData *game.LocalData
 	var g *game.Game
-	if version == "client" {
+	if version != "host" {
 		engine, err = cgf.NewClientEngine(17, "127.0.0.1", 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)

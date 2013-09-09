@@ -587,7 +587,14 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
 	activeAbility := abs.activeAbility
 	abs.activeAbility = nil
-	if activeAbility != nil {
+
+	events, active := abs.abilities[n].Activate(gid, keyPress)
+	for _, event := range events {
+		l.engine.ApplyEvent(event)
+	}
+
+	if active && activeAbility != nil && activeAbility != abs.abilities[n] {
+		base.Log().Printf("Deactivate on keypress")
 		events := activeAbility.Deactivate(gid)
 		for _, event := range events {
 			l.engine.ApplyEvent(event)
@@ -596,12 +603,11 @@ func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyP
 			return
 		}
 	}
-	events, active := abs.abilities[n].Activate(gid, keyPress)
-	for _, event := range events {
-		l.engine.ApplyEvent(event)
-	}
 	if active {
 		abs.activeAbility = abs.abilities[n]
+	}
+	if abs.activeAbility == nil {
+		abs.activeAbility = activeAbility
 	}
 }
 func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
@@ -626,6 +632,7 @@ func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 		l.engine.ApplyEvent(event)
 	}
 	if die {
+		base.Log().Printf("Deactivate on die")
 		more_events := abs.activeAbility.Deactivate(gid)
 		abs.activeAbility = nil
 		for _, event := range more_events {
@@ -667,13 +674,16 @@ func (local *LocalData) setupMobaData(g *Game) {
 				"trigger": 100,
 				"mass":    300,
 			}))
+		// pd.abs.abilities = append(
+		// 	pd.abs.abilities,
+		// 	ability_makers["pull"](map[string]int{
+		// 		"frames": 10,
+		// 		"force":  250,
+		// 		"angle":  30,
+		// 	}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
-			ability_makers["pull"](map[string]int{
-				"frames": 10,
-				"force":  250,
-				"angle":  30,
-			}))
+			ability_makers["nullSphere"](map[string]int{}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
 			ability_makers["cloak"](map[string]int{}))

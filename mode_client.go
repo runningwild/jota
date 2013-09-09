@@ -1,4 +1,4 @@
-// +build client
+// +build !host
 
 package main
 
