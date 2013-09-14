@@ -83,8 +83,8 @@ const (
 type Thinker interface {
 	Think(game *Game)
 
-	// Kills a process.  Any Killed process will return true on any future
-	// calls to Complete().
+	// Kills a process.  Any Killed process will return PhaseComplete on any
+	// future calls to Phase().
 	Kill(game *Game)
 
 	Phase() Phase
@@ -136,7 +136,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
-			Acc:    0.2,
+			Acc:    1000.0,
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
@@ -362,6 +362,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 
 	g.MakeControlPoints()
 	g.Init()
+	base.Log().Printf("Nillifying g.Setup()")
 	g.Setup = nil
 }
 func init() {
@@ -377,8 +378,8 @@ type Game struct {
 
 	Friction float64
 
-	// Last Id assigned to an entity
-	NextGidValue int
+	// Last Id assigned to anything
+	NextIdValue int
 
 	Ents map[Gid]Ent
 
@@ -429,8 +430,13 @@ type GameModeMobaSideData struct {
 }
 
 func (g *Game) NextGid() Gid {
-	g.NextGidValue++
-	return Gid(fmt.Sprintf("%d", g.NextGidValue))
+	g.NextIdValue++
+	return Gid(fmt.Sprintf("%d", g.NextIdValue))
+}
+
+func (g *Game) NextId() int {
+	g.NextIdValue++
+	return g.NextIdValue
 }
 
 func (g *Game) Init() {
@@ -457,6 +463,8 @@ func (g *Game) Init() {
 		}
 		level.ManaSource.Init(&msOptions)
 	})
+	// Values less than this might be used for ability processes, ect...
+	g.NextIdValue = 10000
 }
 
 func init() {

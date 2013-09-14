@@ -683,7 +683,7 @@ func (local *LocalData) setupMobaData(g *Game) {
 		// 	}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
-			ability_makers["nullSphere"](map[string]int{}))
+			ability_makers["nullSphere"](map[string]int{"cost": 150}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
 			ability_makers["cloak"](map[string]int{}))
@@ -729,7 +729,7 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	left := axisControl(left_axis.CurPressAmt())
 	right := axisControl(right_axis.CurPressAmt())
 	if up-down != 0 {
-		l.engine.ApplyEvent(Accelerate{l.moba.currentPlayer.gid, 2 * (up - down)})
+		l.engine.ApplyEvent(Accelerate{l.moba.currentPlayer.gid, 300 * (up - down)})
 	}
 	if left-right != 0 {
 		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})

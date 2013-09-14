@@ -59,8 +59,57 @@ func (g *Game) MakeHeatSeeker(pos linear.Vec2, entParams BaseEntParams, hsParams
 	g.AddEnt(&mine)
 }
 
+type massCondition struct {
+	Duration int
+}
+
+func (mc *massCondition) Supply(mana Mana) Mana {
+	return mana
+}
+
+func (mc *massCondition) ModifyBase(b stats.Base) stats.Base {
+	b.Mass *= 1.5
+	base.Log().Printf("Returning mass %v", b.Mass)
+	return b
+}
+func (mc *massCondition) ModifyDamage(damage stats.Damage) stats.Damage {
+	return damage
+}
+func (mc *massCondition) CauseDamage() stats.Damage {
+	return stats.Damage{}
+}
+
+func (mc *massCondition) Think(game *Game) {
+	mc.Duration--
+}
+
+func (mc *massCondition) Kill(game *Game) {
+	mc.Duration = 0
+}
+
+func (mc *massCondition) Phase() Phase {
+	if mc.Duration <= 0 {
+		return PhaseComplete
+	}
+	return PhaseRunning
+}
+func (mc *massCondition) Draw(id Gid, game *Game, side int) {
+}
+
 func (hs *HeatSeeker) Asplode(g *Game) {
 	hs.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 100000})
+	for _, ent := range g.Ents {
+		if ent == hs {
+			continue
+		}
+		player, ok := ent.(*Player)
+		if !ok {
+			continue
+		}
+		if ent.Pos().Sub(hs.Pos()).Mag2() < hs.Aoe*hs.Aoe {
+			player.Processes[g.NextId()] = &massCondition{400}
+		}
+	}
 }
 
 func (hs *HeatSeeker) Think(g *Game) {

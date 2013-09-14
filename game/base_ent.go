@@ -113,8 +113,9 @@ func (b *BaseEnt) Think(g *Game) {
 		b.Delta.Angle = b.StatsInst.MaxTurn()
 	}
 
-	delta := (linear.Vec2{1, 0}).Rotate(b.Angle).Scale(b.Delta.Speed)
-	b.Velocity = b.Velocity.Add(delta)
+	// TODO: Speed is a complete misnomer now - fix it!
+	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle).Scale(b.Delta.Speed))
+
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
 	b.Velocity = b.Velocity.Scale(
