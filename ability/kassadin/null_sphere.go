@@ -16,9 +16,6 @@ import (
 func makeNullSphere(params map[string]int) game.Ability {
 	var ns nullSphere
 	ns.id = ability.NextAbilityId()
-
-	// ns.force = float64(params["force"])
-	// ns.angle = float64(params["angle"]) / 180 * 3.14159
 	return &ns
 }
 
@@ -195,34 +192,7 @@ func (e nullSphereEvent) Apply(_g interface{}) {
 		TargetGid: e.TargetGid,
 		Remaining: game.Mana{0, 0, 1000},
 	}
-	// PUT IT HERE
 }
-
-// type removeNullSphereEvent struct {
-// 	PlayerGid game.Gid
-// 	Id        int
-// }
-
-// func init() {
-// 	gob.Register(removeNullSphereEvent{})
-// }
-
-// func (e removeNullSphereEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.Player)
-// 	if !ok {
-// 		return
-// 	}
-// 	proc := player.Processes[100+e.Id]
-// 	if proc != nil {
-// 		proc.Kill(g)
-// 		delete(player.Processes, 100+e.Id)
-// 	}
-// }
-
-// func init() {
-// 	gob.Register(&nullSphereProcess{})
-// }
 
 type nullSphereProcess struct {
 	ability.BasicPhases
@@ -272,12 +242,13 @@ func (p *nullSphereProcess) Think(g *game.Game) {
 		return
 	}
 	if p.Remaining.Magnitude() == 0 {
+		size := 10.0
 		g.MakeHeatSeeker(
-			player.Pos().Add(target.Pos().Sub(player.Pos()).Norm().Scale(10)),
+			player.Pos().Add(target.Pos().Sub(player.Pos()).Norm().Scale(player.Stats().Size()+size)),
 			game.BaseEntParams{
 				Health: 100,
 				Mass:   100,
-				Size:   10,
+				Size:   size,
 				Acc:    40,
 			},
 			game.HeatSeekerParams{
