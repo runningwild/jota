@@ -2,20 +2,21 @@ package kassadin
 
 import (
 	"encoding/gob"
-	// gl "github.com/chsc/gogl/gl21"
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/ability"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
-	// "github.com/runningwild/magnus/texture"
+	"github.com/runningwild/magnus/texture"
 	// "math"
 )
 
 func makeNullSphere(params map[string]int) game.Ability {
 	var ns nullSphere
 	ns.id = ability.NextAbilityId()
+	ns.cost = float64(params["cost"])
 	return &ns
 }
 
@@ -26,6 +27,7 @@ func init() {
 type nullSphere struct {
 	id   int
 	fire int
+	cost float64
 }
 
 func (ns *nullSphere) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
@@ -34,6 +36,7 @@ func (ns *nullSphere) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) 
 		ret = append(ret, addNullSphereCastProcessEvent{
 			PlayerGid: gid,
 			ProcessId: ns.id,
+			Cost:      ns.cost,
 		})
 	} else {
 		ret = append(ret, removeNullSphereCastProcessEvent{
@@ -78,6 +81,9 @@ type nullSphereCastProcess struct {
 	ability.NullCondition
 	PlayerGid game.Gid
 	Stored    game.Mana
+	Cost      float64
+
+	targetGid game.Gid
 }
 
 func (p *nullSphereCastProcess) Supply(supply game.Mana) game.Mana {
@@ -88,34 +94,73 @@ func (p *nullSphereCastProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *nullSphereCastProcess) Think(g *game.Game) {
-	// if p.Remaining.Magnitude() == 0 {
-	// 	size := 10.0
-	// 	g.MakeHeatSeeker(
-	// 		player.Pos().Add(target.Pos().Sub(player.Pos()).Norm().Scale(player.Stats().Size()+size)),
-	// 		game.BaseEntParams{
-	// 			Health: 100,
-	// 			Mass:   100,
-	// 			Size:   size,
-	// 			Acc:    40,
-	// 		},
-	// 		game.HeatSeekerParams{
-	// 			Target:             p.TargetGid,
-	// 			Damage:             10,
-	// 			Timer:              300,
-	// 			Aoe:                50,
-	// 			DieOnWall:          false,
-	// 			EffectOnlyOnTarget: true,
-	// 		})
-	// 	p.The_phase = game.PhaseComplete
-	// }
+	p.targetGid = ""
+	ent := g.Ents[p.PlayerGid]
+	if ent == nil {
+		return
+	}
+	player, ok := ent.(*game.Player)
+	if !ok {
+		return
+	}
+	target := nullSphereTarget(g, player)
+	if target == nil {
+		return
+	}
+	p.targetGid = target.Id()
 }
 
+// TODO: This function really needs to take not just the side, but the player
+// that this is being drawn for.
 func (p *nullSphereCastProcess) Draw(gid game.Gid, g *game.Game, side int) {
+	player, _ := g.Ents[p.PlayerGid].(*game.Player)
+	target, _ := g.Ents[p.targetGid].(*game.Player)
+	if player == nil {
+		return
+	}
+	if side != player.Side() {
+		return
+	}
+	if target != nil {
+		base.EnableShader("circle")
+		base.SetUniformF("circle", "edge", 0.99)
+		gl.Color4ub(200, 200, 10, 150)
+		size := target.Stats().Size() + 25
+		texture.Render(
+			target.Pos().X-size,
+			target.Pos().Y-size,
+			2*size,
+			2*size)
+		base.EnableShader("")
+	}
+	ready := int(p.Stored[game.ColorBlue] / p.Cost)
+	base.EnableShader("status_bar")
+	if ready == 0 {
+		gl.Color4ub(255, 0, 0, 255)
+	} else {
+		gl.Color4ub(0, 255, 0, 255)
+	}
+	var outer float32 = 0.2
+	var increase float32 = 0.01
+	frac := p.Stored[game.ColorBlue] / p.Cost
+	base.SetUniformF("status_bar", "frac", float32(frac-float64(ready)))
+	base.SetUniformF("status_bar", "inner", outer-increase*float32(ready+1))
+	base.SetUniformF("status_bar", "outer", outer)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	texture.Render(player.Pos().X-100, player.Pos().Y-100, 200, 200)
+	if ready > 0 {
+		base.SetUniformF("status_bar", "frac", 1.0)
+		base.SetUniformF("status_bar", "inner", outer-float32(ready)*increase)
+		base.SetUniformF("status_bar", "outer", outer)
+		texture.Render(player.Pos().X-100, player.Pos().Y-100, 200, 200)
+	}
+	base.EnableShader("")
 }
 
 type addNullSphereCastProcessEvent struct {
 	PlayerGid game.Gid
 	ProcessId int
+	Cost      float64
 }
 
 func init() {
@@ -130,12 +175,14 @@ func (e addNullSphereCastProcessEvent) Apply(_g interface{}) {
 	}
 	player.Processes[100+e.ProcessId] = &nullSphereCastProcess{
 		PlayerGid: e.PlayerGid,
+		Cost:      e.Cost,
 	}
 }
 
 type removeNullSphereCastProcessEvent struct {
 	PlayerGid game.Gid
 	ProcessId int
+	Cost      float64
 }
 
 func init() {
@@ -162,7 +209,7 @@ func init() {
 
 func nullSphereTarget(g *game.Game, player *game.Player) game.Ent {
 	var bestEnt game.Ent
-	var bestDistSq float64 = 1e9
+	var bestDistSq float64 = player.Stats().Vision() * player.Stats().Vision()
 	g.DoForEnts(func(gid game.Gid, ent game.Ent) {
 		if ent.Side() == player.Side() {
 			// Don't target anything on the same side
@@ -177,7 +224,7 @@ func nullSphereTarget(g *game.Game, player *game.Player) game.Ent {
 			return
 		}
 		distSq := player.Pos().Sub(ent.Pos()).Mag2()
-		if distSq < bestDistSq {
+		if distSq <= bestDistSq {
 			bestDistSq = distSq
 			bestEnt = ent
 		}
@@ -203,13 +250,12 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 	if target == nil {
 		return
 	}
-	amt := 100.0
-	if nsProc.Stored[game.ColorBlue] < amt {
+	if nsProc.Stored[game.ColorBlue] < nsProc.Cost {
 		// Can't cast until you've stored up the minimum amount
 		// TODO: Make the minimum value a parameter on the ability or something
 		return
 	}
-	nsProc.Stored[game.ColorBlue] -= amt
+	nsProc.Stored[game.ColorBlue] -= nsProc.Cost
 	size := player.Stats().Size()
 	g.MakeHeatSeeker(
 		player.Pos().Add(target.Pos().Sub(player.Pos()).Norm().Scale(player.Stats().Size()+size)),
@@ -217,7 +263,7 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 			Health: 100,
 			Mass:   100,
 			Size:   size,
-			Acc:    amt / 2,
+			Acc:    nsProc.Cost / 2,
 		},
 		game.HeatSeekerParams{
 			Target:             target.Id(),
