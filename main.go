@@ -17,6 +17,7 @@ import (
 	_ "github.com/runningwild/magnus/ability"
 	_ "github.com/runningwild/magnus/ability/kassadin"
 	"github.com/runningwild/magnus/base"
+	_ "github.com/runningwild/magnus/effects"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/generator"
 	"github.com/runningwild/magnus/texture"

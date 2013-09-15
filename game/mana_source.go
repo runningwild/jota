@@ -493,8 +493,14 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 					maxDrainRate := ms.getMaxDrainRate(nodeThinkData.playerDistSquared[i])
 					for c := range node.Mana {
 						amountScale := node.MaxMana[c] / float64(ms.options.NodeMagnitude)
+						if amountScale != amountScale {
+							panic("amount")
+						}
 						nodeThinkData.playerDrain[i][c] =
 							math.Min(amountScale*maxDrainRate*playerThinkData.rateFactor, node.Mana[c]) * control
+						if nodeThinkData.playerDrain[i][c] != nodeThinkData.playerDrain[i][c] {
+							panic("nodeThinkData.playerDrain[i][c]")
+						}
 						playerThinkData.drain[c] += nodeThinkData.playerDrain[i][c]
 					}
 				}
@@ -518,8 +524,10 @@ func (ms *ManaSource) supplyPlayers(td *thinkData, players []*Player) {
 				nodeThinkData := td.nodeThinkData[x][y]
 				if nodeThinkData.playerControl[i] > 0 {
 					for c := range node.Mana {
-						usedFrac := 1.0 - drainUsed[c]/playerThinkData.drain[c]
-						node.Mana[c] = math.Max(0.0, node.Mana[c]-nodeThinkData.playerDrain[i][c]*usedFrac)
+						if playerThinkData.drain[c] > 0 {
+							usedFrac := 1.0 - drainUsed[c]/playerThinkData.drain[c]
+							node.Mana[c] = math.Max(0.0, node.Mana[c]-nodeThinkData.playerDrain[i][c]*usedFrac)
+						}
 					}
 				}
 			}

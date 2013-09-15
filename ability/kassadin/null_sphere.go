@@ -9,6 +9,7 @@ import (
 	"github.com/runningwild/magnus/ability"
 	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
 	// "math"
 )
@@ -267,7 +268,8 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 		},
 		game.HeatSeekerParams{
 			Target:             target.Id(),
-			Damage:             10,
+			Damages:            []stats.Damage{{stats.DamageFire, 10}},
+			ConditionMakers:    []game.ConditionMaker{{"silence", map[string]int{"duration": 300}}},
 			Timer:              300,
 			Aoe:                50,
 			DieOnWall:          false,

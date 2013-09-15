@@ -58,6 +58,17 @@ func RegisterAbility(name string, maker AbilityMaker) {
 	ability_makers[name] = maker
 }
 
+type EffectMaker func(params map[string]int) Process
+
+var effect_makers map[string]EffectMaker
+
+func RegisterEffect(name string, maker EffectMaker) {
+	if effect_makers == nil {
+		effect_makers = make(map[string]EffectMaker)
+	}
+	effect_makers[name] = maker
+}
+
 type Drain interface {
 	// Supplies mana to the Process and returns the unused portion.
 	Supply(Mana) Mana
@@ -243,6 +254,7 @@ type Ent interface {
 	Stats() *stats.Inst
 	Mass() float64
 	Vel() linear.Vec2
+	Dead() bool
 
 	Id() Gid
 	SetId(Gid)
@@ -559,7 +571,7 @@ func (g *Game) Think() {
 
 	// cache ent data
 	for _, ent := range g.temp.AllEnts {
-		if ent.Stats().HealthCur() <= 0 {
+		if ent.Dead() {
 			ent.OnDeath(g)
 			g.RemoveEnt(ent.Id())
 		}

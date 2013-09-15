@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"math"
 )
 
 const LosPlayerHorizon = 900
@@ -80,32 +81,32 @@ func (s Inst) ModifyBase(base Base) Base {
 	return base
 }
 func (s Inst) HealthMax() float64 {
-	return s.ModifyBase(s.inst.Base).Health
+	return math.Max(0, s.ModifyBase(s.inst.Base).Health)
 }
 func (s Inst) Mass() float64 {
-	return s.ModifyBase(s.inst.Base).Mass
+	return math.Max(0, s.ModifyBase(s.inst.Base).Mass)
 }
 func (s Inst) MaxTurn() float64 {
-	return s.ModifyBase(s.inst.Base).Turn
+	return math.Max(0, s.ModifyBase(s.inst.Base).Turn)
 }
 func (s Inst) MaxAcc() float64 {
-	return s.ModifyBase(s.inst.Base).Acc
+	return math.Max(0, s.ModifyBase(s.inst.Base).Acc)
 }
 func (s Inst) MaxRate() float64 {
-	return s.ModifyBase(s.inst.Base).Rate
+	return math.Max(0, s.ModifyBase(s.inst.Base).Rate)
 }
 func (s Inst) Cloaking() float64 {
-	return s.ModifyBase(s.inst.Base).Cloaking
+	return math.Max(0, s.ModifyBase(s.inst.Base).Cloaking)
 }
 func (s Inst) Size() float64 {
-	return s.inst.Base.Size
+	return math.Max(0, s.inst.Base.Size)
 }
 func (s Inst) Vision() float64 {
 	vision := s.ModifyBase(s.inst.Base).Vision
 	if vision > LosPlayerHorizon {
 		return LosPlayerHorizon
 	}
-	return vision
+	return math.Max(0, vision)
 }
 
 func (s *Inst) SetHealth(health float64) {

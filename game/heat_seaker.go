@@ -21,11 +21,19 @@ type BaseEntParams struct {
 	Acc    float64
 }
 
+type ConditionMaker struct {
+	Name   string
+	Params map[string]int
+}
+
 type HeatSeekerParams struct {
 	Target Gid
 
-	// How much damage done to ents in the aoe
-	Damage float64
+	// The damage to do to ents in the AoE
+	Damages []stats.Damage
+
+	// The specs for the conditions to apply to players in the aoe.
+	ConditionMakers []ConditionMaker
 
 	// How long it can chase its target
 	Timer int
@@ -39,6 +47,8 @@ type HeatSeekerParams struct {
 	// Whether or not it will explode as designed if it dies without reaching its
 	// target
 	EffectOnlyOnTarget bool
+
+	Asploded bool
 }
 
 func (g *Game) MakeHeatSeeker(pos linear.Vec2, entParams BaseEntParams, hsParams HeatSeekerParams) {
@@ -96,8 +106,15 @@ func (mc *massCondition) Phase() Phase {
 func (mc *massCondition) Draw(id Gid, game *Game, side int) {
 }
 
+func (hs *HeatSeeker) Dead() bool {
+	if hs.Asploded {
+		return true
+	}
+	return hs.BaseEnt.Dead()
+}
+
 func (hs *HeatSeeker) Asplode(g *Game) {
-	hs.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 100000})
+	hs.Asploded = true
 	for _, ent := range g.Ents {
 		if ent == hs {
 			continue
@@ -106,8 +123,14 @@ func (hs *HeatSeeker) Asplode(g *Game) {
 		if !ok {
 			continue
 		}
-		if ent.Pos().Sub(hs.Pos()).Mag2() < hs.Aoe*hs.Aoe {
-			player.Processes[g.NextId()] = &massCondition{400}
+		if ent.Pos().Sub(player.Pos()).Mag2() <= hs.Aoe*hs.Aoe {
+			for _, damage := range hs.Damages {
+				player.Stats().ApplyDamage(damage)
+			}
+			for _, conditionMaker := range hs.ConditionMakers {
+				condition := effect_makers[conditionMaker.Name](conditionMaker.Params)
+				player.Processes[g.NextId()] = condition
+			}
 		}
 	}
 }

@@ -73,6 +73,10 @@ func (b *BaseEnt) SetLevel(level Gid) {
 	b.CurrentLevel = level
 }
 
+func (b *BaseEnt) Dead() bool {
+	return b.Stats().HealthCur() <= 0
+}
+
 func (b *BaseEnt) Think(g *Game) {
 	// This will clear out old conditions
 	b.StatsInst.Think()
