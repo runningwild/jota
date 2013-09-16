@@ -123,6 +123,7 @@ func init() {
 
 type Player struct {
 	BaseEnt
+	Champ int
 }
 
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side
@@ -392,8 +393,12 @@ func (u SetupComplete) Apply(_g interface{}) {
 		sides[sideData.Side] = append(sides[sideData.Side], engineId)
 	}
 	for side, ids := range sides {
-		g.AddPlayers(ids, side)
+		gids := g.AddPlayers(ids, side)
 		g.Moba.Sides[side] = &GameModeMobaSideData{}
+		for i := range ids {
+			player := g.Ents[gids[i]].(*Player)
+			player.Champ = g.Setup.Sides[ids[i]].Champ
+		}
 	}
 	g.Moba.losCache = makeLosCache(dx, dy)
 

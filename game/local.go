@@ -529,7 +529,7 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 	dict.RenderString("Engines:", size, y, 0, size, gui.Left)
 	for i, id := range g.Setup.EngineIds {
 		y += size
-		dataStr := fmt.Sprintf("Engine %d, Side %d, Champ %d", id, g.Setup.Sides[id].Side, g.Setup.Sides[id].Champ)
+		dataStr := fmt.Sprintf("Engine %d, Side %d, Champ %d", id, g.Setup.Sides[id].Side, g.Setup.Sides[id].Champ+1)
 		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
 		if i == local.setup.index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
@@ -685,14 +685,15 @@ func (local *LocalData) setupMobaData(g *Game) {
 		// 		"trigger": 100,
 		// 		"mass":    300,
 		// 	}))
-		if pd.side == 0 {
+		switch p.Champ {
+		case 0:
 			pd.abs.abilities = append(
 				pd.abs.abilities,
 				ability_makers["nullSphere"](map[string]int{"cost": 150}))
 			pd.abs.abilities = append(
 				pd.abs.abilities,
 				ability_makers["riftWalk"](map[string]int{"force": 10000}))
-		} else {
+		case 1:
 			pd.abs.abilities = append(
 				pd.abs.abilities,
 				ability_makers["pull"](map[string]int{
@@ -703,6 +704,8 @@ func (local *LocalData) setupMobaData(g *Game) {
 			pd.abs.abilities = append(
 				pd.abs.abilities,
 				ability_makers["fire"](map[string]int{}))
+		default:
+			panic("NOOO!!!")
 		}
 		local.moba.players = append(local.moba.players, pd)
 	}
@@ -836,13 +839,10 @@ func (l *LocalData) Setup(g *Game) {
 		}
 	}
 	if gin.In().GetKey(gin.AnyKey1).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 1})
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 0})
 	}
 	if gin.In().GetKey(gin.AnyKey2).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 2})
-	}
-	if gin.In().GetKey(gin.AnyKey3).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 3})
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 1})
 	}
 	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
 		if l.setup.index < len(g.Setup.EngineIds) {
