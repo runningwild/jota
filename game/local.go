@@ -560,6 +560,13 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	default:
 		panic("Not implemented!!!")
 	}
+	if local.moba.losTex == nil {
+		// This can happen because the function to set g.Setup to nil is called in
+		// an event, and the function that makes the losTex is called in Think(), so
+		// we might get here (inside the Draw() function) between the event and the
+		// Think().
+		return
+	}
 	local.moba.losTex.Remap()
 	var camera *cameraInfo
 	switch local.mode {

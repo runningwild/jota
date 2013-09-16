@@ -7,7 +7,6 @@ import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/ability"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
 	"math"
