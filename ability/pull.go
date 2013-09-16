@@ -137,7 +137,7 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *pullProcess) required() float64 {
-	return p.Force / 10
+	return p.Force / 50
 }
 
 func (p *pullProcess) reset() {
@@ -173,7 +173,7 @@ func (p *pullProcess) Think(g *game.Game) {
 		ray = ray.Norm()
 		force := base_force // / math.Pow(dist, p.Angle/(2*math.Pi))
 		ent.ApplyForce(ray.Scale(-force))
-		player.ApplyForce(ray.Scale(force))
+		player.ApplyForce(ray.Scale(force).Scale(0.01))
 	})
 }
 

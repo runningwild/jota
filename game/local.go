@@ -585,6 +585,9 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 }
 
 func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {
+	if len(abs.abilities) <= n {
+		return
+	}
 	activeAbility := abs.activeAbility
 	abs.activeAbility = nil
 
@@ -666,30 +669,33 @@ func (local *LocalData) setupMobaData(g *Game) {
 		pd.gid = p.Gid
 		pd.side = p.Side()
 		sidesSet[pd.side] = true
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["mine"](map[string]int{
-				"health":  10,
-				"damage":  100,
-				"trigger": 100,
-				"mass":    300,
-			}))
 		// pd.abs.abilities = append(
 		// 	pd.abs.abilities,
-		// 	ability_makers["pull"](map[string]int{
-		// 		"frames": 10,
-		// 		"force":  250,
-		// 		"angle":  30,
+		// 	ability_makers["mine"](map[string]int{
+		// 		"health":  10,
+		// 		"damage":  100,
+		// 		"trigger": 100,
+		// 		"mass":    300,
 		// 	}))
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["nullSphere"](map[string]int{"cost": 150}))
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["riftWalk"](map[string]int{"force": 10000}))
-		pd.abs.abilities = append(
-			pd.abs.abilities,
-			ability_makers["fire"](map[string]int{}))
+		if pd.side == 0 {
+			pd.abs.abilities = append(
+				pd.abs.abilities,
+				ability_makers["nullSphere"](map[string]int{"cost": 150}))
+			pd.abs.abilities = append(
+				pd.abs.abilities,
+				ability_makers["riftWalk"](map[string]int{"force": 10000}))
+		} else {
+			pd.abs.abilities = append(
+				pd.abs.abilities,
+				ability_makers["pull"](map[string]int{
+					"frames": 10,
+					"force":  250,
+					"angle":  30,
+				}))
+			pd.abs.abilities = append(
+				pd.abs.abilities,
+				ability_makers["fire"](map[string]int{}))
+		}
 		local.moba.players = append(local.moba.players, pd)
 	}
 	for _ = range sidesSet {
