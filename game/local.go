@@ -686,7 +686,7 @@ func (local *LocalData) setupMobaData(g *Game) {
 			ability_makers["nullSphere"](map[string]int{"cost": 150}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
-			ability_makers["cloak"](map[string]int{}))
+			ability_makers["riftWalk"](map[string]int{"force": 10000}))
 		pd.abs.abilities = append(
 			pd.abs.abilities,
 			ability_makers["fire"](map[string]int{}))

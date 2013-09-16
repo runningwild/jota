@@ -1,201 +1,252 @@
 package kassadin
 
-// import (
-// 	"encoding/gob"
-// 	gl "github.com/chsc/gogl/gl21"
-// 	"github.com/runningwild/cgf"
-// 	"github.com/runningwild/linear"
-// 	"github.com/runningwild/magnus/game"
-// 	"math"
-// )
+import (
+	"encoding/gob"
+	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/cgf"
+	"github.com/runningwild/glop/gin"
+	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/ability"
+	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/magnus/stats"
+	"math"
+)
 
-// func makePull(params map[string]int) game.Ability {
-// 	var b pull
-// 	b.id = NextAbilityId()
-// 	b.force = float64(params["force"])
-// 	b.angle = float64(params["angle"]) / 180 * 3.14159
-// 	return &b
-// }
+func makeRiftWalk(params map[string]int) game.Ability {
+	var b riftWalk
+	b.id = ability.NextAbilityId()
+	b.force = float64(params["force"])
+	return &b
+}
 
-// func init() {
-// 	game.RegisterAbility("pull", makePull)
-// }
+type riftWalk struct {
+	id      int
+	trigger bool
+	force   float64
+}
 
-// type pull struct {
-// 	NonResponder
-// 	NonThinker
-// 	NonRendering
+func init() {
+	game.RegisterAbility("riftWalk", makeRiftWalk)
+}
 
-// 	id    int
-// 	force float64
-// 	angle float64
-// }
+func (rw *riftWalk) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
+	var ret []cgf.Event
+	if keyPress {
+		ret = append(ret, addRiftWalkEvent{
+			PlayerGid: gid,
+			ProcessId: rw.id,
+			Force:     rw.force,
+		})
+	} else {
+		ret = append(ret, removeRiftWalkEvent{
+			PlayerGid: gid,
+			ProcessId: rw.id,
+		})
+	}
+	return ret, keyPress
+}
 
-// func (p *pull) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
-// 	ret := []cgf.Event{
-// 		addPullEvent{
-// 			PlayerGid: gid,
-// 			Id:        p.id,
-// 			Force:     p.force,
-// 			Angle:     p.angle,
-// 			Press:     keyPress,
-// 		},
-// 	}
-// 	return ret, false
-// }
+func (rw *riftWalk) Deactivate(gid game.Gid) []cgf.Event {
+	base.Log().Printf("NS Deactivate")
+	rw.trigger = false
+	return nil
+}
 
-// func (p *pull) Deactivate(gid game.Gid) []cgf.Event {
-// 	ret := []cgf.Event{
-// 		removePullEvent{
-// 			PlayerGid: gid,
-// 			Id:        p.id,
-// 		},
-// 	}
-// 	return ret
-// }
+func (rw *riftWalk) Respond(gid game.Gid, group gin.EventGroup) bool {
+	if found, event := group.FindEvent(gin.AnySpace); found && event.Type == gin.Press {
+		rw.trigger = true
+		return true
+	}
+	return false
+}
 
-// type addPullEvent struct {
-// 	PlayerGid game.Gid
-// 	Id        int
-// 	Angle     float64
-// 	Force     float64
-// 	Press     bool
-// }
+func (rw *riftWalk) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+	var ret []cgf.Event
+	if rw.trigger {
+		rw.trigger = false
+		ret = append(ret, addRiftWalkFireEvent{
+			PlayerGid: gid,
+			ProcessId: rw.id,
+		})
+	}
+	return ret, false
+}
 
-// func init() {
-// 	gob.Register(addPullEvent{})
-// }
+func (rw *riftWalk) Draw(gid game.Gid, g *game.Game, side int) {}
 
-// func (e addPullEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.Player)
-// 	if !ok {
-// 		return
-// 	}
-// 	if !e.Press {
-// 		if proc := player.Processes[100+e.Id]; proc != nil {
-// 			proc.Kill(g)
-// 			delete(player.Processes, 100+e.Id)
-// 		}
-// 		return
-// 	}
-// 	player.Processes[100+e.Id] = &pullProcess{
-// 		BasicPhases: BasicPhases{game.PhaseRunning},
-// 		PlayerGid:   e.PlayerGid,
-// 		Id:          e.Id,
-// 		Angle:       e.Angle,
-// 		Force:       e.Force,
-// 	}
-// }
+type addRiftWalkEvent struct {
+	PlayerGid game.Gid
+	ProcessId int
+	Force     float64
+}
 
-// type removePullEvent struct {
-// 	PlayerGid game.Gid
-// 	Id        int
-// }
+func init() {
+	gob.Register(addRiftWalkEvent{})
+}
 
-// func init() {
-// 	gob.Register(removePullEvent{})
-// }
+func (e addRiftWalkEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
+	player.Processes[100+e.ProcessId] = &riftWalkProcess{
+		BasicPhases: ability.BasicPhases{game.PhaseRunning},
+		PlayerGid:   e.PlayerGid,
+		Id:          e.ProcessId,
+		Force:       e.Force,
+	}
+}
 
-// func (e removePullEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.Player)
-// 	if !ok {
-// 		return
-// 	}
-// 	proc := player.Processes[100+e.Id]
-// 	if proc != nil {
-// 		proc.Kill(g)
-// 		delete(player.Processes, 100+e.Id)
-// 	}
-// }
+type removeRiftWalkEvent struct {
+	PlayerGid game.Gid
+	ProcessId int
+}
 
-// func init() {
-// 	gob.Register(&pullProcess{})
-// }
+func init() {
+	gob.Register(removeRiftWalkEvent{})
+}
 
-// type pullProcess struct {
-// 	BasicPhases
-// 	NullCondition
-// 	PlayerGid game.Gid
-// 	Id        int
-// 	Angle     float64
-// 	Force     float64
+func (e removeRiftWalkEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
+	proc := player.Processes[100+e.ProcessId]
+	if proc != nil {
+		proc.Kill(g)
+	}
+	// delete(player.Processes, 100+e.ProcessId)
+	// }
+}
 
-// 	supplied float64
-// }
+func init() {
+	gob.Register(&riftWalkProcess{})
+}
 
-// func (p *pullProcess) Supply(supply game.Mana) game.Mana {
-// 	if supply[game.ColorBlue] > p.required()-p.supplied {
-// 		supply[game.ColorBlue] -= p.required() - p.supplied
-// 		p.supplied = p.required()
-// 	} else {
-// 		p.supplied += supply[game.ColorBlue]
-// 		supply[game.ColorBlue] = 0
-// 	}
-// 	return supply
-// }
+type riftWalkProcess struct {
+	ability.BasicPhases
+	ability.NullCondition
+	PlayerGid game.Gid
+	Id        int
+	Force     float64
+	Stored    game.Mana
+}
 
-// func (p *pullProcess) required() float64 {
-// 	return p.Force / 10
-// }
+func (p *riftWalkProcess) Supply(supply game.Mana) game.Mana {
+	for _, color := range []game.Color{game.ColorBlue, game.ColorGreen} {
+		p.Stored[color] *= 0.98
+		p.Stored[color] += supply[color]
+		supply[color] = 0
+	}
+	return supply
+}
 
-// func (p *pullProcess) reset() {
-// 	p.supplied = 0
-// }
+func (p *riftWalkProcess) Think(g *game.Game) {
+	for i := range p.Stored {
+		p.Stored[i] *= 0.98
+	}
+	// ent := g.Ents[p.PlayerGid]
+	// player, ok := ent.(*game.Player)
+	// if !ok {
+	// 	return
+	// }
+}
 
-// func (p *pullProcess) Think(g *game.Game) {
-// 	defer p.reset()
-// 	player, ok := g.Ents[p.PlayerGid].(*game.Player)
-// 	if !ok {
-// 		return
-// 	}
+func (p *riftWalkProcess) GetVals() (distance, radius float64) {
+	distance = math.Sqrt(p.Stored[game.ColorGreen]) * 10
+	radius = math.Sqrt(p.Stored[game.ColorBlue]) / p.Force * 50000
+	return
+}
 
-// 	base_force := p.Force * p.supplied / p.required()
-// 	g.DoForEnts(func(gid game.Gid, ent game.Ent) {
-// 		if ent == game.Ent(player) {
-// 			return
-// 		}
-// 		target_pos := ent.Pos()
-// 		ray := target_pos.Sub(player.Pos())
-// 		target_angle := ray.Angle() - player.Angle
-// 		for target_angle < 0 {
-// 			target_angle += math.Pi * 2
-// 		}
-// 		for target_angle > math.Pi*2 {
-// 			target_angle -= math.Pi * 2
-// 		}
-// 		if target_angle > p.Angle/2 && target_angle < math.Pi*2-p.Angle/2 {
-// 			return
-// 		}
-// 		ray = player.Pos().Sub(ent.Pos())
-// 		// dist := ray.Mag()
-// 		ray = ray.Norm()
-// 		force := base_force // / math.Pow(dist, p.Angle/(2*math.Pi))
-// 		ent.ApplyForce(ray.Scale(-force))
-// 		player.ApplyForce(ray.Scale(force))
-// 	})
-// }
+func (p *riftWalkProcess) Draw(gid game.Gid, g *game.Game, side int) {
+	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
+	if side != player.Side() {
+		return
+	}
+	dist, radius := p.GetVals()
+	base.Log().Printf("dist, radius: %v %v", dist, radius)
+	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Color4d(1, 1, 1, 1)
+	gl.Begin(gl.LINES)
+	gl.Vertex2d(gl.Double(player.Pos().X), gl.Double(player.Pos().Y))
+	gl.Vertex2d(gl.Double(dest.X), gl.Double(dest.Y))
+	gl.End()
+	n := 20
+	gl.Begin(gl.LINES)
+	for i := 0; i < n; i++ {
+		v1 := dest.Add((linear.Vec2{radius, 0}).Rotate(float64(i) / float64(n) * 2 * math.Pi))
+		v2 := dest.Add((linear.Vec2{radius, 0}).Rotate(float64(i+1) / float64(n) * 2 * math.Pi))
+		gl.Vertex2d(gl.Double(v1.X), gl.Double(v1.Y))
+		gl.Vertex2d(gl.Double(v2.X), gl.Double(v2.Y))
+	}
+	gl.End()
+}
 
-// func (p *pullProcess) Draw(gid game.Gid, g *game.Game, side int) {
-// 	player, ok := g.Ents[p.PlayerGid].(*game.Player)
-// 	if !ok {
-// 		return
-// 	}
-// 	if side != player.Side() {
-// 		return
-// 	}
-// 	gl.Color4d(1, 1, 1, 1)
-// 	gl.Disable(gl.TEXTURE_2D)
-// 	v1 := player.Pos()
-// 	v2 := v1.Add(linear.Vec2{1000, 0})
-// 	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)
-// 	v4 := v2.RotateAround(v1, player.Angle+p.Angle/2)
-// 	gl.Begin(gl.LINES)
-// 	vs := []linear.Vec2{v3, v4, player.Pos()}
-// 	for i := range vs {
-// 		gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
-// 		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
-// 	}
-// 	gl.End()
-// }
+type addRiftWalkFireEvent struct {
+	PlayerGid game.Gid
+	ProcessId int
+}
+
+func init() {
+	gob.Register(addRiftWalkFireEvent{})
+}
+func (e addRiftWalkFireEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	if !ok {
+		return
+	}
+	proc := player.Processes[100+e.ProcessId]
+	if proc == nil {
+		return
+	}
+	rwProc, ok := proc.(*riftWalkProcess)
+	if !ok {
+		return
+	}
+	dist, radius := rwProc.GetVals()
+	rwProc.Stored = game.Mana{}
+	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
+	for _, ent := range g.Ents {
+		if ent == player {
+			continue
+		}
+		doDamage := false
+		if ent.Pos().Sub(dest).Mag() <= radius+ent.Stats().Size() {
+			angle := dest.Sub(ent.Pos()).Angle()
+			ent.ApplyForce((linear.Vec2{-rwProc.Force, 0}).Rotate(angle))
+			doDamage = true
+		} else {
+			ray := dest.Sub(player.Pos())
+			perp := ray.Cross().Norm()
+			scaledPerp := perp.Scale(ent.Stats().Size() + player.Stats().Size())
+			sideRay0 := linear.Seg2{player.Pos().Add(scaledPerp), dest.Add(scaledPerp)}
+			sideRay1 := linear.Seg2{player.Pos().Sub(scaledPerp), dest.Sub(scaledPerp)}
+			if sideRay0.Left(ent.Pos()) != sideRay1.Left(ent.Pos()) {
+				// We know the ent lies between sideRays 0 and 1, now we need to make
+				// sure it lies between src and dst.
+				forward := ent.Pos().Sub(dest)
+				backward := ent.Pos().Sub(player.Pos())
+				if (forward.Dot(ray) < 0) != (backward.Dot(ray) < 0) {
+					if (linear.Seg2{player.Pos(), dest}).Left(ent.Pos()) {
+						ent.ApplyForce(perp.Scale(rwProc.Force))
+					} else {
+						ent.ApplyForce(perp.Scale(-rwProc.Force))
+					}
+					doDamage = true
+				}
+			}
+		}
+		if doDamage {
+			ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 50})
+		}
+	}
+	player.SetPos(dest)
+}

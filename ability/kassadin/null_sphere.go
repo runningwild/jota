@@ -74,7 +74,7 @@ func (ns *nullSphere) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cg
 }
 
 func (ns *nullSphere) Draw(gid game.Gid, g *game.Game, side int) {
-	// Draw something showing how much mana has been stored
+	// The real drawing happens as part of the process.
 }
 
 type nullSphereCastProcess struct {
@@ -88,13 +88,13 @@ type nullSphereCastProcess struct {
 }
 
 func (p *nullSphereCastProcess) Supply(supply game.Mana) game.Mana {
-	p.Stored[game.ColorBlue] *= 0.98
 	p.Stored[game.ColorBlue] += supply[game.ColorBlue]
 	supply[game.ColorBlue] = 0
 	return supply
 }
 
 func (p *nullSphereCastProcess) Think(g *game.Game) {
+	p.Stored[game.ColorBlue] *= 0.98
 	p.targetGid = ""
 	ent := g.Ents[p.PlayerGid]
 	if ent == nil {
@@ -196,7 +196,10 @@ func (e removeNullSphereCastProcessEvent) Apply(_g interface{}) {
 	if !ok {
 		return
 	}
-	delete(player.Processes, 100+e.ProcessId)
+	proc := player.Processes[100+e.ProcessId]
+	if proc != nil {
+		proc.Kill(g)
+	}
 }
 
 type addNullSphereFireEvent struct {
@@ -268,7 +271,7 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 		},
 		game.HeatSeekerParams{
 			Target:             target.Id(),
-			Damages:            []stats.Damage{{stats.DamageFire, 10}},
+			Damages:            []stats.Damage{{stats.DamageFire, 50}},
 			ConditionMakers:    []game.ConditionMaker{{"silence", map[string]int{"duration": 300}}},
 			Timer:              300,
 			Aoe:                50,
