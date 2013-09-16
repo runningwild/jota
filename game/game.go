@@ -594,8 +594,9 @@ func (g *Game) Think() {
 	for _, ent := range g.temp.AllEnts {
 		ent.Think(g)
 		pos := ent.Pos()
-		pos.X = clamp(pos.X, 0, float64(g.Levels[ent.Level()].Room.Dx))
-		pos.Y = clamp(pos.Y, 0, float64(g.Levels[ent.Level()].Room.Dy))
+		eps := 1.0e-3
+		pos.X = clamp(pos.X, eps, float64(g.Levels[ent.Level()].Room.Dx)-eps)
+		pos.Y = clamp(pos.Y, eps, float64(g.Levels[ent.Level()].Room.Dy)-eps)
 		ent.SetPos(pos)
 	}
 
