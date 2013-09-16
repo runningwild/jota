@@ -861,10 +861,10 @@ func (l *LocalData) handleEventGroupInvaders(group gin.EventGroup) {
 	if l.mode != LocalModeMoba {
 		panic("Need to implement controls for multiple players on a single screen")
 	}
-	k0 := gin.In().GetKeyFlat(gin.KeyY, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-	k1 := gin.In().GetKeyFlat(gin.KeyU, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-	k2 := gin.In().GetKeyFlat(gin.KeyI, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-	k3 := gin.In().GetKeyFlat(gin.KeyO, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k0 := gin.In().GetKeyFlat(gin.Key6, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k1 := gin.In().GetKeyFlat(gin.Key7, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k2 := gin.In().GetKeyFlat(gin.Key8, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	k3 := gin.In().GetKeyFlat(gin.Key9, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 	if found, event := group.FindEvent(k0.Id()); found {
 		l.activateAbility(&l.moba.currentPlayer.abs, l.moba.currentPlayer.gid, 0, event.Type == gin.Press)
 		return
