@@ -49,7 +49,6 @@ func (ns *nullSphere) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) 
 }
 
 func (ns *nullSphere) Deactivate(gid game.Gid) []cgf.Event {
-	base.Log().Printf("NS Deactivate")
 	ns.fire = 0
 	return nil
 }

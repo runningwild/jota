@@ -48,7 +48,6 @@ func (rw *riftWalk) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 }
 
 func (rw *riftWalk) Deactivate(gid game.Gid) []cgf.Event {
-	base.Log().Printf("NS Deactivate")
 	rw.trigger = false
 	return nil
 }
@@ -170,7 +169,6 @@ func (p *riftWalkProcess) Draw(gid game.Gid, g *game.Game, side int) {
 		return
 	}
 	dist, radius := p.GetVals()
-	base.Log().Printf("dist, radius: %v %v", dist, radius)
 	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4d(1, 1, 1, 1)
