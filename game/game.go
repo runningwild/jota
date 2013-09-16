@@ -285,12 +285,17 @@ type Level struct {
 	Room       Room
 }
 
+type SetupSideData struct {
+	Side  int
+	Champ int
+}
+
 // Used before the 'game' starts to choose sides and characters and whatnot.
 type Setup struct {
-	Mode      string        // should be "moba" or "standard"
-	EngineIds []int64       // engine ids of the engines currently joined
-	Sides     map[int64]int // map from engineid to side
-	Seed      int64         // random seed
+	Mode      string                   // should be "moba" or "standard"
+	EngineIds []int64                  // engine ids of the engines currently joined
+	Sides     map[int64]*SetupSideData // map from engineid to side data
+	Seed      int64                    // random seed
 }
 
 type SetupSetEngineIds struct {
@@ -305,7 +310,7 @@ func (s SetupSetEngineIds) Apply(_g interface{}) {
 	g.Setup.EngineIds = s.EngineIds
 	for _, id := range g.Setup.EngineIds {
 		if _, ok := g.Setup.Sides[id]; !ok {
-			g.Setup.Sides[id] = 0
+			g.Setup.Sides[id] = &SetupSideData{}
 		}
 	}
 }
@@ -323,7 +328,7 @@ func (s SetupChangeSides) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
-	g.Setup.Sides[s.EngineId] = s.Side
+	g.Setup.Sides[s.EngineId].Side = s.Side
 }
 func init() {
 	gob.Register(SetupChangeSides{})
@@ -363,8 +368,8 @@ func (u SetupComplete) Apply(_g interface{}) {
 		Sides: make(map[int]*GameModeMobaSideData),
 	}
 	sides := make(map[int][]int64)
-	for engineId, side := range g.Setup.Sides {
-		sides[side] = append(sides[side], engineId)
+	for engineId, sideData := range g.Setup.Sides {
+		sides[sideData.Side] = append(sides[sideData.Side], engineId)
 	}
 	for side, ids := range sides {
 		g.AddPlayers(ids, side)

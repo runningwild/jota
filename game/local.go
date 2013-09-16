@@ -529,7 +529,7 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 	dict.RenderString("Engines:", size, y, 0, size, gui.Left)
 	for i, id := range g.Setup.EngineIds {
 		y += size
-		dict.RenderString(fmt.Sprintf("Engine %d, Side %d", id, g.Setup.Sides[id]), size, y, 0, size, gui.Left)
+		dict.RenderString(fmt.Sprintf("Engine %d, Side %d", id, g.Setup.Sides[id].Side), size, y, 0, size, gui.Left)
 		if i == local.setup.index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
@@ -829,7 +829,7 @@ func (l *LocalData) Setup(g *Game) {
 	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
 		if l.setup.index < len(g.Setup.EngineIds) {
 			id := g.Setup.EngineIds[l.setup.index]
-			side := (g.Setup.Sides[id] + 1) % 2
+			side := (g.Setup.Sides[id].Side + 1) % 2
 			l.engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
 			l.engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})

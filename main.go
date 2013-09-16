@@ -96,7 +96,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		g = new(game.Game)
 		g.Setup = &game.Setup{}
 		g.Setup.Mode = "moba"
-		g.Setup.Sides = make(map[int64]int)
+		g.Setup.Sides = make(map[int64]*game.SetupSideData)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 50001, base.Log())
 		} else {
