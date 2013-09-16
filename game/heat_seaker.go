@@ -123,7 +123,7 @@ func (hs *HeatSeeker) Asplode(g *Game) {
 		if !ok {
 			continue
 		}
-		if ent.Pos().Sub(player.Pos()).Mag2() <= hs.Aoe*hs.Aoe {
+		if hs.Pos().Sub(player.Pos()).Mag2() <= hs.Aoe*hs.Aoe {
 			for _, damage := range hs.Damages {
 				player.Stats().ApplyDamage(damage)
 			}
