@@ -529,7 +529,8 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 	dict.RenderString("Engines:", size, y, 0, size, gui.Left)
 	for i, id := range g.Setup.EngineIds {
 		y += size
-		dict.RenderString(fmt.Sprintf("Engine %d, Side %d", id, g.Setup.Sides[id].Side), size, y, 0, size, gui.Left)
+		dataStr := fmt.Sprintf("Engine %d, Side %d, Champ %d", id, g.Setup.Sides[id].Side, g.Setup.Sides[id].Champ)
+		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
 		if i == local.setup.index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
@@ -814,17 +815,34 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 }
 
 func (l *LocalData) Setup(g *Game) {
-	if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
-		l.setup.index--
-		if l.setup.index < 0 {
-			l.setup.index = 0
+	if len(l.engine.Ids()) > 0 {
+		if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
+			l.setup.index--
+			if l.setup.index < 0 {
+				l.setup.index = 0
+			}
+		}
+		if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
+			l.setup.index++
+			if l.setup.index > len(g.Setup.EngineIds) {
+				l.setup.index = len(g.Setup.EngineIds)
+			}
+		}
+	} else {
+		for i, v := range g.Setup.EngineIds {
+			if v == l.engine.Id() {
+				l.setup.index = i
+			}
 		}
 	}
-	if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
-		l.setup.index++
-		if l.setup.index > len(g.Setup.EngineIds) {
-			l.setup.index = len(g.Setup.EngineIds)
-		}
+	if gin.In().GetKey(gin.AnyKey1).FramePressCount() > 0 {
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 1})
+	}
+	if gin.In().GetKey(gin.AnyKey2).FramePressCount() > 0 {
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 2})
+	}
+	if gin.In().GetKey(gin.AnyKey3).FramePressCount() > 0 {
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 3})
 	}
 	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
 		if l.setup.index < len(g.Setup.EngineIds) {
@@ -832,7 +850,9 @@ func (l *LocalData) Setup(g *Game) {
 			side := (g.Setup.Sides[id].Side + 1) % 2
 			l.engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
-			l.engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			if len(l.engine.Ids()) > 0 {
+				l.engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			}
 		}
 	}
 }

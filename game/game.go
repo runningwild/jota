@@ -334,6 +334,26 @@ func init() {
 	gob.Register(SetupChangeSides{})
 }
 
+type SetupChampSelect struct {
+	EngineId int64
+	Champ    int
+}
+
+func init() {
+	gob.Register(SetupChampSelect{})
+}
+func (s SetupChampSelect) Apply(_g interface{}) {
+	g := _g.(*Game)
+	if g.Setup == nil {
+		return
+	}
+	sideData := g.Setup.Sides[s.EngineId]
+	if sideData == nil {
+		return
+	}
+	sideData.Champ = s.Champ
+}
+
 type SetupComplete struct {
 	Seed int64
 }
