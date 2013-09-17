@@ -7,8 +7,10 @@ import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/ability"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
+	"github.com/runningwild/magnus/texture"
 	"math"
 )
 
@@ -16,13 +18,15 @@ func makeRiftWalk(params map[string]int) game.Ability {
 	var b riftWalk
 	b.id = ability.NextAbilityId()
 	b.force = float64(params["force"])
+	b.threshold = float64(params["threshold"])
 	return &b
 }
 
 type riftWalk struct {
-	id      int
-	trigger bool
-	force   float64
+	id        int
+	trigger   bool
+	force     float64
+	threshold float64
 }
 
 func init() {
@@ -36,6 +40,7 @@ func (rw *riftWalk) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 			PlayerGid: gid,
 			ProcessId: rw.id,
 			Force:     rw.force,
+			Threshold: rw.threshold,
 		})
 	} else {
 		ret = append(ret, removeRiftWalkEvent{
@@ -77,6 +82,7 @@ type addRiftWalkEvent struct {
 	PlayerGid game.Gid
 	ProcessId int
 	Force     float64
+	Threshold float64
 }
 
 func init() {
@@ -94,6 +100,7 @@ func (e addRiftWalkEvent) Apply(_g interface{}) {
 		PlayerGid:   e.PlayerGid,
 		Id:          e.ProcessId,
 		Force:       e.Force,
+		Threshold:   e.Threshold,
 	}
 }
 
@@ -131,10 +138,11 @@ type riftWalkProcess struct {
 	Id        int
 	Force     float64
 	Stored    game.Mana
+	Threshold float64
 }
 
 func (p *riftWalkProcess) Supply(supply game.Mana) game.Mana {
-	for _, color := range []game.Color{game.ColorBlue, game.ColorGreen} {
+	for _, color := range []game.Color{game.ColorGreen} {
 		p.Stored[color] *= 0.98
 		p.Stored[color] += supply[color]
 		supply[color] = 0
@@ -154,8 +162,11 @@ func (p *riftWalkProcess) Think(g *game.Game) {
 }
 
 func (p *riftWalkProcess) GetVals() (distance, radius float64) {
-	distance = math.Sqrt(p.Stored[game.ColorGreen]) * 10
-	radius = math.Sqrt(p.Stored[game.ColorBlue]) / p.Force * 50000
+	if p.Stored[game.ColorGreen] <= p.Threshold {
+		return 0, 0
+	}
+	distance = math.Sqrt(p.Stored[game.ColorGreen]-p.Threshold) * 10
+	radius = math.Sqrt(p.Stored[game.ColorGreen]-p.Threshold) / p.Force * 40000
 	return
 }
 
@@ -167,6 +178,25 @@ func (p *riftWalkProcess) Draw(gid game.Gid, g *game.Game, side int) {
 	if side != player.Side() {
 		return
 	}
+	frac := p.Stored.Magnitude() / p.Threshold
+	if frac < 1 {
+		gl.Color4ub(255, 0, 0, 255)
+	} else {
+		gl.Color4ub(0, 255, 0, 255)
+	}
+	base.EnableShader("status_bar")
+	var outer float32 = 0.2
+	var increase float32 = 0.01
+	if frac > 1 {
+		frac = 1
+	}
+	base.SetUniformF("status_bar", "frac", float32(frac))
+	base.SetUniformF("status_bar", "inner", outer-increase)
+	base.SetUniformF("status_bar", "outer", outer)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	texture.Render(player.Pos().X-100, player.Pos().Y-100, 200, 200)
+	base.EnableShader("")
+
 	dist, radius := p.GetVals()
 	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
 	gl.Disable(gl.TEXTURE_2D)
@@ -206,6 +236,9 @@ func (e addRiftWalkFireEvent) Apply(_g interface{}) {
 	}
 	rwProc, ok := proc.(*riftWalkProcess)
 	if !ok {
+		return
+	}
+	if rwProc.Stored.Magnitude() <= rwProc.Threshold {
 		return
 	}
 	dist, radius := rwProc.GetVals()
