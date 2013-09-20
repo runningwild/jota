@@ -11,6 +11,7 @@ import (
 	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/magnus/champ"
 	"github.com/runningwild/magnus/generator"
 	"github.com/runningwild/magnus/gui"
 	"github.com/runningwild/magnus/stats"
@@ -434,6 +435,10 @@ type Game struct {
 	Standard *GameModeStandard
 	Moba     *GameModeMoba
 
+	// Champion defs loaded from the data file.  These are set by the host and
+	// sent to clients to make debugging and tuning easier.
+	Champs []champ.Champion
+
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
 		// ents in that room.
@@ -479,6 +484,28 @@ func (g *Game) NextGid() Gid {
 func (g *Game) NextId() int {
 	g.NextIdValue++
 	return g.NextIdValue
+}
+
+func MakeGame() *Game {
+	var g Game
+	g.Setup = &Setup{}
+	g.Setup.Mode = "moba"
+	g.Setup.Sides = make(map[int64]*SetupSideData)
+
+	// NOTE: Obviously this isn't threadsafe, but I don't intend to be Init()ing
+	// multiple game objects at the same time.
+	base.RemoveRegistry("champs")
+	base.RegisterRegistry("champs", make(map[string]*champ.ChampionDef))
+	base.RegisterAllObjectsInDir("champs", filepath.Join(base.GetDataDir(), "champs"), ".json", "json")
+
+	names := base.GetAllNamesInRegistry("champs")
+	g.Champs = make([]champ.Champion, len(names))
+	for i, name := range names {
+		g.Champs[i].Defname = name
+		base.GetObject("champs", &g.Champs[i])
+	}
+
+	return &g
 }
 
 func (g *Game) Init() {

@@ -685,27 +685,13 @@ func (local *LocalData) setupMobaData(g *Game) {
 		// 		"trigger": 100,
 		// 		"mass":    300,
 		// 	}))
-		switch p.Champ {
-		case 0:
+		if p.Champ < 0 || p.Champ > len(g.Champs) {
+			panic(fmt.Sprintf("p.Champ == %d, ouside of range of champ, %d", p.Champ, len(g.Champs)))
+		}
+		for _, ability := range g.Champs[p.Champ].Abilities {
 			pd.abs.abilities = append(
 				pd.abs.abilities,
-				ability_makers["nullSphere"](map[string]int{"cost": 150}))
-			pd.abs.abilities = append(
-				pd.abs.abilities,
-				ability_makers["riftWalk"](map[string]int{"force": 10000, "threshold": 100}))
-		case 1:
-			pd.abs.abilities = append(
-				pd.abs.abilities,
-				ability_makers["pull"](map[string]int{
-					"frames": 10,
-					"force":  250,
-					"angle":  30,
-				}))
-			pd.abs.abilities = append(
-				pd.abs.abilities,
-				ability_makers["fire"](map[string]int{}))
-		default:
-			panic("NOOO!!!")
+				ability_makers[ability.Name](ability.Params))
 		}
 		local.moba.players = append(local.moba.players, pd)
 	}

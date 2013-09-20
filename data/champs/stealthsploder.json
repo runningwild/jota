@@ -1,0 +1,15 @@
+{
+  "Name": "Stealthsploder",
+  "Abilities": [
+    {
+      "Name": "cloak",
+      "Params": {
+      }
+    },
+    {
+      "Name": "fire",
+      "Params": {
+      }
+    }
+  ]
+}

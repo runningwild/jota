@@ -1,0 +1,18 @@
+{
+  "Name": "Kassadin",
+  "Abilities": [
+    {
+      "Name": "nullSphere",
+      "Params": {
+        "cost": 150
+      }
+    },
+    {
+      "Name": "riftWalk",
+      "Params": {
+        "force": 10000,
+        "threshold": 100
+      }
+    }
+  ]
+}
