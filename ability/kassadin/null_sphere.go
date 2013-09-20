@@ -11,7 +11,6 @@ import (
 	"github.com/runningwild/magnus/game"
 	"github.com/runningwild/magnus/stats"
 	"github.com/runningwild/magnus/texture"
-	// "math"
 )
 
 func makeNullSphere(params map[string]int) game.Ability {
@@ -26,6 +25,7 @@ func init() {
 }
 
 type nullSphere struct {
+	ability.NonRendering
 	id   int
 	fire int
 	cost float64
@@ -70,10 +70,6 @@ func (ns *nullSphere) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cg
 		})
 	}
 	return ret, false
-}
-
-func (ns *nullSphere) Draw(gid game.Gid, g *game.Game, side int) {
-	// The real drawing happens as part of the process.
 }
 
 type nullSphereCastProcess struct {
@@ -255,7 +251,6 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 	}
 	if nsProc.Stored[game.ColorBlue] < nsProc.Cost {
 		// Can't cast until you've stored up the minimum amount
-		// TODO: Make the minimum value a parameter on the ability or something
 		return
 	}
 	nsProc.Stored[game.ColorBlue] -= nsProc.Cost

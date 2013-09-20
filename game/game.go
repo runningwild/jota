@@ -642,7 +642,6 @@ func (g *Game) Think() {
 	if g.temp.AllEnts == nil || g.temp.AllEntsDirty {
 		g.temp.AllEnts = g.temp.AllEnts[0:0]
 		g.DoForEnts(func(gid Gid, ent Ent) {
-			base.Log().Printf("Appending %v", ent.Id())
 			g.temp.AllEnts = append(g.temp.AllEnts, ent)
 		})
 		g.temp.AllEntsDirty = false

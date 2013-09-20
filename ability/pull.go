@@ -5,7 +5,6 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -152,7 +151,6 @@ func (p *pullProcess) reset() {
 }
 
 func (p *pullProcess) Think(g *game.Game) {
-	base.Log().Printf("%v %v", p.required(), p.supplied)
 	defer p.reset()
 	player, ok := g.Ents[p.PlayerGid].(*game.Player)
 	if !ok {
