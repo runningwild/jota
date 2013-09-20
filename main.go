@@ -79,7 +79,12 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	var localData *game.LocalData
 	var g *game.Game
 	if version != "host" {
-		engine, err = cgf.NewClientEngine(17, "127.0.0.1", 50001, base.Log())
+		res, err := cgf.SearchLANForHosts(50001, 50002, 500)
+		if err != nil || len(res) == 0 {
+			base.Log().Printf("Unable to connect: %v", err)
+			base.Error().Fatalf("%v", err.Error())
+		}
+		engine, err = cgf.NewClientEngine(17, res[0].Ip, 50001, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
@@ -99,6 +104,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		g.Setup.Sides = make(map[int64]*game.SetupSideData)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 50001, base.Log())
+			cgf.Host(50001, "thunderball")
 		} else {
 			engine, err = cgf.NewLocalEngine(g, 17, base.Log())
 		}
