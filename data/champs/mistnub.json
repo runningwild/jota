@@ -1,0 +1,30 @@
+{
+  "Name": "The Mistcaker",
+  "Abilities": [
+    {
+      "Name": "pull",
+      "Params": {
+        "force": 100,
+        "angle": 45,
+        "cost": 10
+      }
+    },
+    {
+      "Name": "pull",
+      "Params": {
+        "force": -100,
+        "angle": 45,
+        "cost": 10
+      }
+    },
+    {
+      "Name": "mine",
+      "Params": {
+        "health": 10,
+        "damage": 100,
+        "trigger": 100,
+        "mass": 100
+      }
+    }
+  ]
+}
