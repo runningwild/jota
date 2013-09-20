@@ -23,7 +23,8 @@
         "health": 10,
         "damage": 100,
         "trigger": 100,
-        "mass": 100
+        "mass": 100,
+        "cost": 100
       }
     }
   ]
