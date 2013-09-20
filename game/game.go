@@ -353,7 +353,13 @@ func (s SetupChampSelect) Apply(_g interface{}) {
 	if sideData == nil {
 		return
 	}
-	sideData.Champ = s.Champ
+	sideData.Champ += s.Champ
+	if sideData.Champ < 0 {
+		sideData.Champ = 0
+	}
+	if sideData.Champ >= len(g.Champs) {
+		sideData.Champ = len(g.Champs) - 1
+	}
 }
 
 type SetupComplete struct {

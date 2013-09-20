@@ -525,20 +525,27 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 	dict := base.GetDictionary("luxisr")
 	size := 60.0
 	y := 100.0
-	gui.SetFontColor(1, 1, 1, 1)
 	dict.RenderString("Engines:", size, y, 0, size, gui.Left)
 	for i, id := range g.Setup.EngineIds {
 		y += size
-		dataStr := fmt.Sprintf("Engine %d, Side %d, Champ %d", id, g.Setup.Sides[id].Side, g.Setup.Sides[id].Champ+1)
+		if id == local.engine.Id() {
+			gui.SetFontColor(0.7, 0.7, 1, 1)
+		} else {
+			gui.SetFontColor(0.7, 0.7, 0.7, 1)
+		}
+		dataStr := fmt.Sprintf("Engine %d, Side %d, %s", id, g.Setup.Sides[id].Side, g.Champs[g.Setup.Sides[id].Champ].Name)
 		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
-		if i == local.setup.index {
+		if local.engine.Id() == 1 && i == local.setup.index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
 	}
 	y += size
-	dict.RenderString("Start!", size, y, 0, size, gui.Left)
-	if local.setup.index == len(g.Setup.EngineIds) {
-		dict.RenderString(">", 50, y, 0, size, gui.Right)
+	gui.SetFontColor(0.7, 0.7, 0.7, 1)
+	if local.engine.Id() == 1 {
+		dict.RenderString("Start!", size, y, 0, size, gui.Left)
+		if local.setup.index == len(g.Setup.EngineIds) {
+			dict.RenderString(">", 50, y, 0, size, gui.Right)
+		}
 	}
 	ids := local.engine.Ids()
 	if len(ids) > 0 {
@@ -824,10 +831,10 @@ func (l *LocalData) Setup(g *Game) {
 			}
 		}
 	}
-	if gin.In().GetKey(gin.AnyKey1).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 0})
+	if gin.In().GetKey(gin.AnyLeft).FramePressCount() > 0 {
+		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), -1})
 	}
-	if gin.In().GetKey(gin.AnyKey2).FramePressCount() > 0 {
+	if gin.In().GetKey(gin.AnyRight).FramePressCount() > 0 {
 		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 1})
 	}
 	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
