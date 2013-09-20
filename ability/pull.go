@@ -5,6 +5,7 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
+	"github.com/runningwild/magnus/base"
 	"github.com/runningwild/magnus/game"
 	"math"
 )
@@ -14,6 +15,7 @@ func makePull(params map[string]int) game.Ability {
 	b.id = NextAbilityId()
 	b.force = float64(params["force"])
 	b.angle = float64(params["angle"]) / 180 * 3.14159
+	b.cost = float64(params["cost"])
 	return &b
 }
 
@@ -29,6 +31,7 @@ type pull struct {
 	id    int
 	force float64
 	angle float64
+	cost  float64
 }
 
 func (p *pull) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
@@ -38,6 +41,7 @@ func (p *pull) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
 			Id:        p.id,
 			Force:     p.force,
 			Angle:     p.angle,
+			Cost:      p.cost,
 			Press:     keyPress,
 		},
 	}
@@ -59,6 +63,7 @@ type addPullEvent struct {
 	Id        int
 	Angle     float64
 	Force     float64
+	Cost      float64
 	Press     bool
 }
 
@@ -85,6 +90,7 @@ func (e addPullEvent) Apply(_g interface{}) {
 		Id:          e.Id,
 		Angle:       e.Angle,
 		Force:       e.Force,
+		Cost:        e.Cost,
 	}
 }
 
@@ -121,6 +127,7 @@ type pullProcess struct {
 	Id        int
 	Angle     float64
 	Force     float64
+	Cost      float64
 
 	supplied float64
 }
@@ -137,7 +144,7 @@ func (p *pullProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *pullProcess) required() float64 {
-	return p.Force / 50
+	return math.Abs(p.Force) / 50 * p.Cost
 }
 
 func (p *pullProcess) reset() {
@@ -145,6 +152,7 @@ func (p *pullProcess) reset() {
 }
 
 func (p *pullProcess) Think(g *game.Game) {
+	base.Log().Printf("%v %v", p.required(), p.supplied)
 	defer p.reset()
 	player, ok := g.Ents[p.PlayerGid].(*game.Player)
 	if !ok {
