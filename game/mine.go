@@ -15,12 +15,13 @@ type Mine struct {
 	Trigger float64
 }
 
-func (g *Game) MakeMine(pos linear.Vec2, health, mass, damage, trigger float64) {
+func (g *Game) MakeMine(pos, vel linear.Vec2, health, mass, damage, trigger float64) {
 	mine := Mine{
 		BaseEnt: BaseEnt{
 			Side_:        10,
 			CurrentLevel: GidInvadersStart,
 			Position:     pos,
+			Velocity:     vel,
 		},
 		Damage:  damage,
 		Trigger: trigger,

@@ -5,6 +5,8 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
 	"github.com/runningwild/magnus/game"
+	"math"
+	"math/rand"
 )
 
 func makeMine(params map[string]int) game.Ability {
@@ -73,6 +75,14 @@ func (e addMineEvent) Apply(_g interface{}) {
 	if !ok {
 		return
 	}
-	pos := player.Position.Add((linear.Vec2{40, 0}).Rotate(player.Angle))
-	g.MakeMine(pos, e.Health, e.Mass, e.Damage, e.Trigger)
+	var angle float64
+	if player.Velocity.Mag() < 10 {
+		angle = player.Velocity.Angle()
+	} else {
+		angle = player.Angle
+	}
+	pos := player.Position.Add((linear.Vec2{50, 0}).Rotate(angle + math.Pi))
+	rng := rand.New(g.Rng)
+	pos = pos.Add((linear.Vec2{rng.NormFloat64() * 15, 0}).Rotate(rng.Float64() * math.Pi * 2))
+	g.MakeMine(pos, player.Velocity.Scale(0.5), e.Health, e.Mass, e.Damage, e.Trigger)
 }
