@@ -696,11 +696,13 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
+	hits := 0
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() != side {
 			continue
 		}
 		if player, ok := ent.(*Player); ok {
+			hits++
 			pos := player.Pos()
 			if pos.X < min.X {
 				min.X = pos.X
@@ -716,21 +718,28 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 			}
 		}
 	}
-	min.X -= stats.LosPlayerHorizon
-	min.Y -= stats.LosPlayerHorizon
-	if min.X < 0 {
+	if hits == 0 {
 		min.X = 0
-	}
-	if min.Y < 0 {
 		min.Y = 0
-	}
-	max.X += stats.LosPlayerHorizon
-	max.Y += stats.LosPlayerHorizon
-	if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
 		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
-	}
-	if max.Y > float64(g.Levels[GidInvadersStart].Room.Dy) {
 		max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+	} else {
+		min.X -= stats.LosPlayerHorizon
+		min.Y -= stats.LosPlayerHorizon
+		if min.X < 0 {
+			min.X = 0
+		}
+		if min.Y < 0 {
+			min.Y = 0
+		}
+		max.X += stats.LosPlayerHorizon
+		max.Y += stats.LosPlayerHorizon
+		if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
+			max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+		}
+		if max.Y > float64(g.Levels[GidInvadersStart].Room.Dy) {
+			max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+		}
 	}
 
 	mid := min.Add(max).Scale(0.5)
