@@ -270,59 +270,6 @@ func (g *Game) renderLosMask(local *LocalData) {
 	base.EnableShader("")
 }
 
-// func (g *Game) renderLosMaskOldSchool(local *LocalData) {
-// 	base.EnableShader("los")
-// 	gl.Enable(gl.TEXTURE_2D)
-// 	gl.ActiveTexture(gl.TEXTURE0)
-// 	gl.BindTexture(gl.TEXTURE_2D, local.los.texId)
-// 	gl.TexSubImage2D(
-// 		gl.TEXTURE_2D,
-// 		0,
-// 		0,
-// 		0,
-// 		los.Resolution,
-// 		LosMaxPlayers,
-// 		gl.ALPHA,
-// 		gl.UNSIGNED_INT,
-// 		gl.Pointer(&local.los.texRawData[0]))
-// 	base.SetUniformI("los", "tex0", 0)
-// 	// TODO: This has to not be hardcoded
-// 	base.SetUniformF("los", "dx", float32(g.Levels[GidInvadersStart].Room.Dx))
-// 	base.SetUniformF("los", "dy", float32(g.Levels[GidInvadersStart].Room.Dy))
-// 	base.SetUniformF("los", "losMaxDist", LosMaxDist)
-// 	base.SetUniformF("los", "losResolution", los.Resolution)
-// 	base.SetUniformF("los", "losMaxPlayers", LosMaxPlayers)
-// 	if local.mode == LocalModeArchitect {
-// 		base.SetUniformI("los", "architect", 1)
-// 	} else {
-// 		base.SetUniformI("los", "architect", 0)
-// 	}
-// 	var playerPos []linear.Vec2
-// 	g.DoForEnts(func(gid Gid, ent Ent) {
-// 		if _, ok := ent.(*Player); ok && (ent.Side() == local.side || local.mode == LocalModeArchitect) {
-// 			playerPos = append(playerPos, ent.Pos())
-// 		}
-// 	})
-// 	if len(playerPos) == 0 {
-// 		// TODO: Probably shouldn't have even gotten here
-// 		return
-// 	}
-// 	base.SetUniformV2Array("los", "playerPos", playerPos)
-// 	base.SetUniformI("los", "losNumPlayers", len(playerPos))
-// 	gl.Color4d(0, 0, 1, 1)
-// 	gl.Begin(gl.QUADS)
-// 	gl.TexCoord2d(0, 1)
-// 	gl.Vertex2i(0, 0)
-// 	gl.TexCoord2d(0, 0)
-// 	gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-// 	gl.TexCoord2d(1, 0)
-// 	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-// 	gl.TexCoord2d(1, 1)
-// 	gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
-// 	gl.End()
-// 	base.EnableShader("")
-// }
-
 func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 	panic("Need to keep track of side for local invaders")
 	// g.renderLocalHelper(region, local, &local.invaders.camera)
