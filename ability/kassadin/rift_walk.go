@@ -243,7 +243,45 @@ func (e addRiftWalkFireEvent) Apply(_g interface{}) {
 	}
 	dist, radius := rwProc.GetVals()
 	rwProc.Stored = game.Mana{}
-	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
+	movement := (linear.Vec2{dist, 0}).Rotate(player.Angle)
+	dest := player.Pos().Add(movement)
+
+	inside := false
+	// Check if the player would end up inside a polygon
+	for _, poly := range g.Levels[player.Level()].Room.Walls {
+		if linear.VecInsideConvexPoly(dest, poly) {
+			inside = true
+			break
+		}
+	}
+
+	// If the player would end up inside a polygon then intersect the segment the
+	// player would move along with all line segements and move the player to the
+	// nearest intersection point.
+	if inside {
+		moveSeg := linear.Seg2{player.Pos(), dest}
+		closest := dest
+		var collisionSeg linear.Seg2
+		for _, poly := range g.Levels[player.Level()].Room.Walls {
+			for i := range poly {
+				seg := poly.Seg(i)
+				if seg.DoesIsect(moveSeg) {
+					isect := seg.Isect(moveSeg)
+					if isect.Sub(player.Pos()).Mag2() < closest.Sub(player.Pos()).Mag2() {
+						closest = isect
+						collisionSeg = seg
+					}
+				}
+			}
+		}
+		if collisionSeg.Ray().Mag2() == 0 {
+			dest = closest.Sub(movement.Norm().Scale(player.Stats().Size() * 2))
+		} else {
+			nudge := collisionSeg.Ray().Norm().Cross().Scale(player.Stats().Size())
+			dest = closest.Add(nudge)
+		}
+	}
+
 	for _, ent := range g.Ents {
 		if ent == player {
 			continue
