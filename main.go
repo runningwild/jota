@@ -322,7 +322,6 @@ func main() {
 		fmt.Printf("successful.\n")
 		sys.EnableVSync(true)
 	})
-	render.Purge()
 	base.InitShaders()
 	runtime.GOMAXPROCS(10)
 	fmt.Printf("sys.Think()...")
