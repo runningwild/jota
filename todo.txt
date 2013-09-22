@@ -4,3 +4,8 @@
 - Controller support on windows and linux.
 - Send email on crash if caught by the stack catcher.
 - Allow local movement for better user experience.
+- The vast majority of cpu time is spent doing los calculations.  Consider rendering
+  the los texture as infinitely tall columns from a viewpoint that looks directly down
+  onto the player.  There would need to be a way to combine this with other player's
+  los, but it would put all of this work onto the graphics card and it would look a lot
+  cleaner.
