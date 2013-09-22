@@ -372,6 +372,14 @@ func (u SetupComplete) Apply(_g interface{}) {
 		return
 	}
 
+	g.Engines = make(map[int64]*EngineData)
+	for _, id := range g.Setup.EngineIds {
+		g.Engines[id] = &EngineData{
+			PlayerGid: Gid(fmt.Sprintf("Engine:%d", id)),
+			Side:      g.Setup.Sides[id].Side,
+		}
+	}
+
 	var room Room
 	dx, dy := 1024, 1024
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, u.Seed)
@@ -418,6 +426,16 @@ func init() {
 	gob.Register(SetupComplete{})
 }
 
+type EngineData struct {
+	PlayerGid Gid
+
+	// If positive, this is the number of frames remaining until the player
+	// respawns.
+	CountdownFrames int
+
+	Side int
+}
+
 type Game struct {
 	Setup *Setup
 
@@ -431,6 +449,9 @@ type Game struct {
 	NextIdValue int
 
 	Ents map[Gid]Ent
+
+	// List of data specific to players/computers
+	Engines map[int64]*EngineData
 
 	GameThinks int
 
@@ -635,10 +656,37 @@ func (g *Game) Think() {
 	// cache ent data
 	for _, ent := range g.temp.AllEnts {
 		if ent.Dead() {
+			if _, ok := ent.(*Player); ok {
+				var id int64
+				_, err := fmt.Sscanf(string(ent.Id()), "Engine:%d", &id)
+				if err != nil {
+					base.Error().Printf("Unable to parse player id '%v'", ent.Id())
+				} else {
+					if engineData, ok := g.Engines[id]; ok {
+						if !ok {
+							base.Error().Printf("Unable to find engine %d for player %v", id, ent.Id())
+						} else {
+							engineData.CountdownFrames = 60 * 10
+						}
+					}
+				}
+			}
 			ent.OnDeath(g)
 			g.RemoveEnt(ent.Id())
 		}
 	}
+
+	// Death countdown
+	for engineId, engineData := range g.Engines {
+		if engineData.CountdownFrames > 0 {
+			engineData.CountdownFrames--
+			if engineData.CountdownFrames == 0 {
+				// TODO: It's a bit janky to do it like this, right?
+				g.AddPlayers([]int64{engineId}, engineData.Side)
+			}
+		}
+	}
+
 	if g.temp.AllEnts == nil || g.temp.AllEntsDirty {
 		g.temp.AllEnts = g.temp.AllEnts[0:0]
 		g.DoForEnts(func(gid Gid, ent Ent) {

@@ -277,6 +277,14 @@ func (g *Game) renderLocalInvaders(region g2.Region, local *LocalData) {
 
 func (g *Game) renderLocalMoba(region g2.Region, local *LocalData) {
 	g.renderLocalHelper(region, local, &local.moba.currentPlayer.camera, local.moba.currentPlayer.side)
+	if g.Ents[local.moba.currentPlayer.gid] == nil {
+		var id int64
+		fmt.Sscanf(string(local.moba.currentPlayer.gid), "Engine:%d", &id)
+		seconds := float64(g.Engines[id].CountdownFrames) / 60.0
+		dict := base.GetDictionary("luxisr")
+		gui.SetFontColor(0.7, 0.7, 1, 1)
+		dict.RenderString(fmt.Sprintf("%2.3f", seconds), 300, 300, 0, 100, gui.Left)
+	}
 }
 
 // For invaders or moba, does a lot of basic stuff common to both
@@ -631,14 +639,6 @@ func (local *LocalData) setupMobaData(g *Game) {
 		pd.gid = p.Gid
 		pd.side = p.Side()
 		sidesSet[pd.side] = true
-		// pd.abs.abilities = append(
-		// 	pd.abs.abilities,
-		// 	ability_makers["mine"](map[string]int{
-		// 		"health":  10,
-		// 		"damage":  100,
-		// 		"trigger": 100,
-		// 		"mass":    300,
-		// 	}))
 		if p.Champ < 0 || p.Champ > len(g.Champs) {
 			panic(fmt.Sprintf("p.Champ == %d, ouside of range of champ, %d", p.Champ, len(g.Champs)))
 		}
