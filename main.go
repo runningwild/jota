@@ -324,6 +324,7 @@ func main() {
 		sys.Think()
 		fmt.Printf("successful.\n")
 	})
+	render.Purge()
 	base.InitShaders()
 	runtime.GOMAXPROCS(10)
 
