@@ -303,25 +303,31 @@ func standardHookup() {
 
 func main() {
 	defer base.StackCatcher()
-	fmt.Printf("%v\n", key_map)
+	fmt.Printf("sys.Startup()...")
 	sys.Startup()
+	fmt.Printf("successful.\n")
+	fmt.Printf("gl.Init()...")
 	err := gl.Init()
+	fmt.Printf("successful.\n")
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
 
+	fmt.Printf("render.Init()...")
 	render.Init()
+	fmt.Printf("successful.\n")
 	render.Queue(func() {
+		fmt.Printf("sys.CreateWindow()...")
 		sys.CreateWindow(10, 10, wdx, wdy)
+		fmt.Printf("successful.\n")
 		sys.EnableVSync(true)
-		err := gl.Init()
-		if err != nil {
-			base.Error().Fatalf("%v", err)
-		}
 	})
 	base.InitShaders()
 	runtime.GOMAXPROCS(10)
+	fmt.Printf("sys.Think()...")
 	sys.Think()
+	fmt.Printf("successful.\n")
+
 	base.LoadAllDictionaries()
 
 	if Version() != "standard" {
