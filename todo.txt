@@ -1,0 +1,6 @@
+- Fix shaders on ATI cards.
+- Change how sys.Think() works on windows to avoid the need for two branches.
+- Make the los cache an lru cache to reduce memory usage.
+- Controller support on windows and linux.
+- Send email on crash if caught by the stack catcher.
+- Allow local movement for better user experience.
