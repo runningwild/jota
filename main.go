@@ -97,7 +97,6 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 			}
 		}
 	} else {
-		sys.Think()
 		g = game.MakeGame()
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 50001, base.Log())
@@ -177,12 +176,12 @@ func mainLoop(engine *cgf.Engine, local *game.LocalData, mode string) {
 				local.DebugChangeMode(game.LocalModeEditor)
 			}
 		}
-		sys.Think()
 		render.Queue(func() {
 			ui.Draw()
 		})
 		render.Queue(func() {
 			sys.SwapBuffers()
+			sys.Think()
 		})
 		render.Purge()
 		// TODO: Replace the 'P' key with an appropriate keybind
@@ -306,12 +305,6 @@ func main() {
 	fmt.Printf("sys.Startup()...")
 	sys.Startup()
 	fmt.Printf("successful.\n")
-	fmt.Printf("gl.Init()...")
-	err := gl.Init()
-	fmt.Printf("successful.\n")
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-	}
 
 	fmt.Printf("render.Init()...")
 	render.Init()
@@ -321,12 +314,18 @@ func main() {
 		sys.CreateWindow(10, 10, wdx, wdy)
 		fmt.Printf("successful.\n")
 		sys.EnableVSync(true)
+		fmt.Printf("gl.Init()...")
+		err := gl.Init()
+		fmt.Printf("successful.\n")
+		if err != nil {
+			base.Error().Fatalf("%v", err)
+		}
+		fmt.Printf("sys.Think()...")
+		sys.Think()
+		fmt.Printf("successful.\n")
 	})
 	base.InitShaders()
 	runtime.GOMAXPROCS(10)
-	fmt.Printf("sys.Think()...")
-	sys.Think()
-	fmt.Printf("successful.\n")
 
 	base.LoadAllDictionaries()
 
