@@ -17,17 +17,9 @@ function doBuild {
   cp -r data/* $1.app/Contents/
 }
 
-#doBuild 'standard'
-#open standard.app
-#false
-
 doBuild 'host'
-#open host.app
 doBuild 'client'
-#doBuild 'client2'
-#false
 
 open host.app
 sleep 0.9
 open client.app
-#open client2.app

@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -302,10 +303,24 @@ func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
 	}
 }
 
+func EmailCrashReport(panicData interface{}) {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Panic: %v", panicData)
+	fmt.Fprintf(&buf, "Stack:\n%s", debug.Stack())
+	// Attempt to send the bug report
+	_, err := http.Post("http://thunderingvictory.dyndns.org:8080/relay", "", &buf)
+	if err != nil {
+		Error().Printf("Unable to email report: %v", err)
+	} else {
+		Log().Print("Sent error report")
+	}
+}
+
 func StackCatcher() {
 	if r := recover(); r != nil {
-		Error().Printf("Panic: %v", r)
-		Error().Fatalf("Stack:\n%s", debug.Stack())
+		EmailCrashReport(r)
+		Error().Printf("xPanic: %v", r)
+		Error().Fatalf("xStack:\n%s", debug.Stack())
 	}
 }
 

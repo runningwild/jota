@@ -1,7 +1,6 @@
 - Fix shaders on ATI cards.
 - Make the los cache an lru cache to reduce memory usage.
 - Controller support on windows and linux.
-- Send email on crash if caught by the stack catcher.
 - Allow local movement for better user experience.
 - The vast majority of cpu time is spent doing los calculations.  Consider rendering
   the los texture as infinitely tall columns from a viewpoint that looks directly down
