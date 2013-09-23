@@ -1,3 +1,4 @@
+// BAD
 varying vec3 pos;
 uniform float inner;
 uniform float outer;

@@ -1,3 +1,4 @@
+// BAD
 uniform float frac;
 uniform float inner;
 uniform float outer;

@@ -1,3 +1,4 @@
+// BAD
 uniform float losMaxDist;
 uniform float losResolution;
 uniform float losMaxPlayers;
