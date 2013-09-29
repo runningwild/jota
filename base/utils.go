@@ -305,22 +305,39 @@ func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
 
 func EmailCrashReport(panicData interface{}) {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "Panic: %v", panicData)
-	fmt.Fprintf(&buf, "Stack:\n%s", debug.Stack())
-	// Attempt to send the bug report
-	_, err := http.Post("http://thunderingvictory.dyndns.org:8080/relay", "", &buf)
+	fmt.Fprintf(&buf, "667565614379191408\n")
+	fmt.Fprintf(&buf, "Panic: %v\n", panicData)
+	fmt.Fprintf(&buf, "Stack:\n%s", string(debug.Stack()))
+
+	// TODO: Should probably have a test and a prod version of this
+	req, err := http.NewRequest("POST", "http://stacksaver.appspot.com/submit", &buf)
 	if err != nil {
-		Error().Printf("Unable to email report: %v", err)
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+	Log().Printf("Sending stack to StackSaver")
+	client := &http.Client{
+		Transport: &http.Transport{
+			// Nanosecond timeout means that we'll write the request but not hang
+			// around waiting for a response, since we don't intend to do anything
+			// with it anyway.
+			ResponseHeaderTimeout: time.Second * 3,
+		},
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		Error().Printf("Error sending stack: %v", err)
 	} else {
-		Log().Print("Sent error report")
+		data, _ := ioutil.ReadAll(resp.Body)
+		Log().Printf("StackSaver: %v", string(data))
 	}
 }
 
 func StackCatcher() {
 	if r := recover(); r != nil {
 		EmailCrashReport(r)
-		Error().Printf("xPanic: %v", r)
-		Error().Fatalf("xStack:\n%s", debug.Stack())
+		Error().Printf("Panic: %v", r)
+		Error().Fatalf("Stack:\n%s", string(debug.Stack()))
 	}
 }
 

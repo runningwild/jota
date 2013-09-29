@@ -5,9 +5,10 @@
 - The vast majority of cpu time is spent doing los calculations.  Consider rendering
   the los texture as infinitely tall columns from a viewpoint that looks directly down
   onto the player.  There would need to be a way to combine this with other player's
-  los, but it would put all of this work onto the graphics card and it would look a lot
-  cleaner.
-
+  los, but it would put all of this work onto the graphics card and it would look a lot cleaner.
+- Emailing bug reports should just be handled by a single service, no emails
+  required, except maybe to report previously unseen crashes.
+- Simple AIs for finding bugs.
 
 Theoretically fixed, still need verification:
 - Change how sys.Think() works on windows to avoid the need for two branches.
