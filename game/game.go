@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 )
 
-// type Ability func(game *Game, player *Player, params map[string]int) Process
+// type Ability func(game *Game, player *PlayerEnt, params map[string]int) Process
 
 // An Ability represents something a player can do that does not directly affect
 // the game state.
@@ -122,7 +122,7 @@ var AllColors = []Color{ColorRed, ColorGreen, ColorBlue}
 func init() {
 }
 
-type Player struct {
+type PlayerEnt struct {
 	BaseEnt
 	Champ int
 }
@@ -145,7 +145,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 	}
 	var gids []Gid
 	for i, engineId := range engineIds {
-		var p Player
+		var p PlayerEnt
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
@@ -174,14 +174,14 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 }
 
 func init() {
-	gob.Register(&Player{})
+	gob.Register(&PlayerEnt{})
 }
 
-// func (p *Player) ReleaseResources() {
+// func (p *PlayerEnt) ReleaseResources() {
 // 	p.Los.ReleaseResources()
 // }
 
-func (p *Player) Draw(game *Game, side int) {
+func (p *PlayerEnt) Draw(game *Game, side int) {
 	var t *texture.Data
 	var alpha gl.Ubyte
 	if side == p.Side() {
@@ -230,11 +230,11 @@ func (p *Player) Draw(game *Game, side int) {
 	base.EnableShader("")
 }
 
-func (p *Player) Think(g *Game) {
+func (p *PlayerEnt) Think(g *Game) {
 	p.BaseEnt.Think(g)
 }
 
-func (p *Player) Supply(supply Mana) Mana {
+func (p *PlayerEnt) Supply(supply Mana) Mana {
 	for _, process := range p.Processes {
 		supply = process.Supply(supply)
 	}
@@ -411,7 +411,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 		gids := g.AddPlayers(ids, side)
 		g.Moba.Sides[side] = &GameModeMobaSideData{}
 		for i := range ids {
-			player := g.Ents[gids[i]].(*Player)
+			player := g.Ents[gids[i]].(*PlayerEnt)
 			player.Champ = g.Setup.Sides[ids[i]].Champ
 		}
 	}
@@ -660,7 +660,7 @@ func (g *Game) Think() {
 	// cache ent data
 	for _, ent := range g.temp.AllEnts {
 		if ent.Dead() {
-			if _, ok := ent.(*Player); ok {
+			if _, ok := ent.(*PlayerEnt); ok {
 				var id int64
 				_, err := fmt.Sscanf(string(ent.Id()), "Engine:%d", &id)
 				if err != nil {
@@ -789,7 +789,7 @@ func init() {
 
 func (t Turn) Apply(_g interface{}) {
 	g := _g.(*Game)
-	player, ok := g.Ents[t.Gid].(*Player)
+	player, ok := g.Ents[t.Gid].(*PlayerEnt)
 	if !ok {
 		return
 	}
@@ -807,7 +807,7 @@ func init() {
 
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
-	player, ok := g.Ents[a.Gid].(*Player)
+	player, ok := g.Ents[a.Gid].(*PlayerEnt)
 	if !ok {
 		return
 	}

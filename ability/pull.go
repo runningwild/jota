@@ -72,7 +72,7 @@ func init() {
 
 func (e addPullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -104,7 +104,7 @@ func init() {
 
 func (e removePullEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -152,7 +152,7 @@ func (p *pullProcess) reset() {
 
 func (p *pullProcess) Think(g *game.Game) {
 	defer p.reset()
-	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	player, ok := g.Ents[p.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -184,7 +184,7 @@ func (p *pullProcess) Think(g *game.Game) {
 }
 
 func (p *pullProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	player, ok := g.Ents[p.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

@@ -106,7 +106,7 @@ func (p *placeMineCastProcess) Think(g *game.Game) {
 // TODO: This function really needs to take not just the side, but the player
 // that this is being drawn for.
 func (p *placeMineCastProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player, _ := g.Ents[p.PlayerGid].(*game.Player)
+	player, _ := g.Ents[p.PlayerGid].(*game.PlayerEnt)
 	if player == nil {
 		return
 	}
@@ -149,7 +149,7 @@ func init() {
 
 func (e addPlaceMineCastProcessEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -171,7 +171,7 @@ func init() {
 
 func (e removePlaceMineCastProcessEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -196,7 +196,7 @@ func init() {
 
 func (e addPlaceMineFireEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

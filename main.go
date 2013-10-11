@@ -79,12 +79,12 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 	var localData *game.LocalData
 	var g *game.Game
 	if version != "host" {
-		res, err := cgf.SearchLANForHosts(20004, 20002, 500)
+		res, err := cgf.SearchLANForHosts(20007, 20002, 500)
 		if err != nil || len(res) == 0 {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		engine, err = cgf.NewClientEngine(17, res[0].Ip, 20004, base.EmailCrashReport, base.Log())
+		engine, err = cgf.NewClientEngine(17, res[0].Ip, 20007, base.EmailCrashReport, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
@@ -92,7 +92,7 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		localData = game.NewLocalDataArchitect(engine, sys)
 		g = engine.GetState().(*game.Game)
 		for _, ent := range g.Ents {
-			if _, ok := ent.(*game.Player); ok {
+			if _, ok := ent.(*game.PlayerEnt); ok {
 				players = append(players, ent.Id())
 			}
 		}
@@ -100,11 +100,11 @@ func debugHookup(version string) (*cgf.Engine, *game.LocalData) {
 		sys.Think()
 		g = game.MakeGame()
 		if version == "host" {
-			engine, err = cgf.NewHostEngine(g, 17, "", 20004, base.EmailCrashReport, base.Log())
+			engine, err = cgf.NewHostEngine(g, 17, "", 20007, base.EmailCrashReport, base.Log())
 			if err != nil {
 				panic(err)
 			}
-			err = cgf.Host(20004, "thunderball")
+			err = cgf.Host(20007, "thunderball")
 			if err != nil {
 				panic(err)
 			}

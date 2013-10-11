@@ -404,7 +404,7 @@ func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
 	return distRatio * distRatio * ms.options.MaxDrainRate
 }
 
-func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*Player) {
+func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*PlayerEnt) {
 	i := -1
 	for _, player := range players {
 		i++
@@ -443,7 +443,7 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*Player) {
 	}
 }
 
-func (ms *ManaSource) setPlayerControl(td *thinkData, players []*Player) {
+func (ms *ManaSource) setPlayerControl(td *thinkData, players []*PlayerEnt) {
 	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
 	i := -1
 	for _, player := range players {
@@ -509,7 +509,7 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 	}
 }
 
-func (ms *ManaSource) supplyPlayers(td *thinkData, players []*Player) {
+func (ms *ManaSource) supplyPlayers(td *thinkData, players []*PlayerEnt) {
 	i := -1
 	for _, player := range players {
 		i++
@@ -545,9 +545,9 @@ func (ms *ManaSource) Think(ents map[Gid]Ent) {
 	if ms.thinks%1 == 0 {
 		ms.regenerateMana()
 	}
-	var players []*Player
+	var players []*PlayerEnt
 	for _, ent := range ents {
-		if player, ok := ent.(*Player); ok {
+		if player, ok := ent.(*PlayerEnt); ok {
 			players = append(players, player)
 		}
 	}

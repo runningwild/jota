@@ -59,7 +59,7 @@ func init() {
 
 func (e addCloakEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -88,7 +88,7 @@ func init() {
 
 func (e removeCloakEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

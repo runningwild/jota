@@ -64,7 +64,7 @@ func init() {
 
 func (e addFireEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -160,7 +160,7 @@ func (f *fireProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (f *fireProcess) Think(g *game.Game) {
-	player, ok := g.Ents[f.Gid].(*game.Player)
+	player, ok := g.Ents[f.Gid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -210,7 +210,7 @@ func fireDoLine(c *cmwc.Cmwc, pos linear.Vec2, angle, stored float64, speed int,
 }
 
 func (f *fireProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player, ok := g.Ents[f.Gid].(*game.Player)
+	player, ok := g.Ents[f.Gid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -233,7 +233,7 @@ func init() {
 
 func (e addFireExplodeEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

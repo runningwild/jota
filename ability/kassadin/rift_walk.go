@@ -91,7 +91,7 @@ func init() {
 
 func (e addRiftWalkEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -115,7 +115,7 @@ func init() {
 
 func (e removeRiftWalkEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -155,7 +155,7 @@ func (p *riftWalkProcess) Think(g *game.Game) {
 		p.Stored[i] *= 0.98
 	}
 	// ent := g.Ents[p.PlayerGid]
-	// player, ok := ent.(*game.Player)
+	// player, ok := ent.(*game.PlayerEnt)
 	// if !ok {
 	// 	return
 	// }
@@ -171,7 +171,7 @@ func (p *riftWalkProcess) GetVals() (distance, radius float64) {
 }
 
 func (p *riftWalkProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player, ok := g.Ents[p.PlayerGid].(*game.Player)
+	player, ok := g.Ents[p.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -226,7 +226,7 @@ func init() {
 }
 func (e addRiftWalkFireEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

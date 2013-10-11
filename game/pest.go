@@ -61,7 +61,7 @@ func (p *Pest) Think(g *Game) {
 	var target Ent
 	dist := 1.0e9
 	g.DoForEnts(func(gid Gid, ent Ent) {
-		player, ok := ent.(*Player)
+		player, ok := ent.(*PlayerEnt)
 		if !ok {
 			return
 		}

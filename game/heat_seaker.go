@@ -119,7 +119,7 @@ func (hs *HeatSeeker) Asplode(g *Game) {
 		if ent == hs {
 			continue
 		}
-		player, ok := ent.(*Player)
+		player, ok := ent.(*PlayerEnt)
 		if !ok {
 			continue
 		}
@@ -147,7 +147,7 @@ func (hs *HeatSeeker) Think(g *Game) {
 		hs.Asplode(g)
 		return
 	}
-	target, ok := targetEnt.(*Player)
+	target, ok := targetEnt.(*PlayerEnt)
 	if !ok {
 		hs.Asplode(g)
 		return

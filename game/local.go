@@ -67,12 +67,19 @@ type mobaPlayerData struct {
 	abs    personalAbilities
 }
 
+type mobaAiPlayerData struct {
+	gid Gid
+}
+
 type localMobaData struct {
 	currentPlayer *mobaPlayerData
 	currentSide   *mobaSideData
 	players       []mobaPlayerData
 	sides         []mobaSideData
 	deviceIndex   gin.DeviceIndex
+
+	// Debug stuff
+	aiPlayers []*mobaAiPlayerData
 }
 
 func (lmd *localMobaData) setCurrentPlayerByGid(gid Gid) {
@@ -527,6 +534,7 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 		panic("Not implemented!!!")
 	}
 	var camera *cameraInfo
+	base.Log().Printf("Mode: %d", local.mode)
 	switch local.mode {
 	case LocalModeArchitect:
 		camera = &local.architect.camera
@@ -626,7 +634,7 @@ func (l *LocalData) localThinkArchitect(g *Game) {
 func (local *LocalData) setupMobaData(g *Game) {
 	sidesSet := make(map[int]bool)
 	for _, ent := range g.Ents {
-		p, ok := ent.(*Player)
+		p, ok := ent.(*PlayerEnt)
 		if !ok {
 			continue
 		}
@@ -681,6 +689,11 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	if left-right != 0 {
 		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
 	}
+
+	// Debug stuff
+	for _, ai := range l.moba.aiPlayers {
+		l.engine.ApplyEvent(Accelerate{ai.gid, 100})
+	}
 }
 
 func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
@@ -691,7 +704,7 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 		if ent.Side() != side {
 			continue
 		}
-		if player, ok := ent.(*Player); ok {
+		if player, ok := ent.(*PlayerEnt); ok {
 			hits++
 			pos := player.Pos()
 			if pos.X < min.X {

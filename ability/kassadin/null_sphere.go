@@ -95,7 +95,7 @@ func (p *nullSphereCastProcess) Think(g *game.Game) {
 	if ent == nil {
 		return
 	}
-	player, ok := ent.(*game.Player)
+	player, ok := ent.(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -109,8 +109,8 @@ func (p *nullSphereCastProcess) Think(g *game.Game) {
 // TODO: This function really needs to take not just the side, but the player
 // that this is being drawn for.
 func (p *nullSphereCastProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player, _ := g.Ents[p.PlayerGid].(*game.Player)
-	target, _ := g.Ents[p.targetGid].(*game.Player)
+	player, _ := g.Ents[p.PlayerGid].(*game.PlayerEnt)
+	target, _ := g.Ents[p.targetGid].(*game.PlayerEnt)
 	if player == nil {
 		return
 	}
@@ -165,7 +165,7 @@ func init() {
 
 func (e addNullSphereCastProcessEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -187,7 +187,7 @@ func init() {
 
 func (e removeNullSphereCastProcessEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
@@ -206,7 +206,7 @@ func init() {
 	gob.Register(addNullSphereFireEvent{})
 }
 
-func nullSphereTarget(g *game.Game, player *game.Player) game.Ent {
+func nullSphereTarget(g *game.Game, player *game.PlayerEnt) game.Ent {
 	var bestEnt game.Ent
 	var bestDistSq float64 = player.Stats().Vision() * player.Stats().Vision()
 	g.DoForEnts(func(gid game.Gid, ent game.Ent) {
@@ -214,7 +214,7 @@ func nullSphereTarget(g *game.Game, player *game.Player) game.Ent {
 			// Don't target anything on the same side
 			return
 		}
-		if _, ok := ent.(*game.Player); !ok {
+		if _, ok := ent.(*game.PlayerEnt); !ok {
 			// Only target players
 			return
 		}
@@ -233,7 +233,7 @@ func nullSphereTarget(g *game.Game, player *game.Player) game.Ent {
 
 func (e addNullSphereFireEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player, ok := g.Ents[e.PlayerGid].(*game.Player)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}

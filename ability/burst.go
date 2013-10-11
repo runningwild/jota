@@ -56,11 +56,11 @@ func init() {
 
 func (e addBurstEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
-	player,ok := g.Ents[e.PlayerGid].(*game.Player)
-		if !ok {
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
+	if !ok {
 		return
 	}
-initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
+	initial := game.Mana{math.Pow(float64(e.Force)*float64(e.Frames), 2) / 1.0e7, 0, 0}
 	player.Processes[100+e.Id] = &burstProcess{
 		Frames:            int32(e.Frames),
 		Force:             float64(e.Force),
@@ -131,8 +131,8 @@ func (p *burstProcess) Supply(supply game.Mana) game.Mana {
 }
 
 func (p *burstProcess) Think(g *game.Game) {
-	player,ok := g.Ents[p.PlayerGid].(*game.Player)
-		if !ok {
+	player, ok := g.Ents[p.PlayerGid].(*game.PlayerEnt)
+	if !ok {
 		return
 	}
 	if p.Remaining_initial.Magnitude() == 0 {
@@ -158,8 +158,8 @@ func (p *burstProcess) Think(g *game.Game) {
 }
 
 func (p *burstProcess) Draw(gid game.Gid, g *game.Game, side int) {
-	player,ok := g.Ents[p.PlayerGid].(*game.Player)
-		if !ok {
+	player, ok := g.Ents[p.PlayerGid].(*game.PlayerEnt)
+	if !ok {
 		return
 	}
 	base.EnableShader("circle")

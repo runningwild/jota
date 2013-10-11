@@ -69,7 +69,7 @@ func (cp *ControlPoint) Think(g *Game) {
 		if ent.Side() == -1 {
 			continue
 		}
-		if _, ok := ent.(*Player); !ok {
+		if _, ok := ent.(*PlayerEnt); !ok {
 			continue
 		}
 		if ent.Pos().Sub(cp.Position).Mag2() > controlRangeSquared {
@@ -121,7 +121,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 	if cp.Controlled && cp.AttackTimer == 0 {
 		for _, ent := range g.temp.AllEnts {
-			if _, ok := ent.(*Player); !ok || ent.Side() == cp.Side() {
+			if _, ok := ent.(*PlayerEnt); !ok || ent.Side() == cp.Side() {
 				continue
 			}
 			x := int(ent.Pos().X+0.5) / LosGridSize

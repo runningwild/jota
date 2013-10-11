@@ -18,6 +18,8 @@ function doBuild {
 }
 
 doBuild 'host'
+open host.app
+false
 doBuild 'client'
 
 open host.app
