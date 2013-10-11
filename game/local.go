@@ -61,6 +61,7 @@ type mobaSideData struct {
 }
 
 func (lmd *localMobaData) updateLosTex(g *Game, side int) {
+	return
 	cache := g.Moba.losCache
 	pix := lmd.losTex.pix
 	for i := range pix {
@@ -249,24 +250,44 @@ func (g *Game) renderLosMask(local *LocalData) {
 	default:
 		panic("Not implemented!!!")
 	}
-	local.moba.losTex.Bind()
-	base.EnableShader("losgrid")
-	gl.Enable(gl.TEXTURE_2D)
-	gl.Color4d(1, 1, 1, 1)
-	gl.Begin(gl.QUADS)
-	gl.TexCoord2d(0, 0)
-	gl.Vertex2i(0, 0)
-	gl.TexCoord2d(1, 0)
-	// gl.Vertex2i(0, gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-	gl.Vertex2i(0, LosGridSize*LosTextureSize)
-	gl.TexCoord2d(1, 1)
-	// gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), gl.Int(g.Levels[GidInvadersStart].Room.Dy))
-	gl.Vertex2i(LosGridSize*LosTextureSize, LosGridSize*LosTextureSize)
-	gl.TexCoord2d(0, 1)
-	// gl.Vertex2i(gl.Int(g.Levels[GidInvadersStart].Room.Dx), 0)
-	gl.Vertex2i(LosGridSize*LosTextureSize, 0)
+	ent := g.Ents[local.moba.currentPlayer.gid]
+	walls := g.temp.VisibleWallCache[GidInvadersStart].GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
+	gl.Color4ub(0, 0, 0, 255)
+	gl.Begin(gl.TRIANGLES)
+	for _, wall := range walls {
+		if wall.Right(ent.Pos()) {
+			continue
+		}
+		a := wall.P
+		b := ent.Pos().Sub(wall.P).Norm().Scale(-10000.0).Add(wall.P)
+		mid := wall.P.Add(wall.Q).Scale(0.5)
+		c := ent.Pos().Sub(mid).Norm().Scale(-10000.0).Add(mid)
+		d := ent.Pos().Sub(wall.Q).Norm().Scale(-10000.0).Add(wall.Q)
+		e := wall.Q
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(b.X), gl.Double(b.Y))
+		gl.Vertex2d(gl.Double(c.X), gl.Double(c.Y))
+
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(c.X), gl.Double(c.Y))
+		gl.Vertex2d(gl.Double(d.X), gl.Double(d.Y))
+
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(d.X), gl.Double(d.Y))
+		gl.Vertex2d(gl.Double(e.X), gl.Double(e.Y))
+	}
 	gl.End()
-	gl.Disable(gl.TEXTURE_2D)
+	base.EnableShader("horizon")
+	base.SetUniformV2("horizon", "center", ent.Pos())
+	base.SetUniformF("horizon", "horizon", LosMaxDist)
+	gl.Begin(gl.QUADS)
+	dx := gl.Int(g.Levels[GidInvadersStart].Room.Dx)
+	dy := gl.Int(g.Levels[GidInvadersStart].Room.Dy)
+	gl.Vertex2i(0, 0)
+	gl.Vertex2i(dx, 0)
+	gl.Vertex2i(dx, dy)
+	gl.Vertex2i(0, dy)
+	gl.End()
 	base.EnableShader("")
 }
 
@@ -284,6 +305,25 @@ func (g *Game) renderLocalMoba(region g2.Region, local *LocalData) {
 		dict := base.GetDictionary("luxisr")
 		gui.SetFontColor(0.7, 0.7, 1, 1)
 		dict.RenderString(fmt.Sprintf("%2.3f", seconds), 300, 300, 0, 100, gui.Left)
+	}
+}
+
+func expandPoly(in linear.Poly, out *linear.Poly) {
+	if len(*out) < len(in) {
+		*out = make(linear.Poly, len(in))
+	}
+	for i := range *out {
+		(*out)[i] = linear.Vec2{}
+	}
+	for i, v := range in {
+		segi := in.Seg(i)
+		(*out)[i] = (*out)[i].Add(v.Add(segi.Ray().Cross().Norm().Scale(8.0)))
+		j := (i - 1 + len(in)) % len(in)
+		segj := in.Seg(j)
+		(*out)[i] = (*out)[i].Add(v.Add(segj.Ray().Cross().Norm().Scale(8.0)))
+	}
+	for i := range *out {
+		(*out)[i] = (*out)[i].Scale(0.5)
 	}
 }
 
@@ -324,16 +364,25 @@ func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cam
 	zoom := camera.current.dims.X / float64(region.Dims.Dx)
 	level.ManaSource.Draw(local, zoom, float64(level.Room.Dx), float64(level.Room.Dy))
 
-	gl.Begin(gl.LINES)
 	gl.Color4d(1, 1, 1, 1)
+	var expandedPoly linear.Poly
 	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
-		for i := range poly {
-			seg := poly.Seg(i)
-			gl.Vertex2d(gl.Double(seg.P.X), gl.Double(seg.P.Y))
-			gl.Vertex2d(gl.Double(seg.Q.X), gl.Double(seg.Q.Y))
+		// Don't draw counter-clockwise polys, specifically this means don't draw
+		// the boundary of the level.
+		if poly.IsCounterClockwise() {
+			continue
 		}
+		// KLUDGE: This will expand the polygon slightly so that it actually shows
+		// up when the los shadows are drawn over it.  Eventually there should be
+		// separate los polys, colision polys, and draw polys so that this isn't
+		// necessary.
+		gl.Begin(gl.TRIANGLE_FAN)
+		expandPoly(poly, &expandedPoly)
+		for _, v := range expandedPoly {
+			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		}
+		gl.End()
 	}
-	gl.End()
 
 	gui.SetFontColor(0, 255, 0, 255)
 	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
@@ -724,16 +773,16 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
 		max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
 	} else {
-		min.X -= stats.LosPlayerHorizon
-		min.Y -= stats.LosPlayerHorizon
+		min.X -= stats.LosPlayerHorizon + 50
+		min.Y -= stats.LosPlayerHorizon + 50
 		if min.X < 0 {
 			min.X = 0
 		}
 		if min.Y < 0 {
 			min.Y = 0
 		}
-		max.X += stats.LosPlayerHorizon
-		max.Y += stats.LosPlayerHorizon
+		max.X += stats.LosPlayerHorizon + 50
+		max.Y += stats.LosPlayerHorizon + 50
 		if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
 			max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
 		}

@@ -70,6 +70,9 @@ func (wc *wallCache) SetWalls(dx, dy int, walls []linear.Seg2, dist int) {
 		}
 		for x := x0; x <= x1; x++ {
 			for y := y0; y <= y1; y++ {
+				// if wall.Right(linear.Vec2{float64(x * wallGridSize), float64(y * wallGridSize)}) {
+				// 	continue
+				// }
 				wc.walls[x][y] = append(wc.walls[x][y], wall)
 			}
 		}
