@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const LosGridSize = 16
+
 type losCache struct {
 	losBuffers      []*los.Los
 	losBuffersMutex sync.Mutex

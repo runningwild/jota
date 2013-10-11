@@ -60,49 +60,6 @@ type mobaSideData struct {
 	side int
 }
 
-func (lmd *localMobaData) updateLosTex(g *Game, side int) {
-	return
-	cache := g.Moba.losCache
-	pix := lmd.losTex.pix
-	for i := range pix {
-		if pix[i] < 250 {
-			pix[i] += 5
-			if pix[i] >= 250 {
-				pix[i] = 255
-			}
-		}
-	}
-
-	// Calculating los is the most expensive part of the game, so the los for all
-	// ents are done in parallel.
-	vpchan := make(chan []visiblePos)
-	count := 0
-	for _, ent := range g.temp.AllEnts {
-		if ent.Side() != side {
-			continue
-		}
-		count++
-		// Calls to losCache.Get() are launched in separate go routines and their
-		// results are collected on vpchan.
-		go func(x, y int, vision float64) {
-			vpchan <- cache.Get(x, y, vision)
-		}(int(ent.Pos().X), int(ent.Pos().Y), ent.Stats().Vision())
-	}
-
-	// Results from los calculations are collected here and are used to update the
-	// losTex.
-	losTex := lmd.losTex.Pix()
-	for i := 0; i < count; i++ {
-		res := <-vpchan
-		for i := range res {
-			cur := losTex[res[i].X][res[i].Y]
-			if res[i].Val < cur {
-				losTex[res[i].X][res[i].Y] = res[i].Val
-			}
-		}
-	}
-}
-
 type mobaPlayerData struct {
 	gid    Gid
 	camera cameraInfo
@@ -116,7 +73,6 @@ type localMobaData struct {
 	players       []mobaPlayerData
 	sides         []mobaSideData
 	deviceIndex   gin.DeviceIndex
-	losTex        *LosTexture
 }
 
 func (lmd *localMobaData) setCurrentPlayerByGid(gid Gid) {
@@ -244,14 +200,12 @@ func newLocalDataHelper(engine *cgf.Engine, sys system.System, mode LocalMode) *
 }
 
 func (g *Game) renderLosMask(local *LocalData) {
-	switch {
-	case local.mode == LocalModeMoba:
-		local.moba.updateLosTex(g, local.moba.currentSide.side)
-	default:
-		panic("Not implemented!!!")
-	}
 	ent := g.Ents[local.moba.currentPlayer.gid]
+	if ent == nil {
+		return
+	}
 	walls := g.temp.VisibleWallCache[GidInvadersStart].GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
+	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4ub(0, 0, 0, 255)
 	gl.Begin(gl.TRIANGLES)
 	for _, wall := range walls {
@@ -572,14 +526,6 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 	default:
 		panic("Not implemented!!!")
 	}
-	if local.moba.losTex == nil {
-		// This can happen because the function to set g.Setup to nil is called in
-		// an event, and the function that makes the losTex is called in Think(), so
-		// we might get here (inside the Draw() function) between the event and the
-		// Think().
-		return
-	}
-	local.moba.losTex.Remap()
 	var camera *cameraInfo
 	switch local.mode {
 	case LocalModeArchitect:
@@ -704,11 +650,6 @@ func (local *LocalData) setupMobaData(g *Game) {
 	}
 	for i := range local.moba.sides {
 		local.moba.sides[i].side = i
-	}
-	local.moba.losTex = MakeLosTexture()
-	pix := local.moba.losTex.pix
-	for i := range pix {
-		pix[i] = 255
 	}
 	local.moba.setCurrentPlayerByGid(Gid(fmt.Sprintf("Engine:%d", local.engine.Id())))
 	local.setup = nil
