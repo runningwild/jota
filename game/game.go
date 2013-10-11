@@ -490,6 +490,10 @@ type Game struct {
 	}
 }
 
+func (g *Game) InitializeClientData() {
+	// TODO: Do something useful with this.
+}
+
 type GameModeStandard struct {
 	Architect architectData
 	Invaders  invadersData
