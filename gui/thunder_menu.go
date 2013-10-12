@@ -5,7 +5,7 @@ import (
 	// fmod "github.com/runningwild/fmod/ex"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/jota/base"
 	"math"
 	"path/filepath"
 	"sync"

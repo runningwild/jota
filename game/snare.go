@@ -3,7 +3,7 @@ package game
 // import (
 // 	"encoding/gob"
 // 	gl "github.com/chsc/gogl/gl21"
-// 	// "github.com/runningwild/magnus/stats"
+// 	// "github.com/runningwild/jota/stats"
 // )
 
 // type Snare struct {

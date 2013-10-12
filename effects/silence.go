@@ -1,8 +1,8 @@
 package effects
 
 import (
-	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/magnus/stats"
+	"github.com/runningwild/jota/game"
+	"github.com/runningwild/jota/stats"
 )
 
 func makeSilence(params map[string]int) game.Process {

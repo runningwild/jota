@@ -5,7 +5,7 @@ function doBuild {
   rm -rf $1.app
   mkdir -p $1.app/Contents/MacOS
   mkdir -p $1.app/Contents/lib
-  mv magnus $1.app/Contents/MacOS/$1
+  mv jota $1.app/Contents/MacOS/$1
   cp ~/code/src/github.com/runningwild/glop/gos/darwin/lib/libglop.so lib/darwin/
   cp lib/darwin/* $1.app/Contents/lib/
 

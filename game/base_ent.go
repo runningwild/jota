@@ -2,7 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/stats"
+	"github.com/runningwild/jota/stats"
 	"math"
 	"sort"
 )

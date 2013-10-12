@@ -4,7 +4,7 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
-	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/jota/base"
 	"strings"
 )
 

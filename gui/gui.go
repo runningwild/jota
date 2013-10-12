@@ -7,7 +7,7 @@ import (
 	"github.com/runningwild/glop/gos"
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/glop/system"
-	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/jota/base"
 )
 
 type Widget interface {

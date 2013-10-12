@@ -3,9 +3,9 @@ package game
 import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
-	"github.com/runningwild/magnus/stats"
-	"github.com/runningwild/magnus/texture"
+	"github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/jota/texture"
 )
 
 // Moba base ent

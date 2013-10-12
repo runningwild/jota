@@ -5,7 +5,7 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/jota/game"
 	"math"
 )
 

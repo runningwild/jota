@@ -3,11 +3,11 @@ package ability
 import (
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/magnus/texture"
+	"github.com/runningwild/jota/texture"
 	// "fmt"
 	"github.com/runningwild/cgf"
-	"github.com/runningwild/magnus/base"
-	"github.com/runningwild/magnus/game"
+	"github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/game"
 	"math"
 )
 

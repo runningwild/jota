@@ -3,7 +3,7 @@ package ability
 // import (
 // 	"encoding/gob"
 // 	"github.com/runningwild/cgf"
-// 	"github.com/runningwild/magnus/game"
+// 	"github.com/runningwild/jota/game"
 // 	"math"
 // )
 

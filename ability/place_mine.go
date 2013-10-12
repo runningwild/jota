@@ -6,9 +6,9 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
-	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/magnus/texture"
+	"github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/game"
+	"github.com/runningwild/jota/texture"
 	"math"
 	"math/rand"
 )

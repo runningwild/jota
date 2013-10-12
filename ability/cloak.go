@@ -3,8 +3,8 @@ package ability
 import (
 	"encoding/gob"
 	"github.com/runningwild/cgf"
-	"github.com/runningwild/magnus/game"
-	"github.com/runningwild/magnus/stats"
+	"github.com/runningwild/jota/game"
+	"github.com/runningwild/jota/stats"
 )
 
 func makeCloak(params map[string]int) game.Ability {

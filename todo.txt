@@ -8,7 +8,7 @@
 Theoretically fixed, still need verification:
 - Change how sys.Think() works on windows to avoid the need for two branches.
   Glop was changed to make sys.Think() run its logic on the render thread when
-  on windows, hopefully that eliminates the need to do anything weird in magnus.
+  on windows, hopefully that eliminates the need to do anything weird in jota.
 
 Fixed:
 - Make the los cache an lru cache to reduce memory usage. <- This was fixed by

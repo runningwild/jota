@@ -10,9 +10,9 @@ import (
 	// "github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/linear"
-	"github.com/runningwild/magnus/base"
-	g2 "github.com/runningwild/magnus/gui"
-	"github.com/runningwild/magnus/stats"
+	"github.com/runningwild/jota/base"
+	g2 "github.com/runningwild/jota/gui"
+	"github.com/runningwild/jota/stats"
 	"math"
 )
 

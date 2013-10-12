@@ -3,7 +3,7 @@ package texture
 import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/render"
-	"github.com/runningwild/magnus/base"
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/mathgl"
 	"github.com/runningwild/memory"
 	"image"
