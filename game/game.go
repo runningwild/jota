@@ -372,9 +372,9 @@ func (u SetupComplete) Apply(_g interface{}) {
 		return
 	}
 
-	g.Engines = make(map[int64]*EngineData)
+	g.Engines = make(map[int64]*PlayerData)
 	for _, id := range g.Setup.EngineIds {
-		g.Engines[id] = &EngineData{
+		g.Engines[id] = &PlayerData{
 			PlayerGid: Gid(fmt.Sprintf("Engine:%d", id)),
 			Side:      g.Setup.Sides[id].Side,
 		}
@@ -426,7 +426,7 @@ func init() {
 	gob.Register(SetupComplete{})
 }
 
-type EngineData struct {
+type PlayerData struct {
 	PlayerGid Gid
 
 	// If positive, this is the number of frames remaining until the player
@@ -434,6 +434,13 @@ type EngineData struct {
 	CountdownFrames int
 
 	Side int
+
+	// If this is an ai controlled player then this will be non-nil.
+	Ai *AiPlayerData
+}
+
+type AiPlayerData struct {
+	N int
 }
 
 type Game struct {
@@ -451,7 +458,7 @@ type Game struct {
 	Ents map[Gid]Ent
 
 	// List of data specific to players/computers
-	Engines map[int64]*EngineData
+	Engines map[int64]*PlayerData
 
 	GameThinks int
 
