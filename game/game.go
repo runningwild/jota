@@ -380,6 +380,17 @@ func (u SetupComplete) Apply(_g interface{}) {
 		}
 	}
 
+	// Add a single Ai player to side 0
+	g.Engines[123123] = &PlayerData{
+		PlayerGid: Gid(fmt.Sprintf("Engine:%d", 123123)),
+		Side:      0,
+		Ai:        &AiPlayerData{},
+	}
+	g.Setup.Sides[123123] = &SetupSideData{
+		Champ: 0,
+		Side:  0,
+	}
+
 	var room Room
 	dx, dy := 1024, 1024
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, u.Seed)
@@ -404,10 +415,15 @@ func (u SetupComplete) Apply(_g interface{}) {
 		Sides: make(map[int]*GameModeMobaSideData),
 	}
 	sides := make(map[int][]int64)
-	for engineId, sideData := range g.Setup.Sides {
-		sides[sideData.Side] = append(sides[sideData.Side], engineId)
+	for id, data := range g.Engines {
+		sides[data.Side] = append(sides[data.Side], id)
 	}
-	for side, ids := range sides {
+	for _, players := range sides {
+		var ids []int64
+		for _, id := range players {
+			ids = append(ids, id)
+		}
+		side := g.Setup.Sides[ids[0]].Side
 		gids := g.AddPlayers(ids, side)
 		g.Moba.Sides[side] = &GameModeMobaSideData{}
 		for i := range ids {

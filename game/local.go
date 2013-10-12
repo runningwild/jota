@@ -515,11 +515,7 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 	ids := local.engine.Ids()
 	if len(ids) > 0 {
 		// This is the host engine - so update the list of ids in case it's changed
-		for _, engineData := range g.Engines {
-			if engineData.Ai != nil {
-				local.engine.ApplyEvent(Accelerate{engineData.PlayerGid, 100})
-			}
-		}
+		local.engine.ApplyEvent(SetupSetEngineIds{ids})
 	}
 
 }
@@ -538,7 +534,6 @@ func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
 		panic("Not implemented!!!")
 	}
 	var camera *cameraInfo
-	base.Log().Printf("Mode: %d", local.mode)
 	switch local.mode {
 	case LocalModeArchitect:
 		camera = &local.architect.camera
@@ -692,6 +687,15 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	}
 	if left-right != 0 {
 		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
+	}
+
+	// Ais
+	if l.engine.Ids() != nil {
+		for _, engineData := range g.Engines {
+			if engineData.Ai != nil {
+				l.engine.ApplyEvent(Accelerate{engineData.PlayerGid, 300})
+			}
+		}
 	}
 }
 
