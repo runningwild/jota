@@ -9,13 +9,13 @@ import (
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/util/algorithm"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/champ"
 	"github.com/runningwild/jota/generator"
 	"github.com/runningwild/jota/gui"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 	"math"
 	"path/filepath"
 )
@@ -384,7 +384,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Engines[123123] = &PlayerData{
 		PlayerGid: Gid(fmt.Sprintf("Engine:%d", 123123)),
 		Side:      0,
-		Ai:        &AiPlayerData{},
+		Ai:        &AiPlayerData{Gid(fmt.Sprintf("Engine:%d", 123123))},
 	}
 	g.Setup.Sides[123123] = &SetupSideData{
 		Champ: 0,
@@ -456,7 +456,7 @@ type PlayerData struct {
 }
 
 type AiPlayerData struct {
-	N int
+	Gid Gid
 }
 
 type Game struct {
@@ -830,6 +830,7 @@ func init() {
 
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
+	base.Log().Printf("Accelerating %v", a.Gid)
 	player, ok := g.Ents[a.Gid].(*PlayerEnt)
 	if !ok {
 		return

@@ -9,10 +9,10 @@ import (
 	"time"
 	// "github.com/runningwild/glop/render"
 	"github.com/runningwild/glop/system"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
 	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/linear"
 	"math"
 )
 
@@ -688,15 +688,6 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	if left-right != 0 {
 		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
 	}
-
-	// Ais
-	if l.engine.Ids() != nil {
-		for _, engineData := range g.Engines {
-			if engineData.Ai != nil {
-				l.engine.ApplyEvent(Accelerate{engineData.PlayerGid, 300})
-			}
-		}
-	}
 }
 
 func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
@@ -817,6 +808,19 @@ func (l *LocalData) Think(g *Game) {
 		l.Setup(g)
 		return
 	}
+	// Setup ais
+	if l.engine.Ids() != nil {
+		if l.moba.aiPlayers == nil {
+			l.moba.aiPlayers = make([]*mobaAiPlayerData, 0)
+			for _, engineData := range g.Engines {
+				if engineData.Ai != nil {
+					l.moba.aiPlayers = append(l.moba.aiPlayers, &mobaAiPlayerData{engineData.PlayerGid})
+					Start(l.engine, engineData.PlayerGid)
+				}
+			}
+		}
+	}
+
 	switch l.mode {
 	case LocalModeArchitect:
 		l.localThinkArchitect(g)
