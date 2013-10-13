@@ -149,7 +149,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
-			Acc:    1000.0,
+			Acc:    200.0,
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
@@ -835,7 +835,7 @@ func (a Accelerate) Apply(_g interface{}) {
 	if !ok {
 		return
 	}
-	player.Delta.Speed = a.Delta / 2
+	player.Delta.Speed = a.Delta
 }
 
 type GameWindow struct {

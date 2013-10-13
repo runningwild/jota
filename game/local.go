@@ -671,6 +671,10 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 		l.setupMobaData(g)
 	}
 	l.thinkAbility(g, &l.moba.currentPlayer.abs, l.moba.currentPlayer.gid)
+	ent := g.Ents[l.moba.currentPlayer.gid]
+	if ent == nil {
+		return
+	}
 	down_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, l.moba.deviceIndex)
 	up_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, l.moba.deviceIndex)
 	right_axis := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, l.moba.deviceIndex)
@@ -683,12 +687,8 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	down := axisControl(down_axis.CurPressAmt())
 	left := axisControl(left_axis.CurPressAmt())
 	right := axisControl(right_axis.CurPressAmt())
-	if up-down != 0 {
-		l.engine.ApplyEvent(Accelerate{l.moba.currentPlayer.gid, 300 * (up - down)})
-	}
-	if left-right != 0 {
-		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
-	}
+	l.engine.ApplyEvent(Accelerate{l.moba.currentPlayer.gid, up - down})
+	l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, right - left})
 	for _, player := range l.moba.aiPlayers {
 		player.script.Think()
 	}

@@ -93,8 +93,8 @@ func (jm *JotaModule) Think() {
 	if ent == nil {
 		return
 	}
-	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, ent.Stats().MaxAcc() * jm.controller.acc})
-	jm.engine.ApplyEvent(game.Turn{jm.myGid, ent.Stats().MaxAcc() * jm.controller.turn})
+	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, jm.controller.acc})
+	jm.engine.ApplyEvent(game.Turn{jm.myGid, jm.controller.turn})
 }
 
 func (jm *JotaModule) ID() string {

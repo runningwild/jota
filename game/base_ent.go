@@ -108,21 +108,21 @@ func (b *BaseEnt) Think(g *Game) {
 		delete(b.Processes, id)
 	}
 
-	if b.Delta.Speed > b.StatsInst.MaxAcc() {
-		b.Delta.Speed = b.StatsInst.MaxAcc()
+	if b.Delta.Speed < -1.0 {
+		b.Delta.Speed = -1.0
 	}
-	if b.Delta.Speed < -b.StatsInst.MaxAcc() {
-		b.Delta.Speed = -b.StatsInst.MaxAcc()
+	if b.Delta.Speed > 1.0 {
+		b.Delta.Speed = 1.0
 	}
-	if b.Delta.Angle < -b.StatsInst.MaxTurn() {
-		b.Delta.Angle = -b.StatsInst.MaxTurn()
+	if b.Delta.Angle < -1.0 {
+		b.Delta.Angle = -1.0
 	}
-	if b.Delta.Angle > b.StatsInst.MaxTurn() {
-		b.Delta.Angle = b.StatsInst.MaxTurn()
+	if b.Delta.Angle > 1.0 {
+		b.Delta.Angle = 1.0
 	}
 
 	// TODO: Speed is a complete misnomer now - fix it!
-	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(b.Delta.Speed))
+	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(b.Delta.Speed * b.Stats().MaxAcc()))
 
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
@@ -197,15 +197,11 @@ func (b *BaseEnt) Think(g *Game) {
 
 	// b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
 	// b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
-
-	b.Angle_ += b.Delta.Angle
-	if b.Angle_ < 0 {
+	b.Angle_ += b.Stats().MaxTurn() * b.Delta.Angle
+	for b.Angle_ < 0 {
 		b.Angle_ += math.Pi * 2
 	}
-	if b.Angle_ > math.Pi*2 {
+	for b.Angle_ > math.Pi*2 {
 		b.Angle_ -= math.Pi * 2
 	}
-
-	b.Delta.Angle = 0
-	b.Delta.Speed = 0
 }
