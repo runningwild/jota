@@ -5,10 +5,10 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
 )
@@ -218,7 +218,7 @@ func (e addPlaceMineFireEvent) Apply(_g interface{}) {
 	if player.Velocity.Mag() < 10 {
 		angle = player.Velocity.Angle()
 	} else {
-		angle = player.Angle
+		angle = player.Angle()
 	}
 	pos := player.Position.Add((linear.Vec2{50, 0}).Rotate(angle + math.Pi))
 	rng := rand.New(g.Rng)

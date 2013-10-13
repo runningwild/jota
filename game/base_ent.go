@@ -1,8 +1,8 @@
 package game
 
 import (
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/linear"
 	"math"
 	"sort"
 )
@@ -11,7 +11,7 @@ type BaseEnt struct {
 	StatsInst stats.Inst
 	Position  linear.Vec2
 	Velocity  linear.Vec2
-	Angle     float64
+	Angle_    float64
 	Delta     struct {
 		Speed float64
 		Angle float64
@@ -59,6 +59,10 @@ func (b *BaseEnt) Pos() linear.Vec2 {
 
 func (b *BaseEnt) Vel() linear.Vec2 {
 	return b.Velocity
+}
+
+func (b *BaseEnt) Angle() float64 {
+	return b.Angle_
 }
 
 func (b *BaseEnt) SetPos(pos linear.Vec2) {
@@ -118,12 +122,12 @@ func (b *BaseEnt) Think(g *Game) {
 	}
 
 	// TODO: Speed is a complete misnomer now - fix it!
-	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle).Scale(b.Delta.Speed))
+	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(b.Delta.Speed))
 
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
 	b.Velocity = b.Velocity.Scale(
-		math.Pow(friction, 1+3*math.Abs(math.Sin(b.Angle-mangle))))
+		math.Pow(friction, 1+3*math.Abs(math.Sin(b.Angle_-mangle))))
 
 	if b.Velocity.Mag2() < 0.01 {
 		b.Velocity = linear.Vec2{0, 0}
@@ -194,12 +198,12 @@ func (b *BaseEnt) Think(g *Game) {
 	// b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
 	// b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
 
-	b.Angle += b.Delta.Angle
-	if b.Angle < 0 {
-		b.Angle += math.Pi * 2
+	b.Angle_ += b.Delta.Angle
+	if b.Angle_ < 0 {
+		b.Angle_ += math.Pi * 2
 	}
-	if b.Angle > math.Pi*2 {
-		b.Angle -= math.Pi * 2
+	if b.Angle_ > math.Pi*2 {
+		b.Angle_ -= math.Pi * 2
 	}
 
 	b.Delta.Angle = 0

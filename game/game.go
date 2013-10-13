@@ -202,7 +202,7 @@ func (p *PlayerEnt) Draw(game *Game, side int) {
 		p.Position.Y-float64(t.Dy())/2,
 		float64(t.Dx()),
 		float64(t.Dy()),
-		p.Angle,
+		p.Angle_,
 		false)
 
 	for _, proc := range p.Processes {
@@ -261,6 +261,7 @@ type Ent interface {
 	Id() Gid
 	SetId(Gid)
 	Pos() linear.Vec2
+	Angle() float64
 	Level() Gid
 	Side() int // which side the ent belongs to
 
@@ -830,7 +831,6 @@ func init() {
 
 func (a Accelerate) Apply(_g interface{}) {
 	g := _g.(*Game)
-	base.Log().Printf("Accelerating %v", a.Gid)
 	player, ok := g.Ents[a.Gid].(*PlayerEnt)
 	if !ok {
 		return

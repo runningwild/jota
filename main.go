@@ -20,6 +20,7 @@ import (
 	_ "github.com/runningwild/jota/effects"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/generator"
+	_ "github.com/runningwild/jota/script"
 	"github.com/runningwild/jota/texture"
 	_ "image/jpeg"
 	_ "image/png"

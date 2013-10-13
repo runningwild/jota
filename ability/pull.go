@@ -4,8 +4,8 @@ import (
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/game"
+	"github.com/runningwild/linear"
 	"math"
 )
 
@@ -164,7 +164,7 @@ func (p *pullProcess) Think(g *game.Game) {
 		}
 		target_pos := ent.Pos()
 		ray := target_pos.Sub(player.Pos())
-		target_angle := ray.Angle() - player.Angle
+		target_angle := ray.Angle() - player.Angle()
 		for target_angle < 0 {
 			target_angle += math.Pi * 2
 		}
@@ -195,8 +195,8 @@ func (p *pullProcess) Draw(gid game.Gid, g *game.Game, side int) {
 	gl.Disable(gl.TEXTURE_2D)
 	v1 := player.Pos()
 	v2 := v1.Add(linear.Vec2{1000, 0})
-	v3 := v2.RotateAround(v1, player.Angle-p.Angle/2)
-	v4 := v2.RotateAround(v1, player.Angle+p.Angle/2)
+	v3 := v2.RotateAround(v1, player.Angle()-p.Angle/2)
+	v4 := v2.RotateAround(v1, player.Angle()+p.Angle/2)
 	gl.Begin(gl.LINES)
 	vs := []linear.Vec2{v3, v4, player.Pos()}
 	for i := range vs {

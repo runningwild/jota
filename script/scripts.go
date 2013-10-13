@@ -7,6 +7,7 @@ import (
 	"github.com/PuerkitoBio/agora/runtime/stdlib"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/game"
 	"io"
 	"math"
 	"os"
@@ -78,7 +79,7 @@ type JotaModule struct {
 
 	// The Gid of the player that this Ai is controlling.  This is used to get the
 	// entity when needed.
-	myGid Gid
+	myGid game.Gid
 }
 
 func (jm *JotaModule) ID() string {
@@ -88,7 +89,7 @@ func (jm *JotaModule) SetCtx(ctx *runtime.Ctx) {
 	jm.ctx = ctx
 }
 
-func (jm *JotaModule) newEnt(gid Gid) *agoraEnt {
+func (jm *JotaModule) newEnt(gid game.Gid) *agoraEnt {
 	ob := runtime.NewObject()
 	ent := &agoraEnt{
 		Object: ob,
@@ -96,23 +97,45 @@ func (jm *JotaModule) newEnt(gid Gid) *agoraEnt {
 		gid:    gid,
 	}
 	ob.Set(runtime.String("Pos"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Pos", ent.pos))
+	ob.Set(runtime.String("Vel"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Vel", ent.vel))
+	ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Angle", ent.angle))
 	return ent
 }
 
 type agoraEnt struct {
 	runtime.Object
 	jm  *JotaModule
-	gid Gid
+	gid game.Gid
 }
 
 func (aEnt *agoraEnt) pos(args ...runtime.Val) runtime.Val {
 	aEnt.jm.engine.Pause()
 	defer aEnt.jm.engine.Unpause()
-	ent := aEnt.jm.engine.GetState().(*Game).Ents[aEnt.gid]
+	ent := aEnt.jm.engine.GetState().(*game.Game).Ents[aEnt.gid]
 	if ent == nil {
 		return runtime.Nil
 	}
 	return aEnt.jm.newVec(ent.Pos().X, ent.Pos().Y)
+}
+
+func (aEnt *agoraEnt) vel(args ...runtime.Val) runtime.Val {
+	aEnt.jm.engine.Pause()
+	defer aEnt.jm.engine.Unpause()
+	ent := aEnt.jm.engine.GetState().(*game.Game).Ents[aEnt.gid]
+	if ent == nil {
+		return runtime.Nil
+	}
+	return aEnt.jm.newVec(ent.Vel().X, ent.Vel().Y)
+}
+
+func (aEnt *agoraEnt) angle(args ...runtime.Val) runtime.Val {
+	aEnt.jm.engine.Pause()
+	defer aEnt.jm.engine.Unpause()
+	ent := aEnt.jm.engine.GetState().(*game.Game).Ents[aEnt.gid]
+	if ent == nil {
+		return runtime.Nil
+	}
+	return runtime.Number(ent.Angle())
 }
 
 // Not interested in any argument in this case. Note the named return values.
@@ -125,7 +148,8 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob = runtime.NewObject()
 		// Export some functions...
 		jm.ob.Set(runtime.String("Me"), runtime.NewNativeFunc(jm.ctx, "jota.Me", jm.Me))
-		jm.ob.Set(runtime.String("Force"), runtime.NewNativeFunc(jm.ctx, "jota.Force", jm.Force))
+		jm.ob.Set(runtime.String("Move"), runtime.NewNativeFunc(jm.ctx, "jota.Move", jm.Move))
+		jm.ob.Set(runtime.String("Turn"), runtime.NewNativeFunc(jm.ctx, "jota.Turn", jm.Turn))
 	}
 	return jm.ob, nil
 }
@@ -136,15 +160,41 @@ func (jm *JotaModule) Me(vs ...runtime.Val) runtime.Val {
 	return jm.newEnt(jm.myGid)
 }
 
-func (jm *JotaModule) Force(vs ...runtime.Val) runtime.Val {
+func (jm *JotaModule) Move(vs ...runtime.Val) runtime.Val {
 	jm.engine.Pause()
 	defer jm.engine.Unpause()
 	time.Sleep(time.Millisecond * 10)
-	ent := jm.engine.GetState().(*Game).Ents[jm.myGid]
+	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
 	if ent == nil {
 		return runtime.Nil
 	}
-	jm.engine.ApplyEvent(Accelerate{jm.myGid, 10000})
+	frac := vs[0].Float()
+	if frac < -1 {
+		frac = -1
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, ent.Stats().MaxAcc() * frac})
+	return runtime.Nil
+}
+
+func (jm *JotaModule) Turn(vs ...runtime.Val) runtime.Val {
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+	time.Sleep(time.Millisecond * 10)
+	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
+	if ent == nil {
+		return runtime.Nil
+	}
+	frac := vs[0].Float()
+	if frac < -1 {
+		frac = -1
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	jm.engine.ApplyEvent(game.Turn{jm.myGid, ent.Stats().MaxTurn() * frac})
 	return runtime.Nil
 }
 
@@ -174,7 +224,7 @@ func (v *agoraVec) length(args ...runtime.Val) runtime.Val {
 	return runtime.Number(math.Sqrt(x*x + y*y))
 }
 
-func Start(engine *cgf.Engine, gid Gid) {
+func Start(engine *cgf.Engine, gid game.Gid) {
 	ctx := runtime.NewCtx(newJotaResolver(), new(compiler.Compiler))
 	ctx.RegisterNativeModule(new(stdlib.TimeMod))
 	ctx.RegisterNativeModule(&LogModule{})
@@ -188,4 +238,8 @@ func Start(engine *cgf.Engine, gid Gid) {
 		_, err := mod.Run()
 		base.Error().Printf("Error running script: %v", err)
 	}()
+}
+
+func init() {
+	game.RegisterScript("simple", Start)
 }

@@ -5,12 +5,12 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/ability"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 	"math"
 )
 
@@ -198,7 +198,7 @@ func (p *riftWalkProcess) Draw(gid game.Gid, g *game.Game, side int) {
 	base.EnableShader("")
 
 	dist, radius := p.GetVals()
-	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle))
+	dest := player.Pos().Add((linear.Vec2{dist, 0}).Rotate(player.Angle()))
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4d(1, 1, 1, 1)
 	gl.Begin(gl.LINES)
@@ -243,7 +243,7 @@ func (e addRiftWalkFireEvent) Apply(_g interface{}) {
 	}
 	dist, radius := rwProc.GetVals()
 	rwProc.Stored = game.Mana{}
-	movement := (linear.Vec2{dist, 0}).Rotate(player.Angle)
+	movement := (linear.Vec2{dist, 0}).Rotate(player.Angle())
 	dest := player.Pos().Add(movement)
 
 	inside := false

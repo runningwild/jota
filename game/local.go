@@ -803,6 +803,18 @@ func (l *LocalData) Setup(g *Game) {
 	}
 }
 
+func RegisterScript(name string, runner ScriptRunner) {
+	scripts[name] = runner
+}
+
+type ScriptRunner func(engine *cgf.Engine, gid Gid)
+
+var scripts map[string]ScriptRunner
+
+func init() {
+	scripts = make(map[string]ScriptRunner)
+}
+
 func (l *LocalData) Think(g *Game) {
 	if g.Setup != nil {
 		l.Setup(g)
@@ -815,7 +827,7 @@ func (l *LocalData) Think(g *Game) {
 			for _, engineData := range g.Engines {
 				if engineData.Ai != nil {
 					l.moba.aiPlayers = append(l.moba.aiPlayers, &mobaAiPlayerData{engineData.PlayerGid})
-					Start(l.engine, engineData.PlayerGid)
+					scripts["simple"](l.engine, engineData.PlayerGid)
 				}
 			}
 		}
