@@ -6,12 +6,10 @@ me := jota.Me()
 for i := range 1000000 {
   pos := me.Pos()
   log.Printf("Pos: %2.3f %2.3f", pos.X, pos.Y)
-  for j := range 10 {
-    jota.Turn(1.0)
-    time.Sleep(17)
-  }
-  for k := range 10 {
-    jota.Move(0.5)
-    time.Sleep(17)
-  }
+  jota.Move(0.0)
+  jota.Turn(1.0)
+  time.Sleep(1000)
+  jota.Turn(0.0)
+  jota.Move(1.0)
+  time.Sleep(1000)
 }

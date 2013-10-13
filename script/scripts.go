@@ -12,7 +12,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"time"
+	// "time"
 )
 
 type jotaResolver struct {
@@ -80,6 +80,21 @@ type JotaModule struct {
 	// The Gid of the player that this Ai is controlling.  This is used to get the
 	// entity when needed.
 	myGid game.Gid
+
+	// These keep track of the ai's virtual controller
+	controller struct {
+		turn float64 // [-1.0, 1.0]
+		acc  float64 // [-1.0, 1.0]
+	}
+}
+
+func (jm *JotaModule) Think() {
+	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
+	if ent == nil {
+		return
+	}
+	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, ent.Stats().MaxAcc() * jm.controller.acc})
+	jm.engine.ApplyEvent(game.Turn{jm.myGid, ent.Stats().MaxAcc() * jm.controller.turn})
 }
 
 func (jm *JotaModule) ID() string {
@@ -161,40 +176,24 @@ func (jm *JotaModule) Me(vs ...runtime.Val) runtime.Val {
 }
 
 func (jm *JotaModule) Move(vs ...runtime.Val) runtime.Val {
-	jm.engine.Pause()
-	defer jm.engine.Unpause()
-	time.Sleep(time.Millisecond * 10)
-	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
-	if ent == nil {
-		return runtime.Nil
+	jm.controller.acc = vs[0].Float()
+	if jm.controller.acc < -1.0 {
+		jm.controller.acc = -1.0
 	}
-	frac := vs[0].Float()
-	if frac < -1 {
-		frac = -1
+	if jm.controller.acc > 1.0 {
+		jm.controller.acc = 1.0
 	}
-	if frac > 1 {
-		frac = 1
-	}
-	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, ent.Stats().MaxAcc() * frac})
 	return runtime.Nil
 }
 
 func (jm *JotaModule) Turn(vs ...runtime.Val) runtime.Val {
-	jm.engine.Pause()
-	defer jm.engine.Unpause()
-	time.Sleep(time.Millisecond * 10)
-	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
-	if ent == nil {
-		return runtime.Nil
+	jm.controller.turn = vs[0].Float()
+	if jm.controller.turn < -1.0 {
+		jm.controller.turn = -1.0
 	}
-	frac := vs[0].Float()
-	if frac < -1 {
-		frac = -1
+	if jm.controller.turn > 1.0 {
+		jm.controller.turn = 1.0
 	}
-	if frac > 1 {
-		frac = 1
-	}
-	jm.engine.ApplyEvent(game.Turn{jm.myGid, ent.Stats().MaxTurn() * frac})
 	return runtime.Nil
 }
 
@@ -224,11 +223,12 @@ func (v *agoraVec) length(args ...runtime.Val) runtime.Val {
 	return runtime.Number(math.Sqrt(x*x + y*y))
 }
 
-func Start(engine *cgf.Engine, gid game.Gid) {
+func Start(engine *cgf.Engine, gid game.Gid) game.Script {
+	jm := &JotaModule{engine: engine, myGid: gid}
 	ctx := runtime.NewCtx(newJotaResolver(), new(compiler.Compiler))
 	ctx.RegisterNativeModule(new(stdlib.TimeMod))
 	ctx.RegisterNativeModule(&LogModule{})
-	ctx.RegisterNativeModule(&JotaModule{engine: engine, myGid: gid})
+	ctx.RegisterNativeModule(jm)
 	mod, err := ctx.Load("simple")
 	if err != nil {
 		panic(err)
@@ -238,6 +238,7 @@ func Start(engine *cgf.Engine, gid game.Gid) {
 		_, err := mod.Run()
 		base.Error().Printf("Error running script: %v", err)
 	}()
+	return jm
 }
 
 func init() {

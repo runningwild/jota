@@ -68,7 +68,8 @@ type mobaPlayerData struct {
 }
 
 type mobaAiPlayerData struct {
-	gid Gid
+	gid    Gid
+	script Script
 }
 
 type localMobaData struct {
@@ -688,6 +689,9 @@ func (l *LocalData) localThinkInvaders(g *Game) {
 	if left-right != 0 {
 		l.engine.ApplyEvent(Turn{l.moba.currentPlayer.gid, (right - left)})
 	}
+	for _, player := range l.moba.aiPlayers {
+		player.script.Think()
+	}
 }
 
 func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
@@ -807,7 +811,11 @@ func RegisterScript(name string, runner ScriptRunner) {
 	scripts[name] = runner
 }
 
-type ScriptRunner func(engine *cgf.Engine, gid Gid)
+type Script interface {
+	Think()
+}
+
+type ScriptRunner func(engine *cgf.Engine, gid Gid) Script
 
 var scripts map[string]ScriptRunner
 
@@ -826,8 +834,9 @@ func (l *LocalData) Think(g *Game) {
 			l.moba.aiPlayers = make([]*mobaAiPlayerData, 0)
 			for _, engineData := range g.Engines {
 				if engineData.Ai != nil {
-					l.moba.aiPlayers = append(l.moba.aiPlayers, &mobaAiPlayerData{engineData.PlayerGid})
-					scripts["simple"](l.engine, engineData.PlayerGid)
+					jm := scripts["simple"](l.engine, engineData.PlayerGid)
+					l.moba.aiPlayers = append(l.moba.aiPlayers, &mobaAiPlayerData{engineData.PlayerGid, jm})
+					base.Log().Printf("JM: %v", jm)
 				}
 			}
 		}
