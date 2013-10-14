@@ -149,7 +149,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
-			Acc:    200.0,
+			Acc:    3000.0,
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
@@ -382,15 +382,15 @@ func (u SetupComplete) Apply(_g interface{}) {
 	}
 
 	// Add a single Ai player to side 0
-	g.Engines[123123] = &PlayerData{
-		PlayerGid: Gid(fmt.Sprintf("Engine:%d", 123123)),
-		Side:      0,
-		Ai:        &AiPlayerData{Gid(fmt.Sprintf("Engine:%d", 123123))},
-	}
-	g.Setup.Sides[123123] = &SetupSideData{
-		Champ: 0,
-		Side:  0,
-	}
+	// g.Engines[123123] = &PlayerData{
+	// 	PlayerGid: Gid(fmt.Sprintf("Engine:%d", 123123)),
+	// 	Side:      0,
+	// 	Ai:        &AiPlayerData{Gid(fmt.Sprintf("Engine:%d", 123123))},
+	// }
+	// g.Setup.Sides[123123] = &SetupSideData{
+	// 	Champ: 0,
+	// 	Side:  0,
+	// }
 
 	var room Room
 	dx, dy := 1024, 1024

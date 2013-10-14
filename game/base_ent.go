@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 	"math"
@@ -137,21 +138,34 @@ func (b *BaseEnt) Think(g *Game) {
 		// from frame to frame.
 		var epsilon linear.Vec2
 		if b.Velocity.Mag2() > 0 {
-			epsilon = b.Velocity.Norm().Scale(0.1)
+			epsilon = b.Velocity.Norm().Scale(b.Stats().Size() / 2)
 		}
 		move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
 		size := b.Stats().Size()
 		sizeSq := size * size
 		prev := b.Position
-		b.Position = b.Position.Add(b.Velocity)
-		// walls := g.temp.AllWalls[b.CurrentLevel]
 		walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
 		for _, wall := range walls {
 			// Don't bother with back-facing segments
 			if wall.Right(b.Position) {
 				continue
 			}
-			// First check against the leading vertex
+			// Check against the segment itself
+			if wall.Ray().Cross().Dot(move.Ray()) <= 0 {
+				shiftNorm := wall.Ray().Cross().Norm()
+				shift := shiftNorm.Scale(size)
+				col := linear.Seg2{shift.Add(wall.P), shift.Add(wall.Q)}
+				if move.DoesIsect(col) {
+					cross := col.Ray().Cross()
+					fix := linear.Seg2{move.Q, cross.Add(move.Q)}
+					isect := fix.Isect(col)
+
+					q := move.Q
+					move.Q = isect.Add(shiftNorm.Scale(1))
+				}
+			}
+
+			// Check against the leading vertex
 			{
 				v := wall.P
 				distSq := v.DistSquaredToLine(move)
@@ -176,18 +190,6 @@ func (b *BaseEnt) Think(g *Game) {
 					//   move.Q.X += shift.X
 					//   move.Q.Y += shift.Y
 					// }
-				}
-			}
-
-			// Now check against the segment itself
-			if wall.Ray().Cross().Dot(move.Ray()) <= 0 {
-				shift := wall.Ray().Cross().Norm().Scale(size)
-				col := linear.Seg2{shift.Add(wall.P), shift.Add(wall.Q)}
-				if move.DoesIsect(col) {
-					cross := col.Ray().Cross()
-					fix := linear.Seg2{move.Q, cross.Add(move.Q)}
-					isect := fix.Isect(col)
-					move.Q = isect
 				}
 			}
 		}
