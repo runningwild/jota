@@ -133,16 +133,13 @@ func (b *BaseEnt) Think(g *Game) {
 	if b.Velocity.Mag2() < 0.01 {
 		b.Velocity = linear.Vec2{0, 0}
 	} else {
+		size := b.Stats().Size()
+		sizeSq := size * size
 		// We pretend that the player is started from a little behind wherever they
 		// actually are.  This makes it a lot easier to get collisions to make sense
 		// from frame to frame.
-		var epsilon linear.Vec2
-		if b.Velocity.Mag2() > 0 {
-			epsilon = b.Velocity.Norm().Scale(b.Stats().Size() / 2)
-		}
+		epsilon := b.Velocity.Norm().Scale(size / 2)
 		move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
-		size := b.Stats().Size()
-		sizeSq := size * size
 		prev := b.Position
 		walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
 		for _, wall := range walls {
@@ -150,6 +147,7 @@ func (b *BaseEnt) Think(g *Game) {
 			if wall.Right(b.Position) {
 				continue
 			}
+
 			// Check against the segment itself
 			if wall.Ray().Cross().Dot(move.Ray()) <= 0 {
 				shiftNorm := wall.Ray().Cross().Norm()
@@ -159,37 +157,27 @@ func (b *BaseEnt) Think(g *Game) {
 					cross := col.Ray().Cross()
 					fix := linear.Seg2{move.Q, cross.Add(move.Q)}
 					isect := fix.Isect(col)
-
-					q := move.Q
-					move.Q = isect.Add(shiftNorm.Scale(1))
+					move.Q = isect
 				}
 			}
-
+		}
+		for _, wall := range walls {
 			// Check against the leading vertex
 			{
 				v := wall.P
-				distSq := v.DistSquaredToLine(move)
-				if v.Sub(move.Q).Mag2() < sizeSq {
-					distSq = v.Sub(move.Q).Mag2()
-					// If for some dumb reason an ent is on a vertex this will asplode,
-					// so just ignore that case.
-					if distSq == 0 {
-						continue
-					}
-					// Add a little extra here otherwise a player can sneak into geometry
-					// through the corners
-					ray := move.Q.Sub(v).Norm().Scale(size + 0.1)
-					final := v.Add(ray)
-					move.Q = final
-				} else if distSq < sizeSq {
-					// TODO: This tries to prevent passthrough but has other problems
-					// cross := move.Ray().Cross()
-					// perp := linear.Seg2{v, cross.Sub(v)}
-					// if perb.Left(move.P) != perb.Left(move.Q) {
-					//   shift := perb.Ray().Norm().Scale(size - dist)
-					//   move.Q.X += shift.X
-					//   move.Q.Y += shift.Y
-					// }
+				originMove := linear.Seg2{move.P.Sub(v), move.Q.Sub(v)}
+				originPerp := linear.Seg2{linear.Vec2{}, move.Ray().Cross()}
+				dist := originMove.DistFromOrigin()
+				if originPerp.DoesIsect(originMove) && dist < size {
+					// Stop passthrough
+					base.Log().Printf("Passthrough %2.3f %2.3f", dist, sizeSq)
+					isect := originMove.Isect(originPerp).Add(v)
+					diff := math.Sqrt(sizeSq - dist*dist)
+					finalLength := isect.Sub(move.P).Mag() - diff
+					move.Q = move.Ray().Norm().Scale(finalLength).Add(move.P)
+				} else if v.Sub(move.Q).Mag2() < sizeSq {
+					base.Log().Printf("Normal")
+					move.Q = move.Q.Sub(v).Norm().Scale(size).Add(v)
 				}
 			}
 		}
