@@ -1,9 +1,19 @@
+- MAJOR REORG
+-- Move local stuff into the game state itself under un-exported variables.  This should make lots of things a lot easier.
+-- Rethink abilities a bit - maybe they can be easier to use.
+-- Anything that renders based on the side should just render based on Gid.
+-- Rethink Gids, they are super-annoying.
+-- Kill anything referring to the architect or to the invaders.  ESPECIALLY
+   GidInvadersStart, and really anything allowing multiple levels, let's just
+   assume a single level.  It's a Moba now.
+
 - Fix shaders on ATI cards.
 - Controller support on windows and linux.
 - Allow local movement for better user experience.
 - Emailing bug reports should just be handled by a single service, no emails
   required, except maybe to report previously unseen crashes.
-- Simple AIs for finding bugs.
+- Simple AIs are in, give them a way to randomly use abilities.
+- Once glop stuff is all stubbed out make a server binary that can be run anywhere.
 
 Theoretically fixed, still need verification:
 - Change how sys.Think() works on windows to avoid the need for two branches.
