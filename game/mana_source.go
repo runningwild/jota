@@ -8,9 +8,9 @@ import (
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cmwc"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
 	"sync"
@@ -125,6 +125,11 @@ type ManaSource struct {
 	rawNodes []node // the underlying array for nodes
 
 	thinks int
+
+	local struct {
+		nodeTextureId   gl.Uint
+		nodeTextureData []byte
+	}
 }
 
 func (ms *ManaSource) GobEncode() ([]byte, error) {
@@ -252,12 +257,12 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 // 	deleteNodes(src.rawNodes)
 // }
 
-func (ms *ManaSource) Draw(local *LocalData, zoom float64, dx float64, dy float64) {
-	if local.nodeTextureData == nil {
+func (ms *ManaSource) Draw(zoom float64, dx float64, dy float64) {
+	if ms.local.nodeTextureData == nil {
 		//		gl.Enable(gl.TEXTURE_2D)
-		local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
-		gl.GenTextures(1, &local.nodeTextureId)
-		gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
+		ms.local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
+		gl.GenTextures(1, &ms.local.nodeTextureId)
+		gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -272,19 +277,19 @@ func (ms *ManaSource) Draw(local *LocalData, zoom float64, dx float64, dy float6
 			0,
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
-			gl.Pointer(&local.nodeTextureData[0]))
+			gl.Pointer(&ms.local.nodeTextureData[0]))
 	}
 	for i := range ms.rawNodes {
 		for c := 0; c < 3; c++ {
 			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
 			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-			local.nodeTextureData[i*3+c] = byte(
+			ms.local.nodeTextureData[i*3+c] = byte(
 				color_frac*color_range + float64(ms.options.MinNodeBrightness))
 		}
 	}
 	gl.Enable(gl.TEXTURE_2D)
 	//gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
+	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
 	gl.TexSubImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -294,7 +299,7 @@ func (ms *ManaSource) Draw(local *LocalData, zoom float64, dx float64, dy float6
 		gl.Sizei(ms.options.NumNodeCols),
 		gl.RGB,
 		gl.UNSIGNED_BYTE,
-		gl.Pointer(&local.nodeTextureData[0]))
+		gl.Pointer(&ms.local.nodeTextureData[0]))
 
 	base.EnableShader("nodes")
 	base.SetUniformI("nodes", "width", ms.options.NumNodeRows*3)
@@ -304,7 +309,7 @@ func (ms *ManaSource) Draw(local *LocalData, zoom float64, dx float64, dy float6
 	base.SetUniformI("nodes", "tex1", 1)
 	base.SetUniformF("nodes", "zoom", float32(zoom))
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, local.nodeTextureId)
+	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
 
 	// I have no idea why this value for move works, but it does.  So, hooray.
 	move := (dx - dy) / 2

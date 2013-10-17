@@ -1,3 +1,5 @@
+// +build nographics
+
 package game
 
 import (
@@ -519,42 +521,6 @@ func (g *Game) RenderLocalSetup(region g2.Region, local *LocalData) {
 		local.engine.ApplyEvent(SetupSetEngineIds{ids})
 	}
 
-}
-
-// Draws everything that is relevant to the players on a computer, but not the
-// players across the network.  Any ui used to determine how to place an object
-// or use an ability, for example.
-func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
-	if g.Setup != nil {
-		g.RenderLocalSetup(region, local)
-		return
-	}
-	switch {
-	case local.mode == LocalModeMoba:
-	default:
-		panic("Not implemented!!!")
-	}
-	var camera *cameraInfo
-	switch local.mode {
-	case LocalModeArchitect:
-		camera = &local.architect.camera
-	case LocalModeInvaders:
-		camera = &local.invaders.camera
-	case LocalModeMoba:
-		camera = &local.moba.currentPlayer.camera
-	case LocalModeEditor:
-		camera = &local.editor.camera
-	}
-	camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
-	camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
-	switch local.mode {
-	case LocalModeArchitect:
-		g.renderLocalArchitect(region, local)
-	case LocalModeInvaders:
-		g.renderLocalInvaders(region, local)
-	case LocalModeMoba:
-		g.renderLocalMoba(region, local)
-	}
 }
 
 func (l *LocalData) activateAbility(abs *personalAbilities, gid Gid, n int, keyPress bool) {

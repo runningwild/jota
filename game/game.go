@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 )
 
+const LosMaxDist = 1000
+
 // type Ability func(game *Game, player *PlayerEnt, params map[string]int) Process
 
 // An Ability represents something a player can do that does not directly affect
@@ -299,6 +301,9 @@ type Setup struct {
 	EngineIds []int64                  // engine ids of the engines currently joined
 	Sides     map[int64]*SetupSideData // map from engineid to side data
 	Seed      int64                    // random seed
+	local     struct {
+		index int
+	}
 }
 
 type SetupSetEngineIds struct {
@@ -490,6 +495,11 @@ type Game struct {
 	// sent to clients to make debugging and tuning easier.
 	Champs []champ.Champion
 
+	local struct {
+		Engine *cgf.Engine
+		Camera cameraInfo
+	}
+
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
 		// ents in that room.
@@ -539,6 +549,10 @@ func (g *Game) NextGid() Gid {
 func (g *Game) NextId() int {
 	g.NextIdValue++
 	return g.NextIdValue
+}
+
+func (g *Game) SetEngine(engine *cgf.Engine) {
+	g.local.Engine = engine
 }
 
 func MakeGame() *Game {
@@ -840,7 +854,6 @@ func (a Accelerate) Apply(_g interface{}) {
 
 type GameWindow struct {
 	Engine *cgf.Engine
-	Local  *LocalData
 	Dims   gui.Dims
 	game   *Game
 }
@@ -856,12 +869,7 @@ func (gw *GameWindow) Requested() gui.Dims {
 }
 func (gw *GameWindow) Think(g *gui.Gui) {
 	gw.Engine.Pause()
-	game := gw.Engine.GetState().(*Game)
-	if game.Setup != nil {
-		gw.Local.Setup(game)
-	} else {
-		gw.Local.Think(game)
-	}
+	// gw.Engine.GetState().(*Game)
 	gw.Engine.Unpause()
 }
 func (gw *GameWindow) Respond(group gin.EventGroup) {
@@ -894,7 +902,7 @@ func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
 
 	gw.Engine.Pause()
 	game := gw.Engine.GetState().(*Game)
-	game.RenderLocal(region, gw.Local)
+	game.RenderLocal(region)
 	gw.Engine.Unpause()
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}
