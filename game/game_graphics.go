@@ -53,11 +53,6 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
 	}
-	ids := g.local.Engine.Ids()
-	if len(ids) > 0 {
-		// This is the host engine - so update the list of ids in case it's changed
-		g.local.Engine.ApplyEvent(SetupSetEngineIds{ids})
-	}
 }
 
 func (g *Game) RenderLocalMoba(region g2.Region) {

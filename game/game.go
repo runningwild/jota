@@ -18,6 +18,7 @@ import (
 	"github.com/runningwild/linear"
 	"math"
 	"path/filepath"
+	"time"
 )
 
 const LosMaxDist = 1000
@@ -482,8 +483,6 @@ type Game struct {
 	// List of data specific to players/computers
 	Engines map[int64]*PlayerData
 
-	GameThinks int
-
 	// All effects that are not tied to a player.
 	Processes []Process
 
@@ -657,13 +656,53 @@ func (g *Game) AddEnt(ent Ent) {
 	g.temp.AllEntsDirty = true
 }
 
-func (g *Game) Think() {
-	g.GameThinks++
-	if g.Setup != nil {
-		return
+func (g *Game) ThinkSetup() {
+	ids := g.local.Engine.Ids()
+	if len(ids) > 0 {
+		// This is the host engine - so update the list of ids in case it's changed
+		g.local.Engine.ApplyEvent(SetupSetEngineIds{ids})
 	}
-	defer base.StackCatcher()
 
+	if len(g.local.Engine.Ids()) > 0 {
+		if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
+			g.Setup.local.index--
+			if g.Setup.local.index < 0 {
+				g.Setup.local.index = 0
+			}
+		}
+		if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
+			g.Setup.local.index++
+			if g.Setup.local.index > len(g.Setup.EngineIds) {
+				g.Setup.local.index = len(g.Setup.EngineIds)
+			}
+		}
+	} else {
+		for i, v := range g.Setup.EngineIds {
+			if v == g.local.Engine.Id() {
+				g.Setup.local.index = i
+			}
+		}
+	}
+	if gin.In().GetKey(gin.AnyLeft).FramePressCount() > 0 {
+		g.local.Engine.ApplyEvent(SetupChampSelect{g.local.Engine.Id(), -1})
+	}
+	if gin.In().GetKey(gin.AnyRight).FramePressCount() > 0 {
+		g.local.Engine.ApplyEvent(SetupChampSelect{g.local.Engine.Id(), 1})
+	}
+	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
+		if g.Setup.local.index < len(g.Setup.EngineIds) {
+			id := g.Setup.EngineIds[g.Setup.local.index]
+			side := (g.Setup.Sides[id].Side + 1) % 2
+			g.local.Engine.ApplyEvent(SetupChangeSides{id, side})
+		} else {
+			if len(g.local.Engine.Ids()) > 0 {
+				g.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			}
+		}
+	}
+}
+
+func (g *Game) ThinkGame() {
 	// cache wall data
 	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
 		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
@@ -774,19 +813,17 @@ func (g *Game) Think() {
 		}
 	}
 
-	switch {
-	case g.Moba != nil:
-		g.ThinkMoba()
-	case g.Standard != nil:
-		panic("Thinkgs aren't implemented, like thinking on mana sources")
-		// Do standard thinking
-	default:
-		panic("Game mode not set")
-	}
+	g.Levels[GidInvadersStart].ManaSource.Think(g.Ents)
 }
 
-func (g *Game) ThinkMoba() {
-	g.Levels[GidInvadersStart].ManaSource.Think(g.Ents)
+func (g *Game) Think() {
+	defer base.StackCatcher()
+	switch {
+	case g.Setup != nil:
+		g.ThinkSetup()
+	default:
+		g.ThinkGame()
+	}
 }
 
 // Returns true iff a has los to b, regardless of distance, except that nothing

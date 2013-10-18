@@ -734,43 +734,6 @@ func (camera *cameraInfo) doInvadersFocusRegion(g *Game, side int) {
 }
 
 func (l *LocalData) Setup(g *Game) {
-	if len(l.engine.Ids()) > 0 {
-		if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
-			l.setup.index--
-			if l.setup.index < 0 {
-				l.setup.index = 0
-			}
-		}
-		if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
-			l.setup.index++
-			if l.setup.index > len(g.Setup.EngineIds) {
-				l.setup.index = len(g.Setup.EngineIds)
-			}
-		}
-	} else {
-		for i, v := range g.Setup.EngineIds {
-			if v == l.engine.Id() {
-				l.setup.index = i
-			}
-		}
-	}
-	if gin.In().GetKey(gin.AnyLeft).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), -1})
-	}
-	if gin.In().GetKey(gin.AnyRight).FramePressCount() > 0 {
-		l.engine.ApplyEvent(SetupChampSelect{l.engine.Id(), 1})
-	}
-	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
-		if l.setup.index < len(g.Setup.EngineIds) {
-			id := g.Setup.EngineIds[l.setup.index]
-			side := (g.Setup.Sides[id].Side + 1) % 2
-			l.engine.ApplyEvent(SetupChangeSides{id, side})
-		} else {
-			if len(l.engine.Ids()) > 0 {
-				l.engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
-			}
-		}
-	}
 }
 
 func RegisterScript(name string, runner ScriptRunner) {
