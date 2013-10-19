@@ -18,6 +18,7 @@ import (
 	"github.com/runningwild/linear"
 	"math"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -292,16 +293,72 @@ type SetupPlayerData struct {
 	ChampIndex int
 }
 
+type localSetupData struct {
+	Engine *cgf.Engine
+
+	// Position of the cursor.
+	Index int
+
+	// Event handling and engine thinking can happen concurrently, so we need to
+	// be able to lock the local data.  Embedded for convenience.
+	sync.RWMutex
+}
+
 // Used before the 'game' starts to choose sides and characters and whatnot.
 type SetupData struct {
 	Mode      string                     // should be "moba" or "standard"
 	EngineIds []int64                    // engine ids of the engines currently joined
 	Players   map[int64]*SetupPlayerData // map from engineid to player data
 	Seed      int64                      // random seed
-	local     struct {
-		index int
+
+	local localSetupData
+}
+
+func (setup *SetupData) HandleEventGroup(group gin.EventGroup) {
+	setup.local.Engine.Pause()
+	defer setup.local.Engine.Unpause()
+
+	if found, event := group.FindEvent(gin.AnyUp); found && event.Type == gin.Press {
+		setup.local.Lock()
+		defer setup.local.Unlock()
+		if setup.local.Index > 0 {
+			setup.local.Index--
+		}
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyDown); found && event.Type == gin.Press {
+		setup.local.Lock()
+		defer setup.local.Unlock()
+		if setup.local.Index < len(setup.EngineIds) {
+			setup.local.Index++
+		}
+		return
+	}
+
+	if found, event := group.FindEvent(gin.AnyLeft); found && event.Type == gin.Press {
+		setup.local.Engine.ApplyEvent(SetupChampSelect{setup.local.Engine.Id(), -1})
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyRight); found && event.Type == gin.Press {
+		setup.local.Engine.ApplyEvent(SetupChampSelect{setup.local.Engine.Id(), 1})
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyReturn); found && event.Type == gin.Press {
+		setup.local.Lock()
+		defer setup.local.Unlock()
+		if setup.local.Index < len(setup.EngineIds) {
+			id := setup.EngineIds[setup.local.Index]
+			side := (setup.Players[id].Side + 1) % 2
+			setup.local.Engine.ApplyEvent(SetupChangeSides{id, side})
+		} else {
+			if len(setup.local.Engine.Ids()) > 0 {
+				setup.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			}
+		}
+		return
 	}
 }
+func (setup *SetupData) Think(t int64) {}
 
 type SetupSetEngineIds struct {
 	EngineIds []int64
@@ -374,7 +431,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
-
+	gin.In().UnregisterEventListener(g.Setup)
 	g.Engines = make(map[int64]*PlayerData)
 	for _, id := range g.Setup.EngineIds {
 		g.Engines[id] = &PlayerData{
@@ -383,8 +440,19 @@ func (u SetupComplete) Apply(_g interface{}) {
 			ChampIndex: g.Setup.Players[id].ChampIndex,
 		}
 	}
+
+	// Now that we have the information we can set up a lot of the local data for
+	// this engine's player.
 	g.local.Side = g.Engines[g.local.Engine.Id()].Side
 	g.local.Gid = g.Engines[g.local.Engine.Id()].PlayerGid
+	g.local.Data = g.Engines[g.local.Engine.Id()]
+	// Create the actualy ability objects that the player will use to interact
+	// with the game.
+	for _, ability := range g.Champs[g.local.Data.ChampIndex].Abilities {
+		g.local.Abilities = append(
+			g.local.Abilities,
+			ability_makers[ability.Name](ability.Params))
+	}
 
 	// Add a single Ai player to side 0
 	// g.Engines[123123] = &PlayerData{
@@ -469,6 +537,32 @@ type AiPlayerData struct {
 	Gid Gid
 }
 
+type localGameData struct {
+	// All of these values apply to the local player only
+	Engine    *cgf.Engine
+	Camera    cameraInfo
+	Gid       Gid
+	Side      int
+	Abilities []Ability
+
+	// This is just a convenience, it points to the PlayerData in
+	// Game.Engines[thisEngineId]
+	Data *PlayerData
+
+	// Event handling and engine thinking can happen concurrently, so we need to
+	// be able to lock the local data.  Embedded for convenience.
+	sync.RWMutex
+}
+
+func (local *localGameData) HandleEventGroup(group gin.EventGroup) {
+	local.Lock()
+	defer local.Unlock()
+	if local.Data == nil {
+		return
+	}
+}
+func (local *localGameData) Think(t int64) {}
+
 type Game struct {
 	Setup *SetupData
 
@@ -497,12 +591,7 @@ type Game struct {
 	// sent to clients to make debugging and tuning easier.
 	Champs []champ.Champion
 
-	local struct {
-		Engine *cgf.Engine
-		Camera cameraInfo
-		Gid    Gid
-		Side   int
-	}
+	local localGameData
 
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
@@ -556,6 +645,8 @@ func (g *Game) NextId() int {
 }
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
+	g.Setup.local.Engine = engine
+	gin.In().RegisterEventListener(g.Setup)
 	g.local.Engine = engine
 }
 
@@ -577,7 +668,7 @@ func MakeGame() *Game {
 		g.Champs[i].Defname = name
 		base.GetObject("champs", &g.Champs[i])
 	}
-
+	gin.In().RegisterEventListener(&g.local)
 	return &g
 }
 
@@ -662,46 +753,18 @@ func (g *Game) AddEnt(ent Ent) {
 }
 
 func (g *Game) ThinkSetup() {
+	g.local.Lock()
+	defer g.local.Unlock()
 	ids := g.local.Engine.Ids()
 	if len(ids) > 0 {
 		// This is the host engine - so update the list of ids in case it's changed
 		g.local.Engine.ApplyEvent(SetupSetEngineIds{ids})
 	}
 
-	if len(g.local.Engine.Ids()) > 0 {
-		if gin.In().GetKey(gin.AnyUp).FramePressCount() > 0 {
-			g.Setup.local.index--
-			if g.Setup.local.index < 0 {
-				g.Setup.local.index = 0
-			}
-		}
-		if gin.In().GetKey(gin.AnyDown).FramePressCount() > 0 {
-			g.Setup.local.index++
-			if g.Setup.local.index > len(g.Setup.EngineIds) {
-				g.Setup.local.index = len(g.Setup.EngineIds)
-			}
-		}
-	} else {
+	if len(g.local.Engine.Ids()) == 0 {
 		for i, v := range g.Setup.EngineIds {
 			if v == g.local.Engine.Id() {
-				g.Setup.local.index = i
-			}
-		}
-	}
-	if gin.In().GetKey(gin.AnyLeft).FramePressCount() > 0 {
-		g.local.Engine.ApplyEvent(SetupChampSelect{g.local.Engine.Id(), -1})
-	}
-	if gin.In().GetKey(gin.AnyRight).FramePressCount() > 0 {
-		g.local.Engine.ApplyEvent(SetupChampSelect{g.local.Engine.Id(), 1})
-	}
-	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
-		if g.Setup.local.index < len(g.Setup.EngineIds) {
-			id := g.Setup.EngineIds[g.Setup.local.index]
-			side := (g.Setup.Players[id].Side + 1) % 2
-			g.local.Engine.ApplyEvent(SetupChangeSides{id, side})
-		} else {
-			if len(g.local.Engine.Ids()) > 0 {
-				g.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+				g.Setup.local.Index = i
 			}
 		}
 	}
@@ -944,7 +1007,11 @@ func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
 
 	gw.Engine.Pause()
 	game := gw.Engine.GetState().(*Game)
+	// Note that since we do a READER lock on game.local we cannot do any writes
+	// to local data while rendering.
+	game.local.RLock()
 	game.RenderLocal(region)
+	game.local.RUnlock()
 	gw.Engine.Unpause()
 }
 func (gw *GameWindow) DrawFocused(region gui.Region) {}

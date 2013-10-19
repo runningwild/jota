@@ -99,6 +99,8 @@ func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 }
 
 func (g *Game) RenderLocalSetup(region g2.Region) {
+	g.Setup.local.RLock()
+	defer g.Setup.local.RUnlock()
 	dict := base.GetDictionary("luxisr")
 	size := 60.0
 	y := 100.0
@@ -112,7 +114,7 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 		}
 		dataStr := fmt.Sprintf("Engine %d, Side %d, %s", id, g.Setup.Players[id].Side, g.Champs[g.Setup.Players[id].ChampIndex].Name)
 		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
-		if g.local.Engine.Id() == 1 && i == g.Setup.local.index {
+		if g.local.Engine.Id() == 1 && i == g.Setup.local.Index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
 	}
@@ -120,7 +122,7 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 	gui.SetFontColor(0.7, 0.7, 0.7, 1)
 	if g.local.Engine.Id() == 1 {
 		dict.RenderString("Start!", size, y, 0, size, gui.Left)
-		if g.Setup.local.index == len(g.Setup.EngineIds) {
+		if g.Setup.local.Index == len(g.Setup.EngineIds) {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
 	}
