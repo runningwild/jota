@@ -287,17 +287,17 @@ type Level struct {
 	Room       Room
 }
 
-type SetupSideData struct {
-	Side  int
-	Champ int
+type SetupPlayerData struct {
+	Side       int
+	ChampIndex int
 }
 
 // Used before the 'game' starts to choose sides and characters and whatnot.
-type Setup struct {
-	Mode      string                   // should be "moba" or "standard"
-	EngineIds []int64                  // engine ids of the engines currently joined
-	Sides     map[int64]*SetupSideData // map from engineid to side data
-	Seed      int64                    // random seed
+type SetupData struct {
+	Mode      string                     // should be "moba" or "standard"
+	EngineIds []int64                    // engine ids of the engines currently joined
+	Players   map[int64]*SetupPlayerData // map from engineid to player data
+	Seed      int64                      // random seed
 	local     struct {
 		index int
 	}
@@ -314,8 +314,8 @@ func (s SetupSetEngineIds) Apply(_g interface{}) {
 	}
 	g.Setup.EngineIds = s.EngineIds
 	for _, id := range g.Setup.EngineIds {
-		if _, ok := g.Setup.Sides[id]; !ok {
-			g.Setup.Sides[id] = &SetupSideData{}
+		if _, ok := g.Setup.Players[id]; !ok {
+			g.Setup.Players[id] = &SetupPlayerData{}
 		}
 	}
 }
@@ -333,7 +333,7 @@ func (s SetupChangeSides) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
-	g.Setup.Sides[s.EngineId].Side = s.Side
+	g.Setup.Players[s.EngineId].Side = s.Side
 }
 func init() {
 	gob.Register(SetupChangeSides{})
@@ -352,16 +352,16 @@ func (s SetupChampSelect) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
-	sideData := g.Setup.Sides[s.EngineId]
+	sideData := g.Setup.Players[s.EngineId]
 	if sideData == nil {
 		return
 	}
-	sideData.Champ += s.Champ
-	if sideData.Champ < 0 {
-		sideData.Champ = 0
+	sideData.ChampIndex += s.Champ
+	if sideData.ChampIndex < 0 {
+		sideData.ChampIndex = 0
 	}
-	if sideData.Champ >= len(g.Champs) {
-		sideData.Champ = len(g.Champs) - 1
+	if sideData.ChampIndex >= len(g.Champs) {
+		sideData.ChampIndex = len(g.Champs) - 1
 	}
 }
 
@@ -378,8 +378,9 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Engines = make(map[int64]*PlayerData)
 	for _, id := range g.Setup.EngineIds {
 		g.Engines[id] = &PlayerData{
-			PlayerGid: Gid(fmt.Sprintf("Engine:%d", id)),
-			Side:      g.Setup.Sides[id].Side,
+			PlayerGid:  Gid(fmt.Sprintf("Engine:%d", id)),
+			Side:       g.Setup.Players[id].Side,
+			ChampIndex: g.Setup.Players[id].ChampIndex,
 		}
 	}
 	g.local.Side = g.Engines[g.local.Engine.Id()].Side
@@ -391,7 +392,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	// 	Side:      0,
 	// 	Ai:        &AiPlayerData{Gid(fmt.Sprintf("Engine:%d", 123123))},
 	// }
-	// g.Setup.Sides[123123] = &SetupSideData{
+	// g.Setup.Players[123123] = &SetupPlayerData{
 	// 	Champ: 0,
 	// 	Side:  0,
 	// }
@@ -428,12 +429,12 @@ func (u SetupComplete) Apply(_g interface{}) {
 		for _, id := range players {
 			ids = append(ids, id)
 		}
-		side := g.Setup.Sides[ids[0]].Side
+		side := g.Setup.Players[ids[0]].Side
 		gids := g.AddPlayers(ids, side)
 		g.Moba.Sides[side] = &GameModeMobaSideData{}
 		for i := range ids {
 			player := g.Ents[gids[i]].(*PlayerEnt)
-			player.Champ = g.Setup.Sides[ids[i]].Champ
+			player.Champ = g.Setup.Players[ids[i]].ChampIndex
 		}
 	}
 	g.Moba.losCache = makeLosCache(dx, dy)
@@ -448,6 +449,7 @@ func init() {
 }
 
 type PlayerData struct {
+	// If the player's Ent is in the game then its Gid will match this one.
 	PlayerGid Gid
 
 	// If positive, this is the number of frames remaining until the player
@@ -455,6 +457,9 @@ type PlayerData struct {
 	CountdownFrames int
 
 	Side int
+
+	// Index into the champs array of the champion that this player is using.
+	ChampIndex int
 
 	// If this is an ai controlled player then this will be non-nil.
 	Ai *AiPlayerData
@@ -465,7 +470,7 @@ type AiPlayerData struct {
 }
 
 type Game struct {
-	Setup *Setup
+	Setup *SetupData
 
 	Levels map[Gid]*Level
 
@@ -556,9 +561,9 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 
 func MakeGame() *Game {
 	var g Game
-	g.Setup = &Setup{}
+	g.Setup = &SetupData{}
 	g.Setup.Mode = "moba"
-	g.Setup.Sides = make(map[int64]*SetupSideData)
+	g.Setup.Players = make(map[int64]*SetupPlayerData)
 
 	// NOTE: Obviously this isn't threadsafe, but I don't intend to be Init()ing
 	// multiple game objects at the same time.
@@ -692,7 +697,7 @@ func (g *Game) ThinkSetup() {
 	if gin.In().GetKey(gin.AnyReturn).FramePressCount() > 0 {
 		if g.Setup.local.index < len(g.Setup.EngineIds) {
 			id := g.Setup.EngineIds[g.Setup.local.index]
-			side := (g.Setup.Sides[id].Side + 1) % 2
+			side := (g.Setup.Players[id].Side + 1) % 2
 			g.local.Engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
 			if len(g.local.Engine.Ids()) > 0 {

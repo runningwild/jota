@@ -110,7 +110,7 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 		} else {
 			gui.SetFontColor(0.7, 0.7, 0.7, 1)
 		}
-		dataStr := fmt.Sprintf("Engine %d, Side %d, %s", id, g.Setup.Sides[id].Side, g.Champs[g.Setup.Sides[id].Champ].Name)
+		dataStr := fmt.Sprintf("Engine %d, Side %d, %s", id, g.Setup.Players[id].Side, g.Champs[g.Setup.Players[id].ChampIndex].Name)
 		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
 		if g.local.Engine.Id() == 1 && i == g.Setup.local.index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
@@ -259,6 +259,7 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	}
 	gl.Disable(gl.TEXTURE_2D)
 
+	// TODO: figure out how to draw abilities.
 	// for i := range local.moba.players {
 	// 	p := &local.moba.players[i]
 	// 	if p.abs.activeAbility != nil {
