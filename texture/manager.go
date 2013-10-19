@@ -78,6 +78,10 @@ func (d *Data) RenderNatural(x, y int) {
 }
 
 func Render(x, y, dx, dy float64) {
+	setupTextureList()
+	if textureList == 0 {
+		return
+	}
 	var run, op mathgl.Mat4
 	run.Identity()
 	op.Translation(float32(x), float32(y), 0)
@@ -93,44 +97,52 @@ func Render(x, y, dx, dy float64) {
 }
 
 func (d *Data) Render(x, y, dx, dy float64) {
-	if textureList != 0 {
-		d.Bind()
-		Render(x, y, dx, dy)
+	setupTextureList()
+	if textureList == 0 {
+		return
 	}
+	d.Bind()
+	Render(x, y, dx, dy)
 }
 
 func (d *Data) RenderAdvanced(x, y, dx, dy, rot float64, flip bool) {
+	setupTextureList()
+	if textureList == 0 {
+		return
+	}
 	d.Bind()
 	RenderAdvanced(x, y, dx, dy, rot, flip)
 }
 
 func RenderAdvanced(x, y, dx, dy, rot float64, flip bool) {
-	if textureList != 0 {
-		var run, op mathgl.Mat4
-		run.Identity()
-		op.Translation(float32(x), float32(y), 0)
-		run.Multiply(&op)
-		op.Translation(float32(dx/2), float32(dy/2), 0)
-		run.Multiply(&op)
-		op.RotationZ(float32(rot))
-		run.Multiply(&op)
-		if flip {
-			op.Translation(float32(-dx/2), float32(-dy/2), 0)
-			run.Multiply(&op)
-			op.Scaling(float32(dx), float32(dy), 1)
-			run.Multiply(&op)
-		} else {
-			op.Translation(float32(dx/2), float32(-dy/2), 0)
-			run.Multiply(&op)
-			op.Scaling(float32(-dx), float32(dy), 1)
-			run.Multiply(&op)
-		}
-		gl.PushMatrix()
-		gl.MultMatrixf((*gl.Float)(&run[0]))
-		gl.Enable(gl.TEXTURE_2D)
-		gl.CallList(textureList)
-		gl.PopMatrix()
+	setupTextureList()
+	if textureList == 0 {
+		return
 	}
+	var run, op mathgl.Mat4
+	run.Identity()
+	op.Translation(float32(x), float32(y), 0)
+	run.Multiply(&op)
+	op.Translation(float32(dx/2), float32(dy/2), 0)
+	run.Multiply(&op)
+	op.RotationZ(float32(rot))
+	run.Multiply(&op)
+	if flip {
+		op.Translation(float32(-dx/2), float32(-dy/2), 0)
+		run.Multiply(&op)
+		op.Scaling(float32(dx), float32(dy), 1)
+		run.Multiply(&op)
+	} else {
+		op.Translation(float32(dx/2), float32(-dy/2), 0)
+		run.Multiply(&op)
+		op.Scaling(float32(-dx), float32(dy), 1)
+		run.Multiply(&op)
+	}
+	gl.PushMatrix()
+	gl.MultMatrixf((*gl.Float)(&run[0]))
+	gl.Enable(gl.TEXTURE_2D)
+	gl.CallList(textureList)
+	gl.PopMatrix()
 }
 
 func (d *Data) Bind() {
