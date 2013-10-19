@@ -383,6 +383,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 		}
 	}
 	g.local.Side = g.Engines[g.local.Engine.Id()].Side
+	g.local.Gid = g.Engines[g.local.Engine.Id()].PlayerGid
 
 	// Add a single Ai player to side 0
 	// g.Engines[123123] = &PlayerData{
@@ -494,6 +495,7 @@ type Game struct {
 	local struct {
 		Engine *cgf.Engine
 		Camera cameraInfo
+		Gid    Gid
 		Side   int
 	}
 

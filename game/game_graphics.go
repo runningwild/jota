@@ -145,6 +145,52 @@ func expandPoly(in linear.Poly, out *linear.Poly) {
 	}
 }
 
+func (g *Game) RenderLosMask() {
+	ent := g.Ents[g.local.Gid]
+	if ent == nil {
+		return
+	}
+	walls := g.temp.VisibleWallCache[GidInvadersStart].GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Color4ub(0, 0, 0, 255)
+	gl.Begin(gl.TRIANGLES)
+	for _, wall := range walls {
+		if wall.Right(ent.Pos()) {
+			continue
+		}
+		a := wall.P
+		b := ent.Pos().Sub(wall.P).Norm().Scale(-10000.0).Add(wall.P)
+		mid := wall.P.Add(wall.Q).Scale(0.5)
+		c := ent.Pos().Sub(mid).Norm().Scale(-10000.0).Add(mid)
+		d := ent.Pos().Sub(wall.Q).Norm().Scale(-10000.0).Add(wall.Q)
+		e := wall.Q
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(b.X), gl.Double(b.Y))
+		gl.Vertex2d(gl.Double(c.X), gl.Double(c.Y))
+
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(c.X), gl.Double(c.Y))
+		gl.Vertex2d(gl.Double(d.X), gl.Double(d.Y))
+
+		gl.Vertex2d(gl.Double(a.X), gl.Double(a.Y))
+		gl.Vertex2d(gl.Double(d.X), gl.Double(d.Y))
+		gl.Vertex2d(gl.Double(e.X), gl.Double(e.Y))
+	}
+	gl.End()
+	base.EnableShader("horizon")
+	base.SetUniformV2("horizon", "center", ent.Pos())
+	base.SetUniformF("horizon", "horizon", LosMaxDist)
+	gl.Begin(gl.QUADS)
+	dx := gl.Int(g.Levels[GidInvadersStart].Room.Dx)
+	dy := gl.Int(g.Levels[GidInvadersStart].Room.Dy)
+	gl.Vertex2i(0, 0)
+	gl.Vertex2i(dx, 0)
+	gl.Vertex2i(dx, dy)
+	gl.Vertex2i(0, dy)
+	gl.End()
+	base.EnableShader("")
+}
+
 func (g *Game) RenderLocalGame(region g2.Region) {
 	// func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
 	g.local.Camera.FocusRegion(g, 0)
@@ -213,21 +259,18 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	}
 	gl.Disable(gl.TEXTURE_2D)
 
-	// 	if local.mode != LocalModeMoba {
-	// 		panic("Need to implement drawing players from standard mode data")
+	// for i := range local.moba.players {
+	// 	p := &local.moba.players[i]
+	// 	if p.abs.activeAbility != nil {
+	// 		p.abs.activeAbility.Draw(p.gid, g, side)
 	// 	}
-	// 	for i := range local.moba.players {
-	// 		p := &local.moba.players[i]
-	// 		if p.abs.activeAbility != nil {
-	// 			p.abs.activeAbility.Draw(p.gid, g, side)
-	// 		}
-	// 	}
-	// 	for _, proc := range g.Processes {
-	// 		proc.Draw(Gid(""), g, side)
-	// 	}
+	// }
+	// for _, proc := range g.Processes {
+	// 	proc.Draw(Gid(""), g, side)
+	// }
 
-	// 	gl.Color4ub(0, 0, 255, 200)
-	// 	g.renderLosMask(local)
+	gl.Color4ub(0, 0, 255, 200)
+	g.RenderLosMask()
 }
 
 // Draws everything that is relevant to the players on a computer, but not the
