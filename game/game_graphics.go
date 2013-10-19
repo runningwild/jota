@@ -4,9 +4,11 @@ package game
 
 import (
 	"fmt"
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
+	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 )
 
@@ -23,8 +25,77 @@ type cameraInfo struct {
 	cursorHidden bool
 }
 
-type gameLocalData struct {
-	camera cameraInfo
+func (camera *cameraInfo) FocusRegion(g *Game, side int) {
+	min := linear.Vec2{1e9, 1e9}
+	max := linear.Vec2{-1e9, -1e9}
+	hits := 0
+	for _, ent := range g.temp.AllEnts {
+		if ent.Side() != side {
+			continue
+		}
+		if player, ok := ent.(*PlayerEnt); ok {
+			hits++
+			pos := player.Pos()
+			if pos.X < min.X {
+				min.X = pos.X
+			}
+			if pos.Y < min.Y {
+				min.Y = pos.Y
+			}
+			if pos.X > max.X {
+				max.X = pos.X
+			}
+			if pos.Y > max.Y {
+				max.Y = pos.Y
+			}
+		}
+	}
+	if hits == 0 {
+		min.X = 0
+		min.Y = 0
+		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+		max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+	} else {
+		min.X -= stats.LosPlayerHorizon + 50
+		min.Y -= stats.LosPlayerHorizon + 50
+		if min.X < 0 {
+			min.X = 0
+		}
+		if min.Y < 0 {
+			min.Y = 0
+		}
+		max.X += stats.LosPlayerHorizon + 50
+		max.Y += stats.LosPlayerHorizon + 50
+		if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
+			max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+		}
+		if max.Y > float64(g.Levels[GidInvadersStart].Room.Dy) {
+			max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+		}
+	}
+
+	mid := min.Add(max).Scale(0.5)
+	dims := max.Sub(min)
+	if dims.X/dims.Y < camera.regionDims.X/camera.regionDims.Y {
+		dims.X = dims.Y * camera.regionDims.X / camera.regionDims.Y
+	} else {
+		dims.Y = dims.X * camera.regionDims.Y / camera.regionDims.X
+	}
+	camera.target.dims = dims
+	camera.target.mid = mid
+
+	if camera.current.mid.X == 0 && camera.current.mid.Y == 0 {
+		// On the very first frame the current midpoint will be (0,0), which should
+		// never happen after the game begins.  In this one case we'll immediately
+		// set current to target so we don't start off by approaching it from the
+		// origin.
+		camera.current = camera.target
+	} else {
+		// speed is in (0, 1), the higher it is, the faster current approaches target.
+		speed := 0.1
+		camera.current.dims = camera.current.dims.Scale(1 - speed).Add(camera.target.dims.Scale(speed))
+		camera.current.mid = camera.current.mid.Scale(1 - speed).Add(camera.target.mid.Scale(speed))
+	}
 }
 
 func (g *Game) RenderLocalSetup(region g2.Region) {
@@ -55,16 +126,89 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 	}
 }
 
-func (g *Game) RenderLocalMoba(region g2.Region) {
-	// g.renderLocalHelper(region, local, &local.moba.currentPlayer.camera, local.moba.currentPlayer.side)
-	// if g.Ents[local.moba.currentPlayer.gid] == nil {
-	//   var id int64
-	//   fmt.Sscanf(string(local.moba.currentPlayer.gid), "Engine:%d", &id)
-	//   seconds := float64(g.Engines[id].CountdownFrames) / 60.0
-	//   dict := base.GetDictionary("luxisr")
-	//   gui.SetFontColor(0.7, 0.7, 1, 1)
-	//   dict.RenderString(fmt.Sprintf("%2.3f", seconds), 300, 300, 0, 100, gui.Left)
-	// }
+func (g *Game) RenderLocalGame(region g2.Region) {
+	// func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
+	g.local.Camera.FocusRegion(g, 0)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	// Set the viewport so that we only render into the region that we're supposed
+	// to render to.
+	// TODO: Check if this works on all graphics cards - I've heard that the opengl
+	// spec doesn't actually require that viewport does any clipping.
+	gl.PushAttrib(gl.VIEWPORT_BIT)
+	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
+	defer gl.PopAttrib()
+
+	current := &g.local.Camera.current
+	gl.Ortho(
+		gl.Double(current.mid.X-current.dims.X/2),
+		gl.Double(current.mid.X+current.dims.X/2),
+		gl.Double(current.mid.Y+current.dims.Y/2),
+		gl.Double(current.mid.Y-current.dims.Y/2),
+		gl.Double(1000),
+		gl.Double(-1000),
+	)
+	defer func() {
+		gl.MatrixMode(gl.PROJECTION)
+		gl.PopMatrix()
+		gl.MatrixMode(gl.MODELVIEW)
+	}()
+	gl.MatrixMode(gl.MODELVIEW)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	level := g.Levels[GidInvadersStart]
+	zoom := current.dims.X / float64(region.Dims.Dx)
+	level.ManaSource.Draw(zoom, float64(level.Room.Dx), float64(level.Room.Dy))
+
+	// 	gl.Color4d(1, 1, 1, 1)
+	// 	var expandedPoly linear.Poly
+	// 	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
+	// 		// Don't draw counter-clockwise polys, specifically this means don't draw
+	// 		// the boundary of the level.
+	// 		if poly.IsCounterClockwise() {
+	// 			continue
+	// 		}
+	// 		// KLUDGE: This will expand the polygon slightly so that it actually shows
+	// 		// up when the los shadows are drawn over it.  Eventually there should be
+	// 		// separate los polys, colision polys, and draw polys so that this isn't
+	// 		// necessary.
+	// 		gl.Begin(gl.TRIANGLE_FAN)
+	// 		expandPoly(poly, &expandedPoly)
+	// 		for _, v := range expandedPoly {
+	// 			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+	// 		}
+	// 		gl.End()
+	// 	}
+
+	// 	gui.SetFontColor(0, 255, 0, 255)
+	// 	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
+	// 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
+	// 	}
+
+	// 	gl.Color4d(1, 1, 1, 1)
+	// 	for _, ent := range g.temp.AllEnts {
+	// 		ent.Draw(g, side)
+	// 	}
+	// 	gl.Disable(gl.TEXTURE_2D)
+
+	// 	if local.mode != LocalModeMoba {
+	// 		panic("Need to implement drawing players from standard mode data")
+	// 	}
+	// 	for i := range local.moba.players {
+	// 		p := &local.moba.players[i]
+	// 		if p.abs.activeAbility != nil {
+	// 			p.abs.activeAbility.Draw(p.gid, g, side)
+	// 		}
+	// 	}
+	// 	for _, proc := range g.Processes {
+	// 		proc.Draw(Gid(""), g, side)
+	// 	}
+
+	// 	gl.Color4ub(0, 0, 255, 200)
+	// 	g.renderLosMask(local)
 }
 
 // Draws everything that is relevant to the players on a computer, but not the
@@ -77,5 +221,5 @@ func (g *Game) RenderLocal(region g2.Region) {
 	}
 	g.local.Camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	g.local.Camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
-	g.RenderLocalMoba(region)
+	g.RenderLocalGame(region)
 }
