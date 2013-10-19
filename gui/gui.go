@@ -160,7 +160,7 @@ func (g *Gui) Draw() {
 	gl.LoadIdentity()
 	g.root.Draw(g.region, &styleStack{})
 }
-func (g *Gui) Think(t int64) {
+func (g *Gui) Think() {
 	g.root.Think(g)
 }
 func (g *Gui) HandleEventGroup(eventGroup gin.EventGroup) {

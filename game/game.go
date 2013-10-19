@@ -153,7 +153,7 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
-			Acc:    3000.0,
+			Acc:    300.0,
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
@@ -294,8 +294,6 @@ type SetupPlayerData struct {
 }
 
 type localSetupData struct {
-	Engine *cgf.Engine
-
 	// Position of the cursor.
 	Index int
 
@@ -314,10 +312,7 @@ type SetupData struct {
 	local localSetupData
 }
 
-func (setup *SetupData) HandleEventGroup(group gin.EventGroup) {
-	setup.local.Engine.Pause()
-	defer setup.local.Engine.Unpause()
-
+func (setup *SetupData) HandleEventGroup(group gin.EventGroup, engine *cgf.Engine) {
 	if found, event := group.FindEvent(gin.AnyUp); found && event.Type == gin.Press {
 		setup.local.Lock()
 		defer setup.local.Unlock()
@@ -336,11 +331,11 @@ func (setup *SetupData) HandleEventGroup(group gin.EventGroup) {
 	}
 
 	if found, event := group.FindEvent(gin.AnyLeft); found && event.Type == gin.Press {
-		setup.local.Engine.ApplyEvent(SetupChampSelect{setup.local.Engine.Id(), -1})
+		engine.ApplyEvent(SetupChampSelect{engine.Id(), -1})
 		return
 	}
 	if found, event := group.FindEvent(gin.AnyRight); found && event.Type == gin.Press {
-		setup.local.Engine.ApplyEvent(SetupChampSelect{setup.local.Engine.Id(), 1})
+		engine.ApplyEvent(SetupChampSelect{engine.Id(), 1})
 		return
 	}
 	if found, event := group.FindEvent(gin.AnyReturn); found && event.Type == gin.Press {
@@ -349,16 +344,68 @@ func (setup *SetupData) HandleEventGroup(group gin.EventGroup) {
 		if setup.local.Index < len(setup.EngineIds) {
 			id := setup.EngineIds[setup.local.Index]
 			side := (setup.Players[id].Side + 1) % 2
-			setup.local.Engine.ApplyEvent(SetupChangeSides{id, side})
+			engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
-			if len(setup.local.Engine.Ids()) > 0 {
-				setup.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			if len(engine.Ids()) > 0 {
+				engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
 			}
 		}
 		return
 	}
 }
-func (setup *SetupData) Think(t int64) {}
+
+// Because we don't want Think() to be called by both cgf and gin, we put a
+// wrapper around Game so that the Think() method called by gin is caught and
+// is just a nop.
+type GameEventHandleWrapper struct {
+	*Game
+}
+
+func (GameEventHandleWrapper) Think() {}
+
+func axisControl(v float64) float64 {
+	floor := 0.1
+	if v < floor {
+		return 0.0
+	}
+	v = (v - floor) / (1.0 - floor)
+	v *= v
+	return v
+}
+
+func (g *Game) HandleEventGroup(group gin.EventGroup) {
+	g.local.Engine.Pause()
+	defer g.local.Engine.Unpause()
+
+	if g.Setup != nil {
+		g.Setup.HandleEventGroup(group, g.local.Engine)
+		return
+	}
+
+	g.local.RLock()
+	defer g.local.RUnlock()
+
+	if found, event := group.FindEvent(gin.AnyKeyW); found {
+		g.local.Up = event.Key.CurPressAmt()
+		g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyKeyS); found {
+		g.local.Down = event.Key.CurPressAmt()
+		g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyKeyD); found {
+		g.local.Right = event.Key.CurPressAmt()
+		g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
+		return
+	}
+	if found, event := group.FindEvent(gin.AnyKeyA); found {
+		g.local.Left = event.Key.CurPressAmt()
+		g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
+		return
+	}
+}
 
 type SetupSetEngineIds struct {
 	EngineIds []int64
@@ -431,7 +478,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
-	gin.In().UnregisterEventListener(g.Setup)
 	g.Engines = make(map[int64]*PlayerData)
 	for _, id := range g.Setup.EngineIds {
 		g.Engines[id] = &PlayerData{
@@ -537,13 +583,18 @@ type AiPlayerData struct {
 	Gid Gid
 }
 
+// All of these values apply to the local player only
 type localGameData struct {
-	// All of these values apply to the local player only
 	Engine    *cgf.Engine
 	Camera    cameraInfo
 	Gid       Gid
 	Side      int
 	Abilities []Ability
+
+	// As long as we're using the keyboard, this is to make sure we track the
+	// value of each key properly, so that you don't stop rotating left if you
+	// release the right key, for example.
+	Up, Down, Left, Right float64
 
 	// This is just a convenience, it points to the PlayerData in
 	// Game.Engines[thisEngineId]
@@ -553,15 +604,6 @@ type localGameData struct {
 	// be able to lock the local data.  Embedded for convenience.
 	sync.RWMutex
 }
-
-func (local *localGameData) HandleEventGroup(group gin.EventGroup) {
-	local.Lock()
-	defer local.Unlock()
-	if local.Data == nil {
-		return
-	}
-}
-func (local *localGameData) Think(t int64) {}
 
 type Game struct {
 	Setup *SetupData
@@ -645,8 +687,8 @@ func (g *Game) NextId() int {
 }
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
-	g.Setup.local.Engine = engine
-	gin.In().RegisterEventListener(g.Setup)
+	// TODO: Unregister this at some point, nub
+	gin.In().RegisterEventListener(GameEventHandleWrapper{g})
 	g.local.Engine = engine
 }
 
@@ -668,7 +710,6 @@ func MakeGame() *Game {
 		g.Champs[i].Defname = name
 		base.GetObject("champs", &g.Champs[i])
 	}
-	gin.In().RegisterEventListener(&g.local)
 	return &g
 }
 

@@ -583,16 +583,6 @@ func (l *LocalData) thinkAbility(g *Game, abs *personalAbilities, gid Gid) {
 	}
 }
 
-func axisControl(v float64) float64 {
-	floor := 0.1
-	if v < floor {
-		return 0.0
-	}
-	v = (v - floor) / (1.0 - floor)
-	v *= v
-	return v
-}
-
 func (l *LocalData) localThinkArchitect(g *Game) {
 	l.thinkAbility(g, &l.architect.abs, "")
 }
