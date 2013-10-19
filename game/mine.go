@@ -2,10 +2,10 @@ package game
 
 import (
 	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 )
 
 // Moba base ent
@@ -54,7 +54,7 @@ func (m *Mine) Think(g *Game) {
 	}
 }
 
-func (m *Mine) Draw(g *Game, side int) {
+func (m *Mine) Draw(g *Game) {
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.01)
 	base.SetUniformF("status_bar", "outer", 0.03)

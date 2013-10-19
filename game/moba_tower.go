@@ -2,10 +2,10 @@ package game
 
 import (
 	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
+	"github.com/runningwild/linear"
 )
 
 type ControlPoint struct {
@@ -151,7 +151,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 }
 
-func (cp *ControlPoint) Draw(g *Game, side int) {
+func (cp *ControlPoint) Draw(g *Game) {
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.95)
 	gl.Color4ub(50, 50, 100, 150)
@@ -175,7 +175,7 @@ func (cp *ControlPoint) Draw(g *Game, side int) {
 
 	base.SetUniformF("status_bar", "frac", float32(cp.Control))
 	if cp.Controlled {
-		if side == cp.Controller {
+		if g.local.Side == cp.Controller {
 			gl.Color4ub(0, 255, 0, 255)
 		} else {
 			gl.Color4ub(255, 0, 0, 255)
@@ -194,7 +194,7 @@ func (cp *ControlPoint) Draw(g *Game, side int) {
 		2*cp.Stats().Size(),
 		2*cp.Stats().Size(),
 		0,
-		side == cp.Controller)
+		g.local.Side == cp.Controller)
 	base.EnableShader("")
 }
 func (cp *ControlPoint) Supply(mana Mana) Mana { return Mana{} }

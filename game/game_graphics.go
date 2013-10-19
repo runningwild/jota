@@ -126,6 +126,25 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 	}
 }
 
+func expandPoly(in linear.Poly, out *linear.Poly) {
+	if len(*out) < len(in) {
+		*out = make(linear.Poly, len(in))
+	}
+	for i := range *out {
+		(*out)[i] = linear.Vec2{}
+	}
+	for i, v := range in {
+		segi := in.Seg(i)
+		(*out)[i] = (*out)[i].Add(v.Add(segi.Ray().Cross().Norm().Scale(8.0)))
+		j := (i - 1 + len(in)) % len(in)
+		segj := in.Seg(j)
+		(*out)[i] = (*out)[i].Add(v.Add(segj.Ray().Cross().Norm().Scale(8.0)))
+	}
+	for i := range *out {
+		(*out)[i] = (*out)[i].Scale(0.5)
+	}
+}
+
 func (g *Game) RenderLocalGame(region g2.Region) {
 	// func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
 	g.local.Camera.FocusRegion(g, 0)
@@ -163,36 +182,36 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	zoom := current.dims.X / float64(region.Dims.Dx)
 	level.ManaSource.Draw(zoom, float64(level.Room.Dx), float64(level.Room.Dy))
 
-	// 	gl.Color4d(1, 1, 1, 1)
-	// 	var expandedPoly linear.Poly
-	// 	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
-	// 		// Don't draw counter-clockwise polys, specifically this means don't draw
-	// 		// the boundary of the level.
-	// 		if poly.IsCounterClockwise() {
-	// 			continue
-	// 		}
-	// 		// KLUDGE: This will expand the polygon slightly so that it actually shows
-	// 		// up when the los shadows are drawn over it.  Eventually there should be
-	// 		// separate los polys, colision polys, and draw polys so that this isn't
-	// 		// necessary.
-	// 		gl.Begin(gl.TRIANGLE_FAN)
-	// 		expandPoly(poly, &expandedPoly)
-	// 		for _, v := range expandedPoly {
-	// 			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	// 		}
-	// 		gl.End()
-	// 	}
+	gl.Color4d(1, 1, 1, 1)
+	var expandedPoly linear.Poly
+	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
+		// Don't draw counter-clockwise polys, specifically this means don't draw
+		// the boundary of the level.
+		if poly.IsCounterClockwise() {
+			continue
+		}
+		// KLUDGE: This will expand the polygon slightly so that it actually shows
+		// up when the los shadows are drawn over it.  Eventually there should be
+		// separate los polys, colision polys, and draw polys so that this isn't
+		// necessary.
+		gl.Begin(gl.TRIANGLE_FAN)
+		expandPoly(poly, &expandedPoly)
+		for _, v := range expandedPoly {
+			gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		}
+		gl.End()
+	}
 
-	// 	gui.SetFontColor(0, 255, 0, 255)
-	// 	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
-	// 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
-	// 	}
+	gui.SetFontColor(0, 255, 0, 255)
+	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
+		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
+	}
 
-	// 	gl.Color4d(1, 1, 1, 1)
-	// 	for _, ent := range g.temp.AllEnts {
-	// 		ent.Draw(g, side)
-	// 	}
-	// 	gl.Disable(gl.TEXTURE_2D)
+	gl.Color4d(1, 1, 1, 1)
+	for _, ent := range g.temp.AllEnts {
+		ent.Draw(g)
+	}
+	gl.Disable(gl.TEXTURE_2D)
 
 	// 	if local.mode != LocalModeMoba {
 	// 		panic("Need to implement drawing players from standard mode data")

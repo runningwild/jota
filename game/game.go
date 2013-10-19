@@ -180,14 +180,10 @@ func init() {
 	gob.Register(&PlayerEnt{})
 }
 
-// func (p *PlayerEnt) ReleaseResources() {
-// 	p.Los.ReleaseResources()
-// }
-
-func (p *PlayerEnt) Draw(game *Game, side int) {
+func (p *PlayerEnt) Draw(game *Game) {
 	var t *texture.Data
 	var alpha gl.Ubyte
-	if side == p.Side() {
+	if game.local.Side == p.Side() {
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()/2))
 	} else {
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()))
@@ -209,7 +205,7 @@ func (p *PlayerEnt) Draw(game *Game, side int) {
 		false)
 
 	for _, proc := range p.Processes {
-		proc.Draw(p.Id(), game, side)
+		proc.Draw(p.Id(), game, game.local.Side)
 	}
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.08)
@@ -245,7 +241,7 @@ func (p *PlayerEnt) Supply(supply Mana) Mana {
 }
 
 type Ent interface {
-	Draw(g *Game, side int)
+	Draw(g *Game)
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 
@@ -386,6 +382,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 			Side:      g.Setup.Sides[id].Side,
 		}
 	}
+	g.local.Side = g.Engines[g.local.Engine.Id()].Side
 
 	// Add a single Ai player to side 0
 	// g.Engines[123123] = &PlayerData{
@@ -497,6 +494,7 @@ type Game struct {
 	local struct {
 		Engine *cgf.Engine
 		Camera cameraInfo
+		Side   int
 	}
 
 	temp struct {

@@ -14,6 +14,7 @@
   required, except maybe to report previously unseen crashes.
 - Simple AIs are in, give them a way to randomly use abilities.
 - Once glop stuff is all stubbed out make a server binary that can be run anywhere.
+- Instead of shadows being black they should show a greyed out version of the map, with no entities.
 
 Theoretically fixed, still need verification:
 - Change how sys.Think() works on windows to avoid the need for two branches.
