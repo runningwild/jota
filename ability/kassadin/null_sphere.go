@@ -263,7 +263,7 @@ func (e addNullSphereFireEvent) Apply(_g interface{}) {
 			Acc:    nsProc.Cost / 2,
 		},
 		game.HeatSeekerParams{
-			Target:             target.Id(),
+			TargetGid:          target.Id(),
 			Damages:            []stats.Damage{{stats.DamageFire, 50}},
 			ConditionMakers:    []game.ConditionMaker{{"silence", map[string]int{"duration": 300}}},
 			Timer:              300,

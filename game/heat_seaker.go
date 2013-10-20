@@ -27,7 +27,7 @@ type ConditionMaker struct {
 }
 
 type HeatSeekerParams struct {
-	Target Gid
+	TargetGid Gid
 
 	// The damage to do to ents in the AoE
 	Damages []stats.Damage
@@ -142,7 +142,7 @@ func (hs *HeatSeeker) Think(g *Game) {
 		hs.Asplode(g)
 		return
 	}
-	targetEnt := g.Ents[hs.Target]
+	targetEnt := g.Ents[hs.TargetGid]
 	if targetEnt == nil {
 		hs.Asplode(g)
 		return

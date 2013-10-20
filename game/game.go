@@ -373,6 +373,25 @@ func axisControl(v float64) float64 {
 	return v
 }
 
+// Queries the input system for the direction that this controller is moving in
+func getControllerDirection(controller gin.DeviceId) linear.Vec2 {
+	right := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+0, controller.Type, controller.Index)
+	left := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+0, controller.Type, controller.Index)
+	up := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, controller.Type, controller.Index)
+	down := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, controller.Type, controller.Index)
+	v := linear.Vec2{
+		axisControl(left.CurPressAmt()) - axisControl(right.CurPressAmt()),
+		axisControl(down.CurPressAmt()) - axisControl(up.CurPressAmt()),
+	}
+	v.X = math.Copysign(v.X*v.X, v.X)
+	v.Y = math.Copysign(v.Y*v.Y, v.Y)
+	angle := v.Angle()
+	if v.Mag2() > 1 {
+		v = v.Norm()
+	}
+	return (linear.Vec2{v.Mag(), 0}).Rotate(angle)
+}
+
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	g.local.Engine.Pause()
 	defer g.local.Engine.Unpause()
@@ -385,26 +404,35 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	g.local.RLock()
 	defer g.local.RUnlock()
 
-	if found, event := group.FindEvent(gin.AnyKeyW); found {
-		g.local.Up = event.Key.CurPressAmt()
-		g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
-		return
+	if group.Events[0].Key.Id().Device.Type == gin.DeviceTypeController {
+		dir := getControllerDirection(gin.DeviceId{gin.DeviceTypeController, gin.DeviceIndexAny})
+		g.local.Engine.ApplyEvent(&Move{
+			Gid:       g.local.Gid,
+			Angle:     dir.Angle(),
+			Magnitude: dir.Mag(),
+		})
 	}
-	if found, event := group.FindEvent(gin.AnyKeyS); found {
-		g.local.Down = event.Key.CurPressAmt()
-		g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
-		return
-	}
-	if found, event := group.FindEvent(gin.AnyKeyD); found {
-		g.local.Right = event.Key.CurPressAmt()
-		g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
-		return
-	}
-	if found, event := group.FindEvent(gin.AnyKeyA); found {
-		g.local.Left = event.Key.CurPressAmt()
-		g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
-		return
-	}
+
+	// if found, event := group.FindEvent(right.Id()); found {
+	// 	g.local.Left = event.Key.CurPressAmt()
+	// 	g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
+	// 	return
+	// }
+	// if found, event := group.FindEvent(left.Id()); found {
+	// 	g.local.Right = event.Key.CurPressAmt()
+	// 	g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
+	// 	return
+	// }
+	// if found, event := group.FindEvent(up.Id()); found {
+	// 	g.local.Up = event.Key.CurPressAmt()
+	// 	g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
+	// 	return
+	// }
+	// if found, event := group.FindEvent(down.Id()); found {
+	// 	g.local.Down = event.Key.CurPressAmt()
+	// 	g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
+	// 	return
+	// }
 }
 
 type SetupSetEngineIds struct {
@@ -978,6 +1006,30 @@ func (t Turn) Apply(_g interface{}) {
 		return
 	}
 	player.Delta.Angle = t.Delta
+}
+
+type Move struct {
+	Gid       Gid
+	Angle     float64
+	Magnitude float64
+}
+
+func init() {
+	gob.Register(Move{})
+}
+
+func (m Move) Apply(_g interface{}) {
+	g := _g.(*Game)
+	player, ok := g.Ents[m.Gid].(*PlayerEnt)
+	if !ok {
+		return
+	}
+	if m.Magnitude == 0 {
+		player.Target.Angle = player.Angle_
+	} else {
+		player.Target.Angle = m.Angle
+	}
+	player.Delta.Speed = m.Magnitude
 }
 
 type Accelerate struct {

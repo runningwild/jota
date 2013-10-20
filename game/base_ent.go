@@ -17,6 +17,9 @@ type BaseEnt struct {
 		Speed float64
 		Angle float64
 	}
+	Target struct {
+		Angle float64
+	}
 	Gid          Gid
 	Side_        int
 	CurrentLevel Gid
@@ -115,15 +118,10 @@ func (b *BaseEnt) Think(g *Game) {
 	if b.Delta.Speed > 1.0 {
 		b.Delta.Speed = 1.0
 	}
-	if b.Delta.Angle < -1.0 {
-		b.Delta.Angle = -1.0
-	}
-	if b.Delta.Angle > 1.0 {
-		b.Delta.Angle = 1.0
-	}
 
 	// TODO: Speed is a complete misnomer now - fix it!
-	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(b.Delta.Speed * b.Stats().MaxAcc()))
+	force := b.Delta.Speed * (linear.Vec2{1, 0}).Rotate(b.Target.Angle).Dot((linear.Vec2{1, 0}).Rotate(b.Angle_))
+	b.ApplyForce((linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(force * b.Stats().MaxAcc()))
 
 	mangle := math.Atan2(b.Velocity.Y, b.Velocity.X)
 	friction := g.Friction
@@ -170,13 +168,11 @@ func (b *BaseEnt) Think(g *Game) {
 				dist := originMove.DistFromOrigin()
 				if originPerp.DoesIsect(originMove) && dist < size {
 					// Stop passthrough
-					base.Log().Printf("Passthrough %2.3f %2.3f", dist, sizeSq)
 					isect := originMove.Isect(originPerp).Add(v)
 					diff := math.Sqrt(sizeSq - dist*dist)
 					finalLength := isect.Sub(move.P).Mag() - diff
 					move.Q = move.Ray().Norm().Scale(finalLength).Add(move.P)
 				} else if v.Sub(move.Q).Mag2() < sizeSq {
-					base.Log().Printf("Normal")
 					move.Q = move.Q.Sub(v).Norm().Scale(size).Add(v)
 				}
 			}
@@ -185,13 +181,15 @@ func (b *BaseEnt) Think(g *Game) {
 		b.Velocity = b.Position.Sub(prev)
 	}
 
-	// b.Velocity.X += float64(g.Rng.Int63()%21-10) / 1000
-	// b.Velocity.Y += float64(g.Rng.Int63()%21-10) / 1000
-	b.Angle_ += b.Stats().MaxTurn() * b.Delta.Angle
-	for b.Angle_ < 0 {
-		b.Angle_ += math.Pi * 2
-	}
-	for b.Angle_ > math.Pi*2 {
-		b.Angle_ -= math.Pi * 2
+	if math.Abs(b.Angle_+b.Target.Angle-math.Pi) < 0.01 {
+		b.Angle_ += 0.1
+	} else {
+		frac := 0.80
+		curDir := (linear.Vec2{1, 0}).Rotate(b.Angle_).Scale(frac)
+		targetDir := (linear.Vec2{1, 0}).Rotate(b.Target.Angle).Scale(1.0 - frac)
+		newDir := curDir.Add(targetDir)
+		if newDir.Mag() > 0.01 {
+			b.Angle_ = newDir.Angle()
+		}
 	}
 }
