@@ -2,6 +2,12 @@
   "Name": "Kassadin",
   "Abilities": [
     {
+      "Name": "fire",
+      "Params": {}
+    }
+  ],
+  "OldAbilities": [
+    {
       "Name": "nullSphere",
       "Params": {
         "cost": 150

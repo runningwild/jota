@@ -1,8 +1,8 @@
 package ability
 
 import (
-	"github.com/runningwild/cgf"
-	"github.com/runningwild/glop/gin"
+	// 	"github.com/runningwild/cgf"
+	// 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
 	"sync"
@@ -18,23 +18,23 @@ func NextAbilityId() int {
 	return abilityId
 }
 
-type NonResponder struct{}
+// type NonResponder struct{}
 
-func (NonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
+// func (NonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
 
-type NeverActive struct {
-	NonResponder
-}
+// type NeverActive struct {
+// 	NonResponder
+// }
 
-func (NeverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
+// func (NeverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
 
-type NonThinker struct{}
+// type NonThinker struct{}
 
-func (NonThinker) Think(game.Gid, *game.Game) ([]cgf.Event, bool) { return nil, false }
+// func (NonThinker) Think(game.Gid, *game.Game) ([]cgf.Event, bool) { return nil, false }
 
-type NonRendering struct{}
+// type NonRendering struct{}
 
-func (NonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
+// func (NonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
 
 type BasicPhases struct {
 	The_phase game.Phase

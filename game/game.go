@@ -24,45 +24,6 @@ import (
 
 const LosMaxDist = 1000
 
-// type Ability func(game *Game, player *PlayerEnt, params map[string]int) Process
-
-// An Ability represents something a player can do that does not directly affect
-// the game state.
-type Ability interface {
-	// Called when a player selects this Ability.  Returns any number of events to
-	// apply, as well as a bool that is true iff this Ability should become the
-	// active Ability.
-	Activate(gid Gid, keyPress bool) ([]cgf.Event, bool)
-
-	// Called when this Ability is deselected as a result of another ability being
-	// selected.  For some abilities this might not do anything, but certain
-	// abilities may want to
-	Deactivate(gid Gid) []cgf.Event
-
-	// The active Ability will receive all of the events from the player.  It
-	// should return true iff it consumes the event.
-	Respond(gid Gid, group gin.EventGroup) bool
-
-	// Returns any number of events to apply, as well as a bool that is true iff
-	// this Ability should be deactivated.  Typically this will include an event
-	// that will add a Process to this player.
-	Think(gid Gid, game *Game) ([]cgf.Event, bool)
-
-	// If it is the active Ability it might want to draw some Ui stuff.
-	Draw(gid Gid, game *Game, side int)
-}
-
-type AbilityMaker func(params map[string]int) Ability
-
-var ability_makers map[string]AbilityMaker
-
-func RegisterAbility(name string, maker AbilityMaker) {
-	if ability_makers == nil {
-		ability_makers = make(map[string]AbilityMaker)
-	}
-	ability_makers[name] = maker
-}
-
 type EffectMaker func(params map[string]int) Process
 
 var effect_makers map[string]EffectMaker
@@ -393,6 +354,7 @@ func getControllerDirection(controller gin.DeviceId) linear.Vec2 {
 }
 
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
+	base.Log().Printf(group.Events[0].String())
 	g.local.Engine.Pause()
 	defer g.local.Engine.Unpause()
 
@@ -411,6 +373,17 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 			Angle:     dir.Angle(),
 			Magnitude: dir.Mag(),
 		})
+	}
+
+	ability0Key0 := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
+	ability0Key1 := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+	found0, _ := group.FindEvent(ability0Key0.Id())
+	found1, _ := group.FindEvent(ability0Key1.Id())
+	if found0 || found1 {
+		events := g.local.Abilities[0].Input(g.local.Gid, ability0Key0.CurPressAmt(), ability0Key1.CurPressAmt())
+		for _, event := range events {
+			g.local.Engine.ApplyEvent(event)
+		}
 	}
 
 	// if found, event := group.FindEvent(right.Id()); found {

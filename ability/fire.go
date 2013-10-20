@@ -26,50 +26,67 @@ func init() {
 }
 
 type fire struct {
-	NonResponder
-	NonThinker
-	NonRendering
-
-	id int
+	active bool
+	id     int
 }
 
-func (f *fire) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
-	var ret []cgf.Event
-	if keyPress {
-		ret = append(ret, addFireEvent{
-			PlayerGid: gid,
-			Id:        f.id,
-		})
-	} else {
-		ret = append(ret, addFireExplodeEvent{
-			PlayerGid: gid,
-			Id:        f.id,
-		})
+func (f *fire) Input(gid game.Gid, pressAmt0, pressAmt1 float64) []cgf.Event {
+	if pressAmt0 == 0 {
+		if !f.active {
+			return nil
+		}
+		f.active = false
+		return []cgf.Event{
+			removeFireDrainEvent{
+				PlayerGid: gid,
+				Id:        f.id,
+			},
+		}
 	}
-	return ret, false
-}
-
-func (f *fire) Deactivate(gid game.Gid) []cgf.Event {
+	if !f.active {
+		// Start draining mana
+		f.active = true
+		return []cgf.Event{
+			addFireDrainEvent{
+				PlayerGid: gid,
+				Id:        f.id,
+			},
+		}
+	}
+	if f.active && pressAmt1 > 0 {
+		return []cgf.Event{
+			addFireTriggerEvent{
+				PlayerGid: gid,
+				Id:        f.id,
+			},
+		}
+	}
 	return nil
 }
+func (f *fire) Think(gid game.Gid, game *game.Game) []cgf.Event {
+	return nil
+}
+func (f *fire) Draw(gid game.Gid, game *game.Game) {
 
-type addFireEvent struct {
+}
+
+type addFireDrainEvent struct {
 	PlayerGid game.Gid
 	Id        int
 }
 
 func init() {
-	gob.Register(addFireEvent{})
+	gob.Register(addFireDrainEvent{})
 }
 
-func (e addFireEvent) Apply(_g interface{}) {
+func (e addFireDrainEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
 	pos := player.Position.Add((linear.Vec2{40, 0}).Rotate(player.Angle()))
-	player.Processes[100+e.Id] = &fireProcess{
+	player.Processes[e.Id] = &fireProcess{
 		BasicPhases: BasicPhases{game.PhaseRunning},
 		Gid:         player.Gid,
 		Frames:      100,
@@ -79,6 +96,24 @@ func (e addFireEvent) Apply(_g interface{}) {
 		Angle:       0.1,
 		Heading:     float32(player.Angle()),
 	}
+}
+
+type removeFireDrainEvent struct {
+	PlayerGid game.Gid
+	Id        int
+}
+
+func init() {
+	gob.Register(removeFireDrainEvent{})
+}
+
+func (e removeFireDrainEvent) Apply(_g interface{}) {
+	g := _g.(*game.Game)
+	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
+	if !ok {
+		return
+	}
+	delete(player.Processes, e.Id)
 }
 
 type fireExplosion struct {
@@ -222,25 +257,28 @@ func (f *fireProcess) Draw(gid game.Gid, g *game.Game, side int) {
 	}
 }
 
-type addFireExplodeEvent struct {
+type addFireTriggerEvent struct {
 	PlayerGid game.Gid
 	Id        int
 }
 
 func init() {
-	gob.Register(addFireExplodeEvent{})
+	gob.Register(addFireTriggerEvent{})
 }
 
-func (e addFireExplodeEvent) Apply(_g interface{}) {
+func (e addFireTriggerEvent) Apply(_g interface{}) {
 	g := _g.(*game.Game)
 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
 	if !ok {
 		return
 	}
-	prevProc := player.Processes[100+e.Id].(*fireProcess)
+	prevProc, ok := player.Processes[e.Id].(*fireProcess)
+	if !ok {
+		return
+	}
 	var fpe fireProcessExplosion
 	fpe.The_phase = game.PhaseRunning
-	delete(player.Processes, 100+e.Id)
+	delete(player.Processes, e.Id)
 	if int(prevProc.Stored/10) == 0 {
 		return
 	}

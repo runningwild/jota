@@ -268,9 +268,9 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	// 		p.abs.activeAbility.Draw(p.gid, g, side)
 	// 	}
 	// }
-	// for _, proc := range g.Processes {
-	// 	proc.Draw(Gid(""), g, side)
-	// }
+	for _, proc := range g.Processes {
+		proc.Draw(Gid(""), g, g.local.Side)
+	}
 
 	gl.Color4ub(0, 0, 255, 200)
 	g.RenderLosMask()

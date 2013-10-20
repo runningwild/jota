@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 	"math"
