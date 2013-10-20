@@ -5,7 +5,6 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/ability"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
@@ -61,7 +60,7 @@ func (ns *nullSphere) Respond(gid game.Gid, group gin.EventGroup) bool {
 	return false
 }
 
-func (ns *nullSphere) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+func (ns *nullSphere) Think(gid game.Gid, g *game.Game) ([]cgf.Event, bool) {
 	var ret []cgf.Event
 	for ; ns.fire > 0; ns.fire-- {
 		ret = append(ret, addNullSphereFireEvent{

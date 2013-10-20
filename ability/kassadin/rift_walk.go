@@ -64,7 +64,7 @@ func (rw *riftWalk) Respond(gid game.Gid, group gin.EventGroup) bool {
 	return false
 }
 
-func (rw *riftWalk) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+func (rw *riftWalk) Think(gid game.Gid, g *game.Game) ([]cgf.Event, bool) {
 	var ret []cgf.Event
 	if rw.trigger {
 		rw.trigger = false

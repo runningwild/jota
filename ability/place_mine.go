@@ -70,7 +70,7 @@ func (pm *placeMine) Respond(gid game.Gid, group gin.EventGroup) bool {
 	return false
 }
 
-func (pm *placeMine) Think(gid game.Gid, g *game.Game, mouse linear.Vec2) ([]cgf.Event, bool) {
+func (pm *placeMine) Think(gid game.Gid, g *game.Game) ([]cgf.Event, bool) {
 	var ret []cgf.Event
 	for ; pm.fire > 0; pm.fire-- {
 		ret = append(ret, addPlaceMineFireEvent{

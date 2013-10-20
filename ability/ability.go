@@ -3,7 +3,6 @@ package ability
 import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
 	"sync"
@@ -31,7 +30,7 @@ func (NeverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
 
 type NonThinker struct{}
 
-func (NonThinker) Think(game.Gid, *game.Game, linear.Vec2) ([]cgf.Event, bool) { return nil, false }
+func (NonThinker) Think(game.Gid, *game.Game) ([]cgf.Event, bool) { return nil, false }
 
 type NonRendering struct{}
 

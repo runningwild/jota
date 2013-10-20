@@ -46,7 +46,7 @@ type Ability interface {
 	// Returns any number of events to apply, as well as a bool that is true iff
 	// this Ability should be deactivated.  Typically this will include an event
 	// that will add a Process to this player.
-	Think(gid Gid, game *Game, mouse linear.Vec2) ([]cgf.Event, bool)
+	Think(gid Gid, game *Game) ([]cgf.Event, bool)
 
 	// If it is the active Ability it might want to draw some Ui stuff.
 	Draw(gid Gid, game *Game, side int)
