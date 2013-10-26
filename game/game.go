@@ -324,27 +324,23 @@ func axisControl(v float64) float64 {
 	return v
 }
 
+var control struct {
+	any, up, down, left, right gin.Key
+}
+
 // Queries the input system for the direction that this controller is moving in
 func getControllerDirection(controller gin.DeviceId) linear.Vec2 {
-	right := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+0, controller.Type, controller.Index)
-	left := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+0, controller.Type, controller.Index)
-	up := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, controller.Type, controller.Index)
-	down := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, controller.Type, controller.Index)
 	v := linear.Vec2{
-		axisControl(left.CurPressAmt()) - axisControl(right.CurPressAmt()),
-		axisControl(down.CurPressAmt()) - axisControl(up.CurPressAmt()),
+		axisControl(control.right.CurPressAmt()) - axisControl(control.left.CurPressAmt()),
+		axisControl(control.down.CurPressAmt()) - axisControl(control.up.CurPressAmt()),
 	}
-	v.X = math.Copysign(v.X*v.X, v.X)
-	v.Y = math.Copysign(v.Y*v.Y, v.Y)
-	angle := v.Angle()
 	if v.Mag2() > 1 {
 		v = v.Norm()
 	}
-	return (linear.Vec2{v.Mag(), 0}).Rotate(angle)
+	return v
 }
 
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
-	base.Log().Printf(group.Events[0].String())
 	g.local.Engine.Pause()
 	defer g.local.Engine.Unpause()
 
@@ -356,7 +352,12 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	g.local.RLock()
 	defer g.local.RUnlock()
 
-	if group.Events[0].Key.Id().Device.Type == gin.DeviceTypeController {
+	base.Log().Printf("%d -----------------------", len(group.Events))
+	for _, event := range group.Events {
+		base.Log().Printf("%v", event)
+	}
+
+	if found, _ := group.FindEvent(control.any.Id()); found {
 		dir := getControllerDirection(gin.DeviceId{gin.DeviceTypeController, gin.DeviceIndexAny})
 		g.local.Engine.ApplyEvent(&Move{
 			Gid:       g.local.Gid,
@@ -636,6 +637,23 @@ func (g *Game) NextId() int {
 }
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
+	if control.up == nil {
+		// This is thread-safe, don't worry
+		controllerUp := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.up = gin.In().BindDerivedKey("upKey", gin.In().MakeBinding(controllerUp.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyW, nil, nil))
+		controllerDown := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.down = gin.In().BindDerivedKey("downKey", gin.In().MakeBinding(controllerDown.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyS, nil, nil))
+		controllerLeft := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.left = gin.In().BindDerivedKey("leftKey", gin.In().MakeBinding(controllerLeft.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyA, nil, nil))
+		controllerRight := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.right = gin.In().BindDerivedKey("rightKey", gin.In().MakeBinding(controllerRight.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyD, nil, nil))
+		control.any = gin.In().BindDerivedKey(
+			"any",
+			gin.In().MakeBinding(control.up.Id(), nil, nil),
+			gin.In().MakeBinding(control.down.Id(), nil, nil),
+			gin.In().MakeBinding(control.left.Id(), nil, nil),
+			gin.In().MakeBinding(control.right.Id(), nil, nil))
+	}
 	// TODO: Unregister this at some point, nub
 	gin.In().RegisterEventListener(GameEventHandleWrapper{g})
 	g.local.Engine = engine
