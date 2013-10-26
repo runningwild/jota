@@ -69,6 +69,7 @@ func debugHookup(version string) *cgf.Engine {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
+		engine.GetState().(*game.Game).SetEngine(engine)
 	} else {
 		sys.Think()
 		g := game.MakeGame()
@@ -77,7 +78,6 @@ func debugHookup(version string) *cgf.Engine {
 			if err != nil {
 				panic(err)
 			}
-			g.SetEngine(engine)
 			err = cgf.Host(20007, "thunderball")
 			if err != nil {
 				panic(err)

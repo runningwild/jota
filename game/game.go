@@ -638,7 +638,7 @@ func (g *Game) NextId() int {
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
 	if control.up == nil {
-		// This is thread-safe, don't worry
+		// TODO: This is thread-safe, don't worry, but it is dumb.
 		controllerUp := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.up = gin.In().BindDerivedKey("upKey", gin.In().MakeBinding(controllerUp.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyW, nil, nil))
 		controllerDown := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
@@ -891,6 +891,7 @@ func (g *Game) ThinkGame() {
 }
 
 func (g *Game) Think() {
+	base.Log().Printf("Game Think")
 	defer base.StackCatcher()
 	switch {
 	case g.Setup != nil:
