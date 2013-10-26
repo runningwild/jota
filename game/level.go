@@ -11,20 +11,16 @@ type Portal struct {
 }
 
 type Room struct {
-	Walls   map[string]linear.Poly
-	Starts  []linear.Vec2
-	End     linear.Vec2
-	Portals map[string]Portal
-	Dx, Dy  int
-	NextId  int
-
-	// Only filled for moba rooms
-	Moba struct {
-		SideData []mobaRoomSideData
-	}
+	Walls    map[string]linear.Poly
+	Starts   []linear.Vec2
+	End      linear.Vec2
+	Portals  map[string]Portal
+	Dx, Dy   int
+	NextId   int
+	SideData []roomSideData
 }
 
-type mobaRoomSideData struct {
+type roomSideData struct {
 	Base   linear.Vec2   // Position of the base for this side
 	Towers []linear.Vec2 // Positions of the towers for this side
 	// Will also need waypoints for units, production and whatnot.

@@ -29,7 +29,7 @@ type ControlPoint struct {
 }
 
 func (g *Game) MakeControlPoints() {
-	data := g.Levels[GidInvadersStart].Room.Moba.SideData
+	data := g.Levels[GidInvadersStart].Room.SideData
 	neutralData := data[len(data)-1]
 	for _, towerPos := range neutralData.Towers {
 		cp := ControlPoint{
@@ -126,7 +126,7 @@ func (cp *ControlPoint) Think(g *Game) {
 			}
 			x := int(ent.Pos().X+0.5) / LosGridSize
 			y := int(ent.Pos().Y+0.5) / LosGridSize
-			res := g.Moba.losCache.Get(int(cp.Position.X), int(cp.Position.Y), cp.Stats().Vision())
+			res := g.losCache.Get(int(cp.Position.X), int(cp.Position.Y), cp.Stats().Vision())
 			hit := false
 			for _, v := range res {
 				if v.X == x && v.Y == y {

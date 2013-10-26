@@ -3,25 +3,21 @@ package generator
 import (
 	"fmt"
 	"github.com/runningwild/cmwc"
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/base"
+	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
 )
 
 type Room struct {
-	Walls  map[string]linear.Poly
-	Starts []linear.Vec2
-	Dx, Dy int
-	NextId int
-
-	// Only filled for moba rooms
-	Moba struct {
-		SideData []mobaRoomSideData
-	}
+	Walls    map[string]linear.Poly
+	Starts   []linear.Vec2
+	Dx, Dy   int
+	NextId   int
+	SideData []roomSideData
 }
 
-type mobaRoomSideData struct {
+type roomSideData struct {
 	Base   linear.Vec2   // Position of the base for this side
 	Towers []linear.Vec2 // Positions of the towers for this side
 	// Will also need waypoints for units, production and whatnot.
@@ -118,18 +114,18 @@ func GenerateRoom(dx, dy, radius float64, grid int, seed int64) Room {
 
 	room.Starts = []linear.Vec2{poss[a], poss[b]}
 	for _, start := range room.Starts {
-		var data mobaRoomSideData
+		var data roomSideData
 		data.Base = start
-		room.Moba.SideData = append(room.Moba.SideData, data)
+		room.SideData = append(room.SideData, data)
 	}
-	var data mobaRoomSideData
+	var data roomSideData
 	for i, pos := range poss {
 		if i == a || i == b {
 			continue
 		}
 		data.Towers = append(data.Towers, pos)
 	}
-	room.Moba.SideData = append(room.Moba.SideData, data)
+	room.SideData = append(room.SideData, data)
 
 	sanity = int(math.Pow(dx*dy, 0.20))
 	var segs []linear.Seg2

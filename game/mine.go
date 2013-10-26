@@ -8,7 +8,6 @@ import (
 	"github.com/runningwild/linear"
 )
 
-// Moba base ent
 type Mine struct {
 	BaseEnt
 	Damage  float64

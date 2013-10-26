@@ -96,17 +96,8 @@ type PlayerEnt struct {
 // should be zero, otherwise it should be between 0 and number of side - 1,
 // inclusive.
 func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
-	switch {
-	case g.Standard != nil:
-		if side != 0 {
-			base.Error().Fatalf("AddPlayers expects side == 0 for Standard game mode.")
-		}
-	case g.Moba != nil:
-		if side < 0 || side >= len(g.Levels[GidInvadersStart].Room.Starts) {
-			base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Levels[GidInvadersStart].Room.Starts)-1)
-		}
-	default:
-		base.Error().Fatalf("Cannot add players without first specifying a game mode.")
+	if side < 0 || side >= len(g.Levels[GidInvadersStart].Room.Starts) {
+		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Levels[GidInvadersStart].Room.Starts)-1)
 	}
 	var gids []Gid
 	for i, engineId := range engineIds {
@@ -265,7 +256,6 @@ type localSetupData struct {
 
 // Used before the 'game' starts to choose sides and characters and whatnot.
 type SetupData struct {
-	Mode      string                     // should be "moba" or "standard"
 	EngineIds []int64                    // engine ids of the engines currently joined
 	Players   map[int64]*SetupPlayerData // map from engineid to player data
 	Seed      int64                      // random seed
@@ -385,27 +375,6 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 			g.local.Engine.ApplyEvent(event)
 		}
 	}
-
-	// if found, event := group.FindEvent(right.Id()); found {
-	// 	g.local.Left = event.Key.CurPressAmt()
-	// 	g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
-	// 	return
-	// }
-	// if found, event := group.FindEvent(left.Id()); found {
-	// 	g.local.Right = event.Key.CurPressAmt()
-	// 	g.local.Engine.ApplyEvent(Turn{g.local.Gid, g.local.Right - g.local.Left})
-	// 	return
-	// }
-	// if found, event := group.FindEvent(up.Id()); found {
-	// 	g.local.Up = event.Key.CurPressAmt()
-	// 	g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
-	// 	return
-	// }
-	// if found, event := group.FindEvent(down.Id()); found {
-	// 	g.local.Down = event.Key.CurPressAmt()
-	// 	g.local.Engine.ApplyEvent(Accelerate{g.local.Gid, g.local.Up - g.local.Down})
-	// 	return
-	// }
 }
 
 type SetupSetEngineIds struct {
@@ -531,10 +500,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Rng.Seed(12313131)
 	g.Ents = make(map[Gid]Ent)
 	g.Friction = 0.97
-	// g.Standard = &GameModeStandard{}
-	g.Moba = &GameModeMoba{
-		Sides: make(map[int]*GameModeMobaSideData),
-	}
 	sides := make(map[int][]int64)
 	for id, data := range g.Engines {
 		sides[data.Side] = append(sides[data.Side], id)
@@ -546,13 +511,11 @@ func (u SetupComplete) Apply(_g interface{}) {
 		}
 		side := g.Setup.Players[ids[0]].Side
 		gids := g.AddPlayers(ids, side)
-		g.Moba.Sides[side] = &GameModeMobaSideData{}
 		for i := range ids {
 			player := g.Ents[gids[i]].(*PlayerEnt)
 			player.Champ = g.Setup.Players[ids[i]].ChampIndex
 		}
 	}
-	g.Moba.losCache = makeLosCache(dx, dy)
 
 	g.MakeControlPoints()
 	g.Init()
@@ -626,9 +589,7 @@ type Game struct {
 	// All effects that are not tied to a player.
 	Processes []Process
 
-	// Game Modes - Exactly one of these will be set
-	Standard *GameModeStandard
-	Moba     *GameModeMoba
+	losCache *losCache
 
 	// Champion defs loaded from the data file.  These are set by the host and
 	// sent to clients to make debugging and tuning easier.
@@ -664,19 +625,6 @@ func (g *Game) InitializeClientData() {
 	// TODO: Do something useful with this.
 }
 
-type GameModeStandard struct {
-	Architect architectData
-	Invaders  invadersData
-}
-type GameModeMoba struct {
-	// Map from side to the moba data for that side
-	Sides    map[int]*GameModeMobaSideData
-	losCache *losCache
-}
-type GameModeMobaSideData struct {
-	AppeaseGob struct{}
-}
-
 func (g *Game) NextGid() Gid {
 	g.NextIdValue++
 	return Gid(fmt.Sprintf("%d", g.NextIdValue))
@@ -696,7 +644,6 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 func MakeGame() *Game {
 	var g Game
 	g.Setup = &SetupData{}
-	g.Setup.Mode = "moba"
 	g.Setup.Players = make(map[int64]*SetupPlayerData)
 
 	// NOTE: Obviously this isn't threadsafe, but I don't intend to be Init()ing
@@ -841,7 +788,6 @@ func (g *Game) ThinkGame() {
 			g.temp.VisibleWallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, stats.LosPlayerHorizon)
 			base.Log().Printf("WallCache: %v", g.temp.WallCache)
 		}
-		g.Moba.losCache.SetWallCache(g.temp.VisibleWallCache[GidInvadersStart])
 	}
 
 	// cache ent data
@@ -939,10 +885,7 @@ func (g *Game) Think() {
 // Returns true iff a has los to b, regardless of distance, except that nothing
 // can ever have los to something that is beyond stats.LosPlayerHorizon.
 func (g *Game) ExistsLos(a, b linear.Vec2) bool {
-	if g.Moba == nil {
-		panic("Not implemented except in mobas")
-	}
-	vps := g.Moba.losCache.Get(int(a.X), int(a.Y), stats.LosPlayerHorizon)
+	vps := g.losCache.Get(int(a.X), int(a.Y), stats.LosPlayerHorizon)
 	x := int(b.X / LosGridSize)
 	y := int(b.Y / LosGridSize)
 	for _, vp := range vps {

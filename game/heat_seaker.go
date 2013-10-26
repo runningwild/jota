@@ -8,7 +8,6 @@ import (
 	"github.com/runningwild/linear"
 )
 
-// Moba base ent
 type HeatSeeker struct {
 	BaseEnt
 	HeatSeekerParams
