@@ -237,11 +237,6 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	g.local.RLock()
 	defer g.local.RUnlock()
 
-	base.Log().Printf("%d -----------------------", len(group.Events))
-	for _, event := range group.Events {
-		base.Log().Printf("%v", event)
-	}
-
 	if found, _ := group.FindEvent(control.any.Id()); found {
 		dir := getControllerDirection(gin.DeviceId{gin.DeviceTypeController, gin.DeviceIndexAny})
 		g.local.Engine.ApplyEvent(&Move{
@@ -334,12 +329,36 @@ func (u SetupComplete) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
+	sideCount := make(map[int]int)
+	// Must have at least two sides
+	sideCount[0] = 0
+	sideCount[1] = 0
+	for _, spd := range g.Setup.Players {
+		sideCount[spd.Side]++
+	}
+	aiCount := 0
+	for side, count := range sideCount {
+		for count < 2 {
+			aiCount++
+			count++
+			g.Setup.Players[int64(-aiCount)] = &SetupPlayerData{
+				Side:       side,
+				ChampIndex: 0,
+			}
+		}
+	}
 	g.Engines = make(map[int64]*PlayerData)
-	for _, id := range g.Setup.EngineIds {
+	for id, player := range g.Setup.Players {
+		var gid Gid
+		if id < 0 {
+			gid = Gid(fmt.Sprintf("Ai:%d", -id))
+		} else {
+			gid = Gid(fmt.Sprintf("Engine:%d", id))
+		}
 		g.Engines[id] = &PlayerData{
-			PlayerGid:  Gid(fmt.Sprintf("Engine:%d", id)),
-			Side:       g.Setup.Players[id].Side,
-			ChampIndex: g.Setup.Players[id].ChampIndex,
+			PlayerGid:  Gid(gid),
+			Side:       player.Side,
+			ChampIndex: player.ChampIndex,
 		}
 	}
 
@@ -378,12 +397,11 @@ func (u SetupComplete) Apply(_g interface{}) {
 	for id, data := range g.Engines {
 		sides[data.Side] = append(sides[data.Side], id)
 	}
-	for _, players := range sides {
+	for side, players := range sides {
 		var gids []Gid
 		for _, id := range players {
-			gids = append(gids, Gid(fmt.Sprintf("Engine:%d", id)))
+			gids = append(gids, g.Engines[id].PlayerGid)
 		}
-		side := g.Setup.Players[players[0]].Side
 		g.AddPlayers(gids, side)
 		for i := range players {
 			player := g.Ents[gids[i]].(*PlayerEnt)
@@ -735,7 +753,6 @@ func (g *Game) ThinkGame() {
 }
 
 func (g *Game) Think() {
-	base.Log().Printf("Game Think")
 	defer base.StackCatcher()
 	switch {
 	case g.Setup != nil:
