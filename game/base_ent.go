@@ -77,7 +77,8 @@ func (b *BaseEnt) Dead() bool {
 }
 
 func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {
-	ai_maker(name, engine, b.Gid)
+	ai := ai_maker(name, engine, b.Gid)
+	ai.Start()
 }
 
 func (b *BaseEnt) Think(g *Game) {

@@ -3,13 +3,15 @@ time := import("time")
 log := import("log")
 
 me := jota.Me()
+angle := 0.0
 for i := range 1000000 {
-  pos := me.Pos()
-  log.Printf("Pos: %2.3f %2.3f", pos.X, pos.Y)
-  jota.Move(0.0)
-  jota.Turn(1.0)
-  time.Sleep(1000)
-  jota.Turn(0.0)
+  angle = angle + 0.1
+//  pos := me.Pos()
+//  log.Printf("Pos: %2.3f %2.3f", pos.X, pos.Y)
   jota.Move(1.0)
-  time.Sleep(1000)
+  jota.Turn(angle)
+  time.Sleep(100)
+  jota.Turn(angle)
+  jota.Move(0.1)
+  time.Sleep(50)
 }

@@ -406,6 +406,9 @@ func (u SetupComplete) Apply(_g interface{}) {
 		for i := range players {
 			player := g.Ents[gids[i]].(*PlayerEnt)
 			player.Champ = g.Setup.Players[players[i]].ChampIndex
+			if g.local.Engine.Ids() != nil && player.Gid[0:2] == "Ai" {
+				player.BindAi("simple", g.local.Engine)
+			}
 		}
 	}
 
@@ -786,24 +789,6 @@ func clamp(v, low, high float64) float64 {
 	return v
 }
 
-type Turn struct {
-	Gid   Gid
-	Delta float64
-}
-
-func init() {
-	gob.Register(Turn{})
-}
-
-func (t Turn) Apply(_g interface{}) {
-	g := _g.(*Game)
-	player, ok := g.Ents[t.Gid].(*PlayerEnt)
-	if !ok {
-		return
-	}
-	player.Delta.Angle = t.Delta
-}
-
 type Move struct {
 	Gid       Gid
 	Angle     float64
@@ -826,24 +811,6 @@ func (m Move) Apply(_g interface{}) {
 		player.Target.Angle = m.Angle
 	}
 	player.Delta.Speed = m.Magnitude
-}
-
-type Accelerate struct {
-	Gid   Gid
-	Delta float64
-}
-
-func init() {
-	gob.Register(Accelerate{})
-}
-
-func (a Accelerate) Apply(_g interface{}) {
-	g := _g.(*Game)
-	player, ok := g.Ents[a.Gid].(*PlayerEnt)
-	if !ok {
-		return
-	}
-	player.Delta.Speed = a.Delta
 }
 
 type GameWindow struct {

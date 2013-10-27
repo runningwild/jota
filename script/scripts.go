@@ -1,4 +1,4 @@
-package game
+package script
 
 import (
 	"fmt"
@@ -83,8 +83,8 @@ type JotaModule struct {
 
 	// These keep track of the ai's virtual controller
 	controller struct {
-		turn float64 // [-1.0, 1.0]
-		acc  float64 // [-1.0, 1.0]
+		angle float64 // [-pi, pi]
+		acc   float64 // [-1.0, 1.0]
 	}
 }
 
@@ -93,8 +93,7 @@ func (jm *JotaModule) Think() {
 	if ent == nil {
 		return
 	}
-	jm.engine.ApplyEvent(game.Accelerate{jm.myGid, jm.controller.acc})
-	jm.engine.ApplyEvent(game.Turn{jm.myGid, jm.controller.turn})
+	base.Log().Printf("Accelerate: %v", jm.myGid)
 }
 
 func (jm *JotaModule) ID() string {
@@ -177,23 +176,13 @@ func (jm *JotaModule) Me(vs ...runtime.Val) runtime.Val {
 
 func (jm *JotaModule) Move(vs ...runtime.Val) runtime.Val {
 	jm.controller.acc = vs[0].Float()
-	if jm.controller.acc < -1.0 {
-		jm.controller.acc = -1.0
-	}
-	if jm.controller.acc > 1.0 {
-		jm.controller.acc = 1.0
-	}
+	jm.engine.ApplyEvent(game.Move{jm.myGid, jm.controller.angle, jm.controller.acc})
 	return runtime.Nil
 }
 
 func (jm *JotaModule) Turn(vs ...runtime.Val) runtime.Val {
-	jm.controller.turn = vs[0].Float()
-	if jm.controller.turn < -1.0 {
-		jm.controller.turn = -1.0
-	}
-	if jm.controller.turn > 1.0 {
-		jm.controller.turn = 1.0
-	}
+	jm.controller.angle = vs[0].Float()
+	jm.engine.ApplyEvent(game.Move{jm.myGid, jm.controller.angle, jm.controller.acc})
 	return runtime.Nil
 }
 
@@ -236,7 +225,6 @@ func (ai *GameAi) Start() {
 	if err != nil {
 		panic(err)
 	}
-	base.Log().Printf("Starting!")
 	go func() {
 		_, err := mod.Run()
 		base.Error().Printf("Error running script: %v", err)
@@ -244,6 +232,10 @@ func (ai *GameAi) Start() {
 }
 func (ai *GameAi) Stop()      {}
 func (ai *GameAi) Terminate() {}
+
+func init() {
+	game.RegisterAiMaker(Maker)
+}
 
 func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
 	ai := GameAi{
