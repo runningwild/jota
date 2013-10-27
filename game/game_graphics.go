@@ -9,7 +9,9 @@ import (
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
 	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
+	"path/filepath"
 )
 
 type cameraInfo struct {
@@ -287,4 +289,85 @@ func (g *Game) RenderLocal(region g2.Region) {
 	g.local.Camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
 	g.local.Camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
 	g.RenderLocalGame(region)
+}
+
+func (p *PlayerEnt) Draw(game *Game) {
+	var t *texture.Data
+	var alpha gl.Ubyte
+	if game.local.Side == p.Side() {
+		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()/2))
+	} else {
+		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()))
+	}
+	gl.Color4ub(255, 255, 255, alpha)
+	// if p.Id() == 1 {
+	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship.png"))
+	// } else if p.Id() == 2 {
+	// 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship3.png"))
+	// } else {
+	// 	t = texture.LoadFromPath(filepath.Join(base.GetDataDir(), "ships/ship2.png"))
+	// }
+	t.RenderAdvanced(
+		p.Position.X-float64(t.Dx())/2,
+		p.Position.Y-float64(t.Dy())/2,
+		float64(t.Dx()),
+		float64(t.Dy()),
+		p.Angle_,
+		false)
+
+	for _, proc := range p.Processes {
+		proc.Draw(p.Id(), game, game.local.Side)
+	}
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.08)
+	base.SetUniformF("status_bar", "outer", 0.09)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+
+	base.SetUniformF("status_bar", "frac", 1.0)
+	gl.Color4ub(125, 125, 125, alpha/2)
+	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
+
+	health_frac := float32(p.Stats().HealthCur() / p.Stats().HealthMax())
+	if health_frac > 0.5 {
+		color_frac := 1.0 - (health_frac-0.5)*2.0
+		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, alpha)
+	} else {
+		color_frac := health_frac * 2.0
+		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, alpha)
+	}
+	base.SetUniformF("status_bar", "frac", health_frac)
+	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
+	base.EnableShader("")
+}
+
+func (gw *GameWindow) Draw(region g2.Region, style g2.StyleStack) {
+	defer base.StackCatcher()
+	defer func() {
+		// gl.Translated(gl.Double(gw.region.X), gl.Double(gw.region.Y), 0)
+		gl.Disable(gl.TEXTURE_2D)
+		gl.Color4ub(255, 255, 255, 255)
+		gl.LineWidth(3)
+		gl.Begin(gl.LINES)
+		bx, by := gl.Int(region.X), gl.Int(region.Y)
+		bdx, bdy := gl.Int(region.Dx), gl.Int(region.Dy)
+		gl.Vertex2i(bx, by)
+		gl.Vertex2i(bx, by+bdy)
+		gl.Vertex2i(bx, by+bdy)
+		gl.Vertex2i(bx+bdx, by+bdy)
+		gl.Vertex2i(bx+bdx, by+bdy)
+		gl.Vertex2i(bx+bdx, by)
+		gl.Vertex2i(bx+bdx, by)
+		gl.Vertex2i(bx, by)
+		gl.End()
+		gl.LineWidth(1)
+	}()
+
+	gw.Engine.Pause()
+	game := gw.Engine.GetState().(*Game)
+	// Note that since we do a READER lock on game.local we cannot do any writes
+	// to local data while rendering.
+	game.local.RLock()
+	game.RenderLocal(region)
+	game.local.RUnlock()
+	gw.Engine.Unpause()
 }
