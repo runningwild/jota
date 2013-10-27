@@ -223,12 +223,15 @@ func (v *agoraVec) length(args ...runtime.Val) runtime.Val {
 	return runtime.Number(math.Sqrt(x*x + y*y))
 }
 
-func Start(engine *cgf.Engine, gid game.Gid) game.Script {
-	jm := &JotaModule{engine: engine, myGid: gid}
+type GameAi struct {
+	jm *JotaModule
+}
+
+func (ai *GameAi) Start() {
 	ctx := runtime.NewCtx(newJotaResolver(), new(compiler.Compiler))
 	ctx.RegisterNativeModule(new(stdlib.TimeMod))
 	ctx.RegisterNativeModule(&LogModule{})
-	ctx.RegisterNativeModule(jm)
+	ctx.RegisterNativeModule(ai.jm)
 	mod, err := ctx.Load("simple")
 	if err != nil {
 		panic(err)
@@ -238,9 +241,13 @@ func Start(engine *cgf.Engine, gid game.Gid) game.Script {
 		_, err := mod.Run()
 		base.Error().Printf("Error running script: %v", err)
 	}()
-	return jm
 }
+func (ai *GameAi) Stop()      {}
+func (ai *GameAi) Terminate() {}
 
-func init() {
-	game.RegisterScript("simple", Start)
+func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
+	ai := GameAi{
+		jm: &JotaModule{engine: engine, myGid: gid},
+	}
+	return &ai
 }

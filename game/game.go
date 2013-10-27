@@ -110,6 +110,8 @@ type Ent interface {
 	SetPos(pos linear.Vec2)
 
 	Supply(mana Mana) Mana
+
+	BindAi(name string, engine *cgf.Engine)
 }
 
 type NonManaUser struct{}
@@ -354,17 +356,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 			ability_makers[ability.Name](ability.Params))
 	}
 
-	// Add a single Ai player to side 0
-	// g.Engines[123123] = &PlayerData{
-	// 	PlayerGid: Gid(fmt.Sprintf("Engine:%d", 123123)),
-	// 	Side:      0,
-	// 	Ai:        &AiPlayerData{Gid(fmt.Sprintf("Engine:%d", 123123))},
-	// }
-	// g.Setup.Players[123123] = &SetupPlayerData{
-	// 	Champ: 0,
-	// 	Side:  0,
-	// }
-
 	var room Room
 	dx, dy := 1024, 1024
 	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, u.Seed)
@@ -388,15 +379,15 @@ func (u SetupComplete) Apply(_g interface{}) {
 		sides[data.Side] = append(sides[data.Side], id)
 	}
 	for _, players := range sides {
-		var ids []int64
+		var gids []Gid
 		for _, id := range players {
-			ids = append(ids, id)
+			gids = append(gids, Gid(fmt.Sprintf("Engine:%d", id)))
 		}
-		side := g.Setup.Players[ids[0]].Side
-		gids := g.AddPlayers(ids, side)
-		for i := range ids {
+		side := g.Setup.Players[players[0]].Side
+		g.AddPlayers(gids, side)
+		for i := range players {
 			player := g.Ents[gids[i]].(*PlayerEnt)
-			player.Champ = g.Setup.Players[ids[i]].ChampIndex
+			player.Champ = g.Setup.Players[players[i]].ChampIndex
 		}
 	}
 
@@ -421,13 +412,6 @@ type PlayerData struct {
 
 	// Index into the champs array of the champion that this player is using.
 	ChampIndex int
-
-	// If this is an ai controlled player then this will be non-nil.
-	Ai *AiPlayerData
-}
-
-type AiPlayerData struct {
-	Gid Gid
 }
 
 // All of these values apply to the local player only
@@ -692,12 +676,12 @@ func (g *Game) ThinkGame() {
 	}
 
 	// Death countdown
-	for engineId, engineData := range g.Engines {
+	for _, engineData := range g.Engines {
 		if engineData.CountdownFrames > 0 {
 			engineData.CountdownFrames--
 			if engineData.CountdownFrames == 0 {
 				// TODO: It's a bit janky to do it like this, right?
-				g.AddPlayers([]int64{engineId}, engineData.Side)
+				g.AddPlayers([]Gid{engineData.PlayerGid}, engineData.Side)
 			}
 		}
 	}

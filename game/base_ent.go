@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 	"math"
@@ -73,6 +74,10 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 
 func (b *BaseEnt) Dead() bool {
 	return b.Stats().HealthCur() <= 0
+}
+
+func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {
+	ai_maker(name, engine, b.Gid)
 }
 
 func (b *BaseEnt) Think(g *Game) {

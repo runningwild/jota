@@ -17,6 +17,7 @@ import (
 	"github.com/runningwild/jota/base"
 	_ "github.com/runningwild/jota/effects"
 	"github.com/runningwild/jota/game"
+	_ "github.com/runningwild/jota/script"
 	// _ "github.com/runningwild/jota/script"
 	_ "image/jpeg"
 	_ "image/png"

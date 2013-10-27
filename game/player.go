@@ -2,7 +2,7 @@ package game
 
 import (
 	"encoding/gob"
-	"fmt"
+	"github.com/runningwild/cgf"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
@@ -31,12 +31,11 @@ func (p *PlayerEnt) Supply(supply Mana) Mana {
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side
 // should be zero, otherwise it should be between 0 and number of side - 1,
 // inclusive.
-func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
+func (g *Game) AddPlayers(gids []Gid, side int) {
 	if side < 0 || side >= len(g.Level.Room.Starts) {
 		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.Starts)-1)
 	}
-	var gids []Gid
-	for i, engineId := range engineIds {
+	for i := range gids {
 		var p PlayerEnt
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
@@ -49,16 +48,27 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 		})
 
 		// Evenly space the players on a circle around the starting position.
-		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(engineIds)))
+		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(gids)))
 		p.Position = g.Level.Room.Starts[side].Add(rot)
 
-		// NEXT: REthing Gids and how the levels are laid out - should they just
-		// be indexed by gids?
 		p.Side_ = side
-		p.Gid = Gid(fmt.Sprintf("Engine:%d", engineId))
+		p.Gid = gids[i]
 		p.Processes = make(map[int]Process)
 		g.AddEnt(&p)
 		gids = append(gids, p.Gid)
 	}
-	return gids
+}
+
+type AiMaker func(name string, engine *cgf.Engine, gid Gid) Ai
+
+var ai_maker AiMaker
+
+func RegisterAiMaker(maker AiMaker) {
+	ai_maker = maker
+}
+
+type Ai interface {
+	Start()
+	Stop()
+	Terminate()
 }
