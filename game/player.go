@@ -31,11 +31,26 @@ func (p *PlayerEnt) Supply(supply Mana) Mana {
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side
 // should be zero, otherwise it should be between 0 and number of side - 1,
 // inclusive.
-func (g *Game) AddPlayers(gids []Gid, side int) {
+func (g *Game) AddPlayers(players []*PlayerData) {
+	bySide := make(map[int][]addPlayerData)
+	for _, player := range players {
+		bySide[player.Side] = append(bySide[player.Side], addPlayerData{player.PlayerGid, player.ChampIndex})
+	}
+	for side, players := range bySide {
+		g.addPlayersToSide(players, side)
+	}
+}
+
+type addPlayerData struct {
+	gid   Gid
+	champ int
+}
+
+func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
 	if side < 0 || side >= len(g.Level.Room.Starts) {
 		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.Starts)-1)
 	}
-	for i := range gids {
+	for i, playerData := range playerDatas {
 		var p PlayerEnt
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
@@ -48,14 +63,24 @@ func (g *Game) AddPlayers(gids []Gid, side int) {
 		})
 
 		// Evenly space the players on a circle around the starting position.
-		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(gids)))
+		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(playerDatas)))
 		p.Position = g.Level.Room.Starts[side].Add(rot)
 
 		p.Side_ = side
-		p.Gid = gids[i]
+		p.Gid = playerData.gid
 		p.Processes = make(map[int]Process)
+
+		for _, ability := range g.Champs[playerData.champ].Abilities {
+			p.Abilities_ = append(
+				p.Abilities_,
+				ability_makers[ability.Name](ability.Params))
+		}
+
+		if playerData.gid[0:2] == "Ai" {
+			p.BindAi("simple", g.local.Engine)
+		}
+
 		g.AddEnt(&p)
-		gids = append(gids, p.Gid)
 	}
 }
 

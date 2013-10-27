@@ -1,22 +1,21 @@
 package game
 
 import (
-	"github.com/runningwild/cgf"
+	"encoding/gob"
+	"github.com/runningwild/jota/base"
 )
 
 // An Ability represents something a player can do that does not directly affect
 // the game state.
 type Ability interface {
-	// Called any time the pressedness of either of the two keys bound to this
-	// ability change.  Returns a list of events to apply.
-	Input(gid Gid, pressAmt0, pressAmt1 float64) []cgf.Event
+	Input(ent Ent, game *Game, pressAmt float64, trigger bool)
+	Think(ent Ent, game *Game)
+	Draw(ent Ent, game *Game)
 
-	// Returns any number of events to apply.  Typically this will include an
-	// event that will add a Process to this player.
-	Think(gid Gid, game *Game) []cgf.Event
-
-	// If it is the active Ability it might want to draw some Ui stuff.
-	Draw(gid Gid, game *Game)
+	// Returns true if this is an ability that is in use that uses a trigger
+	// buttons.  Abilities, like Cloaking, that don't require a trigger can be
+	// used simultaneously with other abilities.
+	IsActive() bool
 }
 
 type AbilityMaker func(params map[string]int) Ability
@@ -28,4 +27,46 @@ func RegisterAbility(name string, maker AbilityMaker) {
 		ability_makers = make(map[string]AbilityMaker)
 	}
 	ability_makers[name] = maker
+}
+
+type UseAbility struct {
+	Gid     Gid
+	Index   int
+	Button  float64
+	Trigger bool
+}
+
+func init() {
+	gob.Register(UseAbility{})
+}
+
+func (m UseAbility) Apply(_g interface{}) {
+	g := _g.(*Game)
+	ent, ok := g.Ents[m.Gid]
+	if !ok || ent == nil {
+		return
+	}
+	abilities := ent.Abilities()
+	if m.Index < 0 || m.Index >= len(abilities) {
+		base.Error().Printf("Got a UseAbility on index %d with only %d abilities.", m.Index, len(abilities))
+		return
+	}
+
+	// Don't use the ability if any other abilities are active
+	anyActive := false
+	for i, ability := range abilities {
+		if i == m.Index {
+			// It's ok to send input to the active ability, so if the ability this
+			// command is trying to use is active that's ok.
+			continue
+		}
+		if ability.IsActive() {
+			anyActive = true
+			break
+		}
+	}
+	if anyActive {
+		return
+	}
+	abilities[m.Index].Input(ent, g, m.Button, m.Trigger)
 }

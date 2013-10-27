@@ -20,8 +20,9 @@ type BaseEnt struct {
 	Target struct {
 		Angle float64
 	}
-	Gid   Gid
-	Side_ int
+	Gid        Gid
+	Side_      int
+	Abilities_ []Ability
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
@@ -74,6 +75,10 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 
 func (b *BaseEnt) Dead() bool {
 	return b.Stats().HealthCur() <= 0
+}
+
+func (b *BaseEnt) Abilities() []Ability {
+	return b.Abilities_
 }
 
 func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {

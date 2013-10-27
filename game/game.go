@@ -111,6 +111,8 @@ type Ent interface {
 
 	Supply(mana Mana) Mana
 
+	Abilities() []Ability
+
 	BindAi(name string, engine *cgf.Engine)
 }
 
@@ -228,7 +230,6 @@ func getControllerDirection(controller gin.DeviceId) linear.Vec2 {
 func (g *Game) HandleEventGroup(group gin.EventGroup) {
 	g.local.Engine.Pause()
 	defer g.local.Engine.Unpause()
-
 	if g.Setup != nil {
 		g.Setup.HandleEventGroup(group, g.local.Engine)
 		return
@@ -246,15 +247,20 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 		})
 	}
 
-	ability0Key0 := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
-	ability0Key1 := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-	found0, _ := group.FindEvent(ability0Key0.Id())
-	found1, _ := group.FindEvent(ability0Key1.Id())
-	if found0 || found1 {
-		events := g.local.Abilities[0].Input(g.local.Gid, ability0Key0.CurPressAmt(), ability0Key1.CurPressAmt())
-		for _, event := range events {
-			g.local.Engine.ApplyEvent(event)
-		}
+	// ability0Key := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
+	// abilityTrigger := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
+	ability0Key := gin.In().GetKey(gin.AnyKeyB)
+	abilityTrigger := gin.In().GetKey(gin.AnyKeyH)
+	foundButton, _ := group.FindEvent(ability0Key.Id())
+	foundTrigger, triggerEvent := group.FindEvent(abilityTrigger.Id())
+	// TODO: Check if any abilities are Active before sending events to other abilities.
+	if foundButton || foundTrigger {
+		g.local.Engine.ApplyEvent(UseAbility{
+			Gid:     g.local.Gid,
+			Index:   0,
+			Button:  ability0Key.CurPressAmt(),
+			Trigger: foundTrigger && triggerEvent.Type == gin.Press,
+		})
 	}
 }
 
@@ -367,13 +373,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.local.Side = g.Engines[g.local.Engine.Id()].Side
 	g.local.Gid = g.Engines[g.local.Engine.Id()].PlayerGid
 	g.local.Data = g.Engines[g.local.Engine.Id()]
-	// Create the actualy ability objects that the player will use to interact
-	// with the game.
-	for _, ability := range g.Champs[g.local.Data.ChampIndex].Abilities {
-		g.local.Abilities = append(
-			g.local.Abilities,
-			ability_makers[ability.Name](ability.Params))
-	}
 
 	var room Room
 	dx, dy := 1024, 1024
@@ -393,24 +392,19 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Rng.Seed(12313131)
 	g.Ents = make(map[Gid]Ent)
 	g.Friction = 0.97
+	g.losCache = makeLosCache(g.Level.Room.Dx, g.Level.Room.Dy)
 	sides := make(map[int][]int64)
 	for id, data := range g.Engines {
 		sides[data.Side] = append(sides[data.Side], id)
 	}
-	for side, players := range sides {
-		var gids []Gid
-		for _, id := range players {
-			gids = append(gids, g.Engines[id].PlayerGid)
-		}
-		g.AddPlayers(gids, side)
-		for i := range players {
-			player := g.Ents[gids[i]].(*PlayerEnt)
-			player.Champ = g.Setup.Players[players[i]].ChampIndex
-			if g.local.Engine.Ids() != nil && player.Gid[0:2] == "Ai" {
-				player.BindAi("simple", g.local.Engine)
-			}
-		}
+	var playerDatas []*PlayerData
+	for _, playerData := range g.Engines {
+		playerDatas = append(playerDatas, playerData)
 	}
+	for id, ed := range g.Engines {
+		base.Log().Printf("%v -> %v", id, *ed)
+	}
+	g.AddPlayers(playerDatas)
 
 	g.MakeControlPoints()
 	g.Init()
@@ -680,6 +674,10 @@ func (g *Game) ThinkGame() {
 				var id int64
 				_, err := fmt.Sscanf(string(ent.Id()), "Engine:%d", &id)
 				if err != nil {
+					_, err = fmt.Sscanf(string(ent.Id()), "Ai:%d", &id)
+					id = -id // Ai's engine ids are negative
+				}
+				if err != nil {
 					base.Error().Printf("Unable to parse player id '%v'", ent.Id())
 				} else {
 					if engineData, ok := g.Engines[id]; ok {
@@ -687,6 +685,7 @@ func (g *Game) ThinkGame() {
 							base.Error().Printf("Unable to find engine %d for player %v", id, ent.Id())
 						} else {
 							engineData.CountdownFrames = 60 * 10
+							base.Log().Printf("%v died, counting down....", *engineData)
 						}
 					}
 				}
@@ -701,8 +700,9 @@ func (g *Game) ThinkGame() {
 		if engineData.CountdownFrames > 0 {
 			engineData.CountdownFrames--
 			if engineData.CountdownFrames == 0 {
+				base.Log().Printf("Reading %v", *engineData)
 				// TODO: It's a bit janky to do it like this, right?
-				g.AddPlayers([]Gid{engineData.PlayerGid}, engineData.Side)
+				g.AddPlayers([]*PlayerData{engineData})
 			}
 		}
 	}

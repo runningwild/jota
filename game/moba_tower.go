@@ -115,6 +115,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 
 	// Now check for targets
+	return
 	if cp.AttackTimer > 0 {
 		cp.AttackTimer--
 	}
