@@ -94,8 +94,8 @@ type PlayerEnt struct {
 // should be zero, otherwise it should be between 0 and number of side - 1,
 // inclusive.
 func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
-	if side < 0 || side >= len(g.Levels[GidInvadersStart].Room.Starts) {
-		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Levels[GidInvadersStart].Room.Starts)-1)
+	if side < 0 || side >= len(g.Level.Room.Starts) {
+		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.Starts)-1)
 	}
 	var gids []Gid
 	for i, engineId := range engineIds {
@@ -109,18 +109,16 @@ func (g *Game) AddPlayers(engineIds []int64, side int) []Gid {
 			Size:   12,
 			Vision: 600,
 		})
-		p.CurrentLevel = GidInvadersStart
 
 		// Evenly space the players on a circle around the starting position.
 		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(engineIds)))
-		p.Position = g.Levels[GidInvadersStart].Room.Starts[side].Add(rot)
+		p.Position = g.Level.Room.Starts[side].Add(rot)
 
 		// NEXT: REthing Gids and how the levels are laid out - should they just
 		// be indexed by gids?
 		p.Side_ = side
 		p.Gid = Gid(fmt.Sprintf("Engine:%d", engineId))
 		p.Processes = make(map[int]Process)
-		p.SetLevel(GidInvadersStart)
 		g.AddEnt(&p)
 		gids = append(gids, p.Gid)
 	}
@@ -163,13 +161,11 @@ type Ent interface {
 	SetId(Gid)
 	Pos() linear.Vec2
 	Angle() float64
-	Level() Gid
 	Side() int // which side the ent belongs to
 
 	// Need to have a SetPos method because we don't want ents moving through
 	// walls.
 	SetPos(pos linear.Vec2)
-	SetLevel(Gid)
 
 	Supply(mana Mana) Mana
 }
@@ -179,10 +175,6 @@ type NonManaUser struct{}
 func (NonManaUser) Supply(mana Mana) Mana { return mana }
 
 type Gid string
-
-const (
-	GidInvadersStart Gid = "invaders start"
-)
 
 type Level struct {
 	ManaSource ManaSource
@@ -443,9 +435,8 @@ func (u SetupComplete) Apply(_g interface{}) {
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
-	g.Levels = make(map[Gid]*Level)
-	g.Levels[GidInvadersStart] = &Level{}
-	g.Levels[GidInvadersStart].Room = room
+	g.Level = &Level{}
+	g.Level.Room = room
 	g.Rng = cmwc.MakeGoodCmwc()
 	g.Rng.Seed(12313131)
 	g.Ents = make(map[Gid]Ent)
@@ -522,7 +513,7 @@ type localGameData struct {
 type Game struct {
 	Setup *SetupData
 
-	Levels map[Gid]*Level
+	Level *Level
 
 	Rng *cmwc.Cmwc
 
@@ -550,24 +541,20 @@ type Game struct {
 	temp struct {
 		// This include all room walls for each room, and all walls declared by any
 		// ents in that room.
-		AllWalls map[Gid][]linear.Seg2
+		AllWalls []linear.Seg2
 		// It looks silly, but this is...
 		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
-		// AllWallsGrid  map[Gid][][][][]linear.Vec2
+		// AllWallsGrid  [][][][]linear.Vec2
 		AllWallsDirty bool
-		WallCache     map[Gid]*wallCache
+		WallCache     *wallCache
 		// VisibleWallCache is like WallCache but returns all segments visible from
 		// a location, rather than all segments that should be checked for
 		// collision.
-		VisibleWallCache map[Gid]*wallCache
+		VisibleWallCache *wallCache
 
 		// List of all ents, in the order that they should be iterated in.
 		AllEnts      []Ent
 		AllEntsDirty bool
-
-		// All levels, in the order that they should be iterated in.
-		AllLevels      []*Level
-		AllLevelsDirty bool
 	}
 }
 
@@ -629,29 +616,27 @@ func MakeGame() *Game {
 }
 
 func (g *Game) Init() {
-	g.DoForLevels(func(gid Gid, level *Level) {
-		msOptions := ManaSourceOptions{
-			NumSeeds:    20,
-			NumNodeRows: level.Room.Dy / 32,
-			NumNodeCols: level.Room.Dx / 32,
+	msOptions := ManaSourceOptions{
+		NumSeeds:    20,
+		NumNodeRows: g.Level.Room.Dy / 32,
+		NumNodeCols: g.Level.Room.Dx / 32,
 
-			BoardLeft:   0,
-			BoardTop:    0,
-			BoardRight:  float64(level.Room.Dx),
-			BoardBottom: float64(level.Room.Dy),
+		BoardLeft:   0,
+		BoardTop:    0,
+		BoardRight:  float64(g.Level.Room.Dx),
+		BoardBottom: float64(g.Level.Room.Dy),
 
-			MaxDrainDistance: 120.0,
-			MaxDrainRate:     5.0,
+		MaxDrainDistance: 120.0,
+		MaxDrainRate:     5.0,
 
-			RegenPerFrame:     0.002,
-			NodeMagnitude:     100,
-			MinNodeBrightness: 20,
-			MaxNodeBrightness: 150,
+		RegenPerFrame:     0.002,
+		NodeMagnitude:     100,
+		MinNodeBrightness: 20,
+		MaxNodeBrightness: 150,
 
-			Rng: g.Rng,
-		}
-		level.ManaSource.Init(&msOptions)
-	})
+		Rng: g.Rng,
+	}
+	g.Level.ManaSource.Init(&msOptions)
 	// Values less than this might be used for ability processes, ect...
 	g.NextIdValue = 10000
 }
@@ -691,10 +676,6 @@ func (g *Game) DoForEnts(f func(Gid, Ent)) {
 	base.DoOrdered(g.Ents, lessGids, f)
 }
 
-func (g *Game) DoForLevels(f func(Gid, *Level)) {
-	base.DoOrdered(g.Levels, lessGids, f)
-}
-
 func (g *Game) RemoveEnt(gid Gid) {
 	delete(g.Ents, gid)
 	g.temp.AllEntsDirty = true
@@ -729,32 +710,20 @@ func (g *Game) ThinkSetup() {
 func (g *Game) ThinkGame() {
 	// cache wall data
 	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
-		g.temp.AllWalls = make(map[Gid][]linear.Seg2)
-		g.temp.WallCache = make(map[Gid]*wallCache)
-		g.temp.VisibleWallCache = make(map[Gid]*wallCache)
-		for gid := range g.Levels {
-			var allWalls []linear.Seg2
-			base.DoOrdered(g.Levels[gid].Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
-				for i := range walls {
-					allWalls = append(allWalls, walls.Seg(i))
-				}
-			})
-			// g.DoForEnts(func(entGid Gid, ent Ent) {
-			// 	if ent.Level() == gid {
-			// 		for _, walls := range ent.Walls() {
-			// 			for i := range walls {
-			// 				allWalls = append(allWalls, walls.Seg(i))
-			// 			}
-			// 		}
-			// 	}
-			// })
-			g.temp.AllWalls[gid] = allWalls
-			g.temp.WallCache[gid] = &wallCache{}
-			g.temp.WallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, 100)
-			g.temp.VisibleWallCache[gid] = &wallCache{}
-			g.temp.VisibleWallCache[gid].SetWalls(g.Levels[gid].Room.Dx, g.Levels[gid].Room.Dy, allWalls, stats.LosPlayerHorizon)
-			base.Log().Printf("WallCache: %v", g.temp.WallCache)
-		}
+		g.temp.AllWalls = nil
+		g.temp.WallCache = nil
+		g.temp.VisibleWallCache = nil
+		var allWalls []linear.Seg2
+		base.DoOrdered(g.Level.Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
+			for i := range walls {
+				allWalls = append(allWalls, walls.Seg(i))
+			}
+		})
+		g.temp.AllWalls = allWalls
+		g.temp.WallCache = &wallCache{}
+		g.temp.WallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, 100)
+		g.temp.VisibleWallCache = &wallCache{}
+		g.temp.VisibleWallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, stats.LosPlayerHorizon)
 	}
 
 	// cache ent data
@@ -809,8 +778,8 @@ func (g *Game) ThinkGame() {
 		ent.Think(g)
 		pos := ent.Pos()
 		eps := 1.0e-3
-		pos.X = clamp(pos.X, eps, float64(g.Levels[ent.Level()].Room.Dx)-eps)
-		pos.Y = clamp(pos.Y, eps, float64(g.Levels[ent.Level()].Room.Dy)-eps)
+		pos.X = clamp(pos.X, eps, float64(g.Level.Room.Dx)-eps)
+		pos.Y = clamp(pos.Y, eps, float64(g.Level.Room.Dy)-eps)
 		ent.SetPos(pos)
 	}
 
@@ -836,7 +805,7 @@ func (g *Game) ThinkGame() {
 		}
 	}
 
-	g.Levels[GidInvadersStart].ManaSource.Think(g.Ents)
+	g.Level.ManaSource.Think(g.Ents)
 }
 
 func (g *Game) Think() {

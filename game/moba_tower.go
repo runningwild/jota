@@ -29,14 +29,13 @@ type ControlPoint struct {
 }
 
 func (g *Game) MakeControlPoints() {
-	data := g.Levels[GidInvadersStart].Room.SideData
+	data := g.Level.Room.SideData
 	neutralData := data[len(data)-1]
 	for _, towerPos := range neutralData.Towers {
 		cp := ControlPoint{
 			BaseEnt: BaseEnt{
-				Side_:        -1,
-				CurrentLevel: GidInvadersStart,
-				Position:     towerPos,
+				Side_:    -1,
+				Position: towerPos,
 				StatsInst: stats.Make(stats.Base{
 					Health: 100000,
 					Mass:   1000000,

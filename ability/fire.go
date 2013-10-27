@@ -208,7 +208,7 @@ func (f *fireProcess) Think(g *game.Game) {
 	max := int(f.Stored / 15)
 	algorithm.Choose(&f.explosions, func(e fireExplosion) bool { return !e.Done() })
 	if len(f.explosions) < max {
-		f.explosions = append(f.explosions, fireDoLine(f.rng, player.Position, player.Angle(), f.Stored, 3, g.Levels[player.CurrentLevel]))
+		f.explosions = append(f.explosions, fireDoLine(f.rng, player.Position, player.Angle(), f.Stored, 3, g.Level))
 	}
 	for i := range f.explosions {
 		f.explosions[i].Think()
@@ -285,7 +285,7 @@ func (e addFireTriggerEvent) Apply(_g interface{}) {
 	num := int(g.Rng.Int63()%int64(prevProc.Stored/10)) + int(prevProc.Stored/10)
 	for i := 0; i < num; i++ {
 		fpe.Explosions = append(fpe.Explosions,
-			fireDoLine(g.Rng, player.Position, player.Angle(), prevProc.Stored, 10, g.Levels[player.CurrentLevel]))
+			fireDoLine(g.Rng, player.Position, player.Angle(), prevProc.Stored, 10, g.Level))
 	}
 	g.Processes = append(g.Processes, &fpe)
 }

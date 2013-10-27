@@ -55,8 +55,8 @@ func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 	if hits == 0 {
 		min.X = 0
 		min.Y = 0
-		max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
-		max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+		max.X = float64(g.Level.Room.Dx)
+		max.Y = float64(g.Level.Room.Dy)
 	} else {
 		min.X -= stats.LosPlayerHorizon + 50
 		min.Y -= stats.LosPlayerHorizon + 50
@@ -68,11 +68,11 @@ func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 		}
 		max.X += stats.LosPlayerHorizon + 50
 		max.Y += stats.LosPlayerHorizon + 50
-		if max.X > float64(g.Levels[GidInvadersStart].Room.Dx) {
-			max.X = float64(g.Levels[GidInvadersStart].Room.Dx)
+		if max.X > float64(g.Level.Room.Dx) {
+			max.X = float64(g.Level.Room.Dx)
 		}
-		if max.Y > float64(g.Levels[GidInvadersStart].Room.Dy) {
-			max.Y = float64(g.Levels[GidInvadersStart].Room.Dy)
+		if max.Y > float64(g.Level.Room.Dy) {
+			max.Y = float64(g.Level.Room.Dy)
 		}
 	}
 
@@ -154,7 +154,7 @@ func (g *Game) RenderLosMask() {
 	if ent == nil {
 		return
 	}
-	walls := g.temp.VisibleWallCache[GidInvadersStart].GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
+	walls := g.temp.VisibleWallCache.GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4ub(0, 0, 0, 255)
 	gl.Begin(gl.TRIANGLES)
@@ -185,8 +185,8 @@ func (g *Game) RenderLosMask() {
 	base.SetUniformV2("horizon", "center", ent.Pos())
 	base.SetUniformF("horizon", "horizon", LosMaxDist)
 	gl.Begin(gl.QUADS)
-	dx := gl.Int(g.Levels[GidInvadersStart].Room.Dx)
-	dy := gl.Int(g.Levels[GidInvadersStart].Room.Dy)
+	dx := gl.Int(g.Level.Room.Dx)
+	dy := gl.Int(g.Level.Room.Dy)
 	gl.Vertex2i(0, 0)
 	gl.Vertex2i(dx, 0)
 	gl.Vertex2i(dx, dy)
@@ -228,13 +228,13 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	level := g.Levels[GidInvadersStart]
+	level := g.Level
 	zoom := current.dims.X / float64(region.Dims.Dx)
 	level.ManaSource.Draw(zoom, float64(level.Room.Dx), float64(level.Room.Dy))
 
 	gl.Color4d(1, 1, 1, 1)
 	var expandedPoly linear.Poly
-	for _, poly := range g.Levels[GidInvadersStart].Room.Walls {
+	for _, poly := range g.Level.Room.Walls {
 		// Don't draw counter-clockwise polys, specifically this means don't draw
 		// the boundary of the level.
 		if poly.IsCounterClockwise() {
@@ -253,7 +253,7 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	}
 
 	gui.SetFontColor(0, 255, 0, 255)
-	for side, pos := range g.Levels[GidInvadersStart].Room.Starts {
+	for side, pos := range g.Level.Room.Starts {
 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
 	}
 

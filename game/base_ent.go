@@ -19,9 +19,8 @@ type BaseEnt struct {
 	Target struct {
 		Angle float64
 	}
-	Gid          Gid
-	Side_        int
-	CurrentLevel Gid
+	Gid   Gid
+	Side_ int
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
@@ -70,14 +69,6 @@ func (b *BaseEnt) Angle() float64 {
 
 func (b *BaseEnt) SetPos(pos linear.Vec2) {
 	b.Position = pos
-}
-
-func (b *BaseEnt) Level() Gid {
-	return b.CurrentLevel
-}
-
-func (b *BaseEnt) SetLevel(level Gid) {
-	b.CurrentLevel = level
 }
 
 func (b *BaseEnt) Dead() bool {
@@ -138,7 +129,7 @@ func (b *BaseEnt) Think(g *Game) {
 		epsilon := b.Velocity.Norm().Scale(size / 2)
 		move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
 		prev := b.Position
-		walls := g.temp.WallCache[b.CurrentLevel].GetWalls(int(b.Position.X), int(b.Position.Y))
+		walls := g.temp.WallCache.GetWalls(int(b.Position.X), int(b.Position.Y))
 		for _, wall := range walls {
 			// Don't bother with back-facing segments
 			if wall.Right(b.Position) {

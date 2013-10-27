@@ -53,9 +53,8 @@ type HeatSeekerParams struct {
 func (g *Game) MakeHeatSeeker(pos linear.Vec2, entParams BaseEntParams, hsParams HeatSeekerParams) {
 	mine := HeatSeeker{
 		BaseEnt: BaseEnt{
-			Side_:        10,
-			CurrentLevel: GidInvadersStart,
-			Position:     pos,
+			Side_:    10,
+			Position: pos,
 		},
 		HeatSeekerParams: hsParams,
 	}

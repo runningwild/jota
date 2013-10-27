@@ -17,10 +17,9 @@ type Mine struct {
 func (g *Game) MakeMine(pos, vel linear.Vec2, health, mass, damage, trigger float64) {
 	mine := Mine{
 		BaseEnt: BaseEnt{
-			Side_:        10,
-			CurrentLevel: GidInvadersStart,
-			Position:     pos,
-			Velocity:     vel,
+			Side_:    10,
+			Position: pos,
+			Velocity: vel,
 		},
 		Damage:  damage,
 		Trigger: trigger,
