@@ -3,9 +3,6 @@
 -- Rethink abilities a bit - maybe they can be easier to use.
 -- Anything that renders based on the side should just render based on Gid.
 -- Rethink Gids, they are super-annoying.
--- Kill anything referring to the architect or to the invaders.  ESPECIALLY
-   GidInvadersStart, and really anything allowing multiple levels, let's just
-   assume a single level.  It's a Moba now.
 
 - Fix shaders on ATI cards.
 - Controller support on windows and linux.
