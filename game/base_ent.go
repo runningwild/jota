@@ -26,12 +26,16 @@ type BaseEnt struct {
 	// Processes contains all of the processes that this player is casting
 	// right now.
 	Processes map[int]Process
+	ai        Ai
 }
 
 func (b *BaseEnt) Side() int {
 	return b.Side_
 }
 func (b *BaseEnt) OnDeath(g *Game) {
+	if b.ai != nil {
+		b.ai.Terminate()
+	}
 }
 func (b *BaseEnt) Walls() [][]linear.Vec2 {
 	return nil
@@ -82,8 +86,8 @@ func (b *BaseEnt) Abilities() []Ability {
 }
 
 func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {
-	ai := ai_maker(name, engine, b.Gid)
-	ai.Start()
+	b.ai = ai_maker(name, engine, b.Gid)
+	b.ai.Start()
 }
 
 func (b *BaseEnt) Think(g *Game) {

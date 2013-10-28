@@ -10,6 +10,7 @@ for i := range 1000000 {
 //  log.Printf("Pos: %2.3f %2.3f", pos.X, pos.Y)
   jota.Move(1.0)
   jota.Turn(angle)
+  jota.UseAbility(0, 1.0, true)
   time.Sleep(100)
   jota.Turn(angle)
   jota.Move(0.1)

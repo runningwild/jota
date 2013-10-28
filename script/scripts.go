@@ -81,6 +81,8 @@ type JotaModule struct {
 	// entity when needed.
 	myGid game.Gid
 
+	terminated bool
+
 	// These keep track of the ai's virtual controller
 	controller struct {
 		angle float64 // [-pi, pi]
@@ -88,12 +90,10 @@ type JotaModule struct {
 	}
 }
 
-func (jm *JotaModule) Think() {
-	ent := jm.engine.GetState().(*game.Game).Ents[jm.myGid]
-	if ent == nil {
-		return
+func (jm *JotaModule) dieOnTerminated() {
+	if jm.terminated {
+		panic("module terminated")
 	}
-	base.Log().Printf("Accelerate: %v", jm.myGid)
 }
 
 func (jm *JotaModule) ID() string {
@@ -164,25 +164,40 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob.Set(runtime.String("Me"), runtime.NewNativeFunc(jm.ctx, "jota.Me", jm.Me))
 		jm.ob.Set(runtime.String("Move"), runtime.NewNativeFunc(jm.ctx, "jota.Move", jm.Move))
 		jm.ob.Set(runtime.String("Turn"), runtime.NewNativeFunc(jm.ctx, "jota.Turn", jm.Turn))
+		jm.ob.Set(runtime.String("UseAbility"), runtime.NewNativeFunc(jm.ctx, "jota.UseAbility", jm.UseAbility))
 	}
 	return jm.ob, nil
 }
 
 func (jm *JotaModule) Me(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
 	jm.engine.Pause()
 	defer jm.engine.Unpause()
 	return jm.newEnt(jm.myGid)
 }
 
 func (jm *JotaModule) Move(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
 	jm.controller.acc = vs[0].Float()
 	jm.engine.ApplyEvent(game.Move{jm.myGid, jm.controller.angle, jm.controller.acc})
 	return runtime.Nil
 }
 
 func (jm *JotaModule) Turn(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
 	jm.controller.angle = vs[0].Float()
 	jm.engine.ApplyEvent(game.Move{jm.myGid, jm.controller.angle, jm.controller.acc})
+	return runtime.Nil
+}
+
+func (jm *JotaModule) UseAbility(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.engine.ApplyEvent(game.UseAbility{
+		Gid:     jm.myGid,
+		Index:   int(vs[0].Int()),
+		Button:  vs[1].Float(),
+		Trigger: vs[2].Bool(),
+	})
 	return runtime.Nil
 }
 
@@ -230,8 +245,10 @@ func (ai *GameAi) Start() {
 		base.Error().Printf("Error running script: %v", err)
 	}()
 }
-func (ai *GameAi) Stop()      {}
-func (ai *GameAi) Terminate() {}
+func (ai *GameAi) Stop() {}
+func (ai *GameAi) Terminate() {
+	ai.jm.terminated = true
+}
 
 func init() {
 	game.RegisterAiMaker(Maker)
