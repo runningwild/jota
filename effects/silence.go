@@ -46,5 +46,5 @@ func (s *silence) Phase() game.Phase {
 	}
 	return game.PhaseRunning
 }
-func (s *silence) Draw(id game.Gid, g *game.Game, side int) {
+func (s *silence) Draw(src, obs game.Gid, g *game.Game) {
 }

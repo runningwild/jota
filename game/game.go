@@ -69,7 +69,7 @@ type Process interface {
 	Drain
 	Thinker
 	stats.Condition
-	Draw(id Gid, game *Game, side int)
+	Draw(source, observer Gid, game *Game)
 }
 
 type Color int
@@ -628,6 +628,17 @@ func (g *Game) AddEnt(ent Ent) {
 	}
 	g.Ents[ent.Id()] = ent
 	g.temp.AllEntsDirty = true
+}
+
+// Give the gid of a Player ent (ai or engine) this will return that player's
+// side, or -1 if such a player does not exist.
+func (g *Game) GidToSide(gid Gid) int {
+	for _, p := range g.Engines {
+		if p.PlayerGid == gid {
+			return p.Side
+		}
+	}
+	return -1
 }
 
 func (g *Game) ThinkSetup() {

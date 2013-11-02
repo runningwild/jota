@@ -268,9 +268,14 @@ func (controlPointAttackProcess) ModifyDamage(damage stats.Damage) stats.Damage 
 func (controlPointAttackProcess) CauseDamage() stats.Damage {
 	return stats.Damage{}
 }
-func (cpap *controlPointAttackProcess) Draw(id Gid, g *Game, side int) {
+func (cpap *controlPointAttackProcess) Draw(src, obs Gid, g *Game) {
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.9)
+
+	side := g.GidToSide(src)
+	if side == -1 {
+		return
+	}
 
 	// For people on the controlling side this will draw a circle around the area
 	// that is being targeted by the control point.

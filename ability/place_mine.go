@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	// "github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
+	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 )
 
@@ -32,6 +33,26 @@ type placeMine struct {
 	cost    float64
 	fire    int
 }
+
+// Typical process for draining mana for an ability that can be triggered
+// multiple times in discrete units.
+type multiDrain struct {
+	// This is the amount of mana for a single trigger's worth of the associated
+	// ability.
+	Unit game.Mana
+
+	// The amount of mana currently stored.
+	Stored game.Mana
+}
+
+func (p *multiDrain) Draw(id game.Gid, game *game.Game, side int)   {}
+func (p *multiDrain) Supply(mana game.Mana) game.Mana               { return mana }
+func (p *multiDrain) Think(game *game.Game)                         {}
+func (p *multiDrain) Kill(game *game.Game)                          {}
+func (p *multiDrain) Phase() game.Phase                             { return 0 }
+func (p *multiDrain) ModifyBase(base stats.Base) stats.Base         { return base }
+func (p *multiDrain) ModifyDamage(damage stats.Damage) stats.Damage { return damage }
+func (p *multiDrain) CauseDamage() stats.Damage                     { return stats.Damage{} }
 
 func (pm *placeMine) Input(ent game.Ent, game *game.Game, pressAmt float64, trigger bool) {
 	if pressAmt == 0 {

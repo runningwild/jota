@@ -264,6 +264,9 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	gl.Disable(gl.TEXTURE_2D)
 
 	// TODO: figure out how to draw abilities.
+	// for gid, ent:=range g.Ents {
+	// 	for _, proc := range ent.
+	// }
 	// for i := range local.moba.players {
 	// 	p := &local.moba.players[i]
 	// 	if p.abs.activeAbility != nil {
@@ -271,7 +274,7 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	// 	}
 	// }
 	for _, proc := range g.Processes {
-		proc.Draw(Gid(""), g, g.local.Side)
+		proc.Draw(Gid(""), g.local.Gid, g)
 	}
 
 	gl.Color4ub(0, 0, 255, 200)
@@ -316,7 +319,7 @@ func (p *PlayerEnt) Draw(game *Game) {
 		false)
 
 	for _, proc := range p.Processes {
-		proc.Draw(p.Id(), game, game.local.Side)
+		proc.Draw(p.Id(), game.local.Gid, game)
 	}
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.08)
