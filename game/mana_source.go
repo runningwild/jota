@@ -409,9 +409,9 @@ func (ms *ManaSource) getMaxDrainRate(distSquared float64) float64 {
 	return distRatio * distRatio * ms.options.MaxDrainRate
 }
 
-func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*PlayerEnt) {
+func (ms *ManaSource) getPlayerRanges(td *thinkData, ents []Ent) {
 	i := -1
-	for _, player := range players {
+	for _, ent := range ents {
 		i++
 		playerThinkData := &td.playerThinkData[i]
 
@@ -420,10 +420,10 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*PlayerEnt) {
 		playerThinkData.maxX = -1
 		playerThinkData.maxY = -1
 
-		playerThinkData.rateFactor = player.Stats().MaxRate()
+		playerThinkData.rateFactor = ent.Stats().MaxRate()
 
 		for x := range ms.nodes {
-			dx := ms.nodes[x][0].X - player.Pos().X
+			dx := ms.nodes[x][0].X - ent.Pos().X
 			if dx >= -ms.options.MaxDrainDistance && playerThinkData.minX == -1 {
 				playerThinkData.minX = x
 			}
@@ -435,7 +435,7 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*PlayerEnt) {
 		}
 
 		for y := range ms.nodes[0] {
-			dy := ms.nodes[0][y].Y - player.Pos().Y
+			dy := ms.nodes[0][y].Y - ent.Pos().Y
 			if dy >= -ms.options.MaxDrainDistance && playerThinkData.minY == -1 {
 				playerThinkData.minY = y
 			}
@@ -448,10 +448,10 @@ func (ms *ManaSource) getPlayerRanges(td *thinkData, players []*PlayerEnt) {
 	}
 }
 
-func (ms *ManaSource) setPlayerControl(td *thinkData, players []*PlayerEnt) {
+func (ms *ManaSource) setPlayerControl(td *thinkData, ents []Ent) {
 	maxDistSquared := ms.options.MaxDrainDistance * ms.options.MaxDrainDistance
 	i := -1
-	for _, player := range players {
+	for _, ent := range ents {
 		i++
 		playerThinkData := &td.playerThinkData[i]
 		if !playerThinkData.isValid() {
@@ -461,7 +461,7 @@ func (ms *ManaSource) setPlayerControl(td *thinkData, players []*PlayerEnt) {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
 				node := &ms.nodes[x][y]
 				nodeThinkData := &td.nodeThinkData[x][y]
-				distSquared := player.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2()
+				distSquared := ent.Pos().Sub(linear.MakeVec2(node.X, node.Y)).Mag2()
 				if distSquared <= maxDistSquared {
 					nodeThinkData.playerDistSquared[i] = distSquared
 					nodeThinkData.playerControl[i] = 1.0 / (distSquared + 1.0)
@@ -514,15 +514,15 @@ func (ms *ManaSource) setPlayerDrain(td *thinkData) {
 	}
 }
 
-func (ms *ManaSource) supplyPlayers(td *thinkData, players []*PlayerEnt) {
+func (ms *ManaSource) supplyPlayers(td *thinkData, ents []Ent) {
 	i := -1
-	for _, player := range players {
+	for _, ent := range ents {
 		i++
 		playerThinkData := &td.playerThinkData[i]
 		if !playerThinkData.isValid() {
 			continue
 		}
-		drainUsed := player.Supply(playerThinkData.drain)
+		drainUsed := ent.Supply(playerThinkData.drain)
 		for x := playerThinkData.minX; x <= playerThinkData.maxX; x++ {
 			for y := playerThinkData.minY; y <= playerThinkData.maxY; y++ {
 				node := &ms.nodes[x][y]
@@ -550,15 +550,15 @@ func (ms *ManaSource) Think(ents map[Gid]Ent) {
 	if ms.thinks%1 == 0 {
 		ms.regenerateMana()
 	}
-	var players []*PlayerEnt
+	var drains []Ent
 	for _, ent := range ents {
-		if player, ok := ent.(*PlayerEnt); ok {
-			players = append(players, player)
+		if ent.Stats().MaxRate() > 0 {
+			drains = append(drains, ent)
 		}
 	}
-	ms.initThinkData(&globalThinkData, len(players))
-	ms.getPlayerRanges(&globalThinkData, players)
-	ms.setPlayerControl(&globalThinkData, players)
+	ms.initThinkData(&globalThinkData, len(drains))
+	ms.getPlayerRanges(&globalThinkData, drains)
+	ms.setPlayerControl(&globalThinkData, drains)
 	ms.setPlayerDrain(&globalThinkData)
-	ms.supplyPlayers(&globalThinkData, players)
+	ms.supplyPlayers(&globalThinkData, drains)
 }

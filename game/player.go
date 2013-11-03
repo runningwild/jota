@@ -21,11 +21,11 @@ func (p *PlayerEnt) Think(g *Game) {
 	p.BaseEnt.Think(g)
 }
 
-func (p *PlayerEnt) Supply(supply Mana) Mana {
-	for _, process := range p.Processes {
-		supply = process.Supply(supply)
-	}
-	return supply
+func (p *PlayerEnt) Supply(mana Mana) Mana {
+	base.DoOrdered(p.Processes, func(a, b int) bool { return a < b }, func(id int, proc Process) {
+		mana = proc.Supply(mana)
+	})
+	return mana
 }
 
 // AddPlayers adds numPlayers to the specified side.  In standard game mode side

@@ -244,7 +244,12 @@ func (cp *ControlPoint) Draw(g *Game) {
 		g.local.Side == cp.Controller)
 	base.EnableShader("")
 }
-func (cp *ControlPoint) Supply(mana Mana) Mana { return Mana{} }
+func (cp *ControlPoint) Supply(mana Mana) Mana {
+	base.DoOrdered(cp.Processes, func(a, b int) bool { return a < b }, func(id int, proc Process) {
+		mana = proc.Supply(mana)
+	})
+	return mana
+}
 func (cp *ControlPoint) Walls() [][]linear.Vec2 {
 	return nil
 }

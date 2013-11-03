@@ -75,6 +75,7 @@ func (sc *spawnCreeps) Input(ent game.Ent, g *game.Game, pressAmt float64, trigg
 	}
 	proc, ok := cp.Processes[sc.id].(*omniDrain)
 	if !ok {
+		base.Log().Printf("Started draining for %v", ent.Id())
 		cp.Processes[sc.id] = &omniDrain{Gid: cp.Gid}
 		return
 	}

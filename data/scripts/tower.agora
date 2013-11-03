@@ -6,9 +6,9 @@ me := jota.Me()
 angle := 0.0
 for i := range 1000000 {
 log.Printf("Tower ai %v", me)
-  time.Sleep(1000)
+  time.Sleep(9000)
   jota.UseAbility(0, 1.0, false)
-  time.Sleep(500)
+  time.Sleep(1000)
   jota.UseAbility(0, 1.0, true)
   jota.UseAbility(0, 0.0, false)
 //  pos := me.Pos()
