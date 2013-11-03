@@ -1,32 +1,27 @@
 package game
 
 import (
-	"fmt"
 	"github.com/runningwild/linear"
 )
 
-type Portal struct {
-	Region linear.Poly
-	Dest   int
-}
-
 type Room struct {
 	Walls    map[string]linear.Poly
-	Starts   []linear.Vec2
-	End      linear.Vec2
-	Portals  map[string]Portal
 	Dx, Dy   int
-	NextId   int
 	SideData []roomSideData
+	Towers   []towerData
 }
 
 type roomSideData struct {
-	Base   linear.Vec2   // Position of the base for this side
-	Towers []linear.Vec2 // Positions of the towers for this side
-	// Will also need waypoints for units, production and whatnot.
+	Base linear.Vec2 // Position of the base for this side
 }
 
-func (r *Room) AddWall(wall linear.Poly) {
-	r.Walls[fmt.Sprintf("%d", r.NextId)] = wall
-	r.NextId++
+type towerData struct {
+	Pos linear.Vec2
+
+	// Side that controls the tower at the beginning of the game.
+	Side int
+
+	// Indexes into the list of Towers representing towers that this tower can
+	// spawn ents to go capture.
+	Targets []int
 }

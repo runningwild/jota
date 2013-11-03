@@ -253,8 +253,8 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	}
 
 	gui.SetFontColor(0, 255, 0, 255)
-	for side, pos := range g.Level.Room.Starts {
-		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), pos.X, pos.Y, 0, 100, gui.Center)
+	for side, data := range g.Level.Room.SideData {
+		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), data.Base.X, data.Base.Y, 0, 100, gui.Center)
 	}
 
 	gl.Color4d(1, 1, 1, 1)

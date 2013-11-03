@@ -47,8 +47,8 @@ type addPlayerData struct {
 }
 
 func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
-	if side < 0 || side >= len(g.Level.Room.Starts) {
-		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.Starts)-1)
+	if side < 0 || side >= len(g.Level.Room.SideData) {
+		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.SideData)-1)
 	}
 	for i, playerData := range playerDatas {
 		var p PlayerEnt
@@ -64,7 +64,7 @@ func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
 
 		// Evenly space the players on a circle around the starting position.
 		rot := (linear.Vec2{25, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(len(playerDatas)))
-		p.Position = g.Level.Room.Starts[side].Add(rot)
+		p.Position = g.Level.Room.SideData[side].Base.Add(rot)
 
 		p.Side_ = side
 		p.Gid = playerData.gid

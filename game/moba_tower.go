@@ -26,16 +26,18 @@ type ControlPoint struct {
 	// an attack process will begin and the AttackTimer will be set.  It will
 	// count down on every think until it reaches zero again.
 	AttackTimer int
+
+	// Other control points that this one can send creeps to attack.
+	Targets []Gid
 }
 
 func (g *Game) MakeControlPoints() {
-	data := g.Level.Room.SideData
-	neutralData := data[len(data)-1]
-	for _, towerPos := range neutralData.Towers {
+	var cps []*ControlPoint
+	for _, towerData := range g.Level.Room.Towers {
 		cp := ControlPoint{
 			BaseEnt: BaseEnt{
 				Side_:    -1,
-				Position: towerPos,
+				Position: towerData.Pos,
 				StatsInst: stats.Make(stats.Base{
 					Health: 100000,
 					Mass:   1000000,
@@ -45,7 +47,20 @@ func (g *Game) MakeControlPoints() {
 				}),
 			},
 		}
+		if towerData.Side != -1 {
+			cp.Controlled = true
+			cp.Control = 1.0
+			cp.Controller = towerData.Side
+		}
+		cps = append(cps, &cp)
 		g.AddEnt(&cp)
+	}
+
+	// Now set up the target arrays
+	for i := range cps {
+		for j := range g.Level.Room.Towers[i].Targets {
+			cps[i].Targets = append(cps[i].Targets, cps[j].Id())
+		}
 	}
 }
 
@@ -253,11 +268,8 @@ func (cpap *controlPointAttackProcess) Think(g *Game) {
 func (cpap *controlPointAttackProcess) Kill(g *Game) {
 	cpap.Killed = true
 }
-func (cpap *controlPointAttackProcess) Phase() Phase {
-	if cpap.Killed {
-		return PhaseComplete
-	}
-	return PhaseRunning
+func (cpap *controlPointAttackProcess) Dead() bool {
+	return cpap.Killed
 }
 func (controlPointAttackProcess) ModifyBase(base stats.Base) stats.Base {
 	return base

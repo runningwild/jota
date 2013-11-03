@@ -40,11 +40,8 @@ func (s *silence) Think(g *game.Game) {
 func (s *silence) Kill(g *game.Game) {
 	s.Ticker = 0
 }
-func (s *silence) Phase() game.Phase {
-	if s.Ticker <= 0 {
-		return game.PhaseComplete
-	}
-	return game.PhaseRunning
+func (s *silence) Dead() bool {
+	return s.Ticker == 0
 }
 func (s *silence) Draw(src, obs game.Gid, g *game.Game) {
 }

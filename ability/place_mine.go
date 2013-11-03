@@ -2,9 +2,7 @@ package ability
 
 import (
 	"encoding/gob"
-	// "github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
-	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 )
 
@@ -34,36 +32,23 @@ type placeMine struct {
 	fire    int
 }
 
-// Typical process for draining mana for an ability that can be triggered
-// multiple times in discrete units.
-type multiDrain struct {
-	// This is the amount of mana for a single trigger's worth of the associated
-	// ability.
-	Unit game.Mana
-
-	// The amount of mana currently stored.
-	Stored game.Mana
-}
-
-func (p *multiDrain) Draw(id game.Gid, game *game.Game, side int)   {}
-func (p *multiDrain) Supply(mana game.Mana) game.Mana               { return mana }
-func (p *multiDrain) Think(game *game.Game)                         {}
-func (p *multiDrain) Kill(game *game.Game)                          {}
-func (p *multiDrain) Phase() game.Phase                             { return 0 }
-func (p *multiDrain) ModifyBase(base stats.Base) stats.Base         { return base }
-func (p *multiDrain) ModifyDamage(damage stats.Damage) stats.Damage { return damage }
-func (p *multiDrain) CauseDamage() stats.Damage                     { return stats.Damage{} }
-
-func (pm *placeMine) Input(ent game.Ent, game *game.Game, pressAmt float64, trigger bool) {
+func (pm *placeMine) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool) {
+	player := ent.(*game.PlayerEnt)
 	if pressAmt == 0 {
+		delete(player.Processes, pm.id)
 		return
 	}
-	if !trigger {
+	proc, ok := player.Processes[pm.id].(*multiDrain)
+	if !ok {
+		player.Processes[pm.id] = &multiDrain{Gid: player.Gid, Unit: game.Mana{300, 0, 0}}
 		return
 	}
-	heading := (linear.Vec2{1, 0}).Rotate(ent.Angle())
-	pos := ent.Pos().Add(heading.Scale(100))
-	game.MakeMine(pos, linear.Vec2{}, 100, 100, 100, 100)
+	if trigger && proc.Stored > 1 {
+		proc.Stored--
+		heading := (linear.Vec2{1, 0}).Rotate(ent.Angle())
+		pos := ent.Pos().Add(heading.Scale(100))
+		g.MakeMine(pos, linear.Vec2{}, 100, 100, 100, 100)
+	}
 }
 func (pm *placeMine) Think(ent game.Ent, game *game.Game) {
 
@@ -74,189 +59,3 @@ func (pm *placeMine) Draw(ent game.Ent, game *game.Game) {
 func (pm *placeMine) IsActive() bool {
 	return false
 }
-
-// func (pm *placeMine) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
-// 	var ret []cgf.Event
-// 	if keyPress {
-// 		ret = append(ret, addPlaceMineCastProcessEvent{
-// 			PlayerGid: gid,
-// 			ProcessId: pm.id,
-// 			Cost:      pm.cost,
-// 		})
-// 	} else {
-// 		ret = append(ret, removePlaceMineCastProcessEvent{
-// 			PlayerGid: gid,
-// 			ProcessId: pm.id,
-// 		})
-// 	}
-// 	return ret, keyPress
-// }
-
-// func (pm *placeMine) Deactivate(gid game.Gid) []cgf.Event {
-// 	pm.fire = 0
-// 	return nil
-// }
-
-// func (pm *placeMine) Respond(gid game.Gid, group gin.EventGroup) bool {
-// 	if found, event := group.FindEvent(gin.AnySpace); found && event.Type == gin.Press {
-// 		pm.fire++
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (pm *placeMine) Think(gid game.Gid, g *game.Game) ([]cgf.Event, bool) {
-// 	var ret []cgf.Event
-// 	for ; pm.fire > 0; pm.fire-- {
-// 		ret = append(ret, addPlaceMineFireEvent{
-// 			PlayerGid: gid,
-// 			ProcessId: pm.id,
-// 			Health:    pm.health,
-// 			Mass:      pm.mass,
-// 			Damage:    pm.damage,
-// 			Trigger:   pm.trigger,
-// 		})
-// 	}
-// 	return ret, false
-// }
-
-// type placeMineCastProcess struct {
-// 	BasicPhases
-// 	NullCondition
-// 	PlayerGid game.Gid
-// 	Stored    game.Mana
-// 	Cost      float64
-// }
-
-// func (p *placeMineCastProcess) Supply(supply game.Mana) game.Mana {
-// 	p.Stored[game.ColorBlue] += supply[game.ColorBlue]
-// 	supply[game.ColorBlue] = 0
-// 	return supply
-// }
-
-// func (p *placeMineCastProcess) Think(g *game.Game) {
-// 	p.Stored[game.ColorBlue] *= 0.98
-// }
-
-// // TODO: This function really needs to take not just the side, but the player
-// // that this is being drawn for.
-// func (p *placeMineCastProcess) Draw(gid game.Gid, g *game.Game, side int) {
-// 	player, _ := g.Ents[p.PlayerGid].(*game.PlayerEnt)
-// 	if player == nil {
-// 		return
-// 	}
-// 	if side != player.Side() {
-// 		return
-// 	}
-// 	ready := int(p.Stored[game.ColorBlue] / p.Cost)
-// 	base.EnableShader("status_bar")
-// 	if ready == 0 {
-// 		gl.Color4ub(255, 0, 0, 255)
-// 	} else {
-// 		gl.Color4ub(0, 255, 0, 255)
-// 	}
-// 	var outer float32 = 0.2
-// 	var increase float32 = 0.01
-// 	frac := p.Stored[game.ColorBlue] / p.Cost
-// 	base.SetUniformF("status_bar", "frac", float32(frac-float64(ready)))
-// 	base.SetUniformF("status_bar", "inner", outer-increase*float32(ready+1))
-// 	base.SetUniformF("status_bar", "outer", outer)
-// 	base.SetUniformF("status_bar", "buffer", 0.01)
-// 	texture.Render(player.Pos().X-100, player.Pos().Y-100, 200, 200)
-// 	if ready > 0 {
-// 		base.SetUniformF("status_bar", "frac", 1.0)
-// 		base.SetUniformF("status_bar", "inner", outer-float32(ready)*increase)
-// 		base.SetUniformF("status_bar", "outer", outer)
-// 		texture.Render(player.Pos().X-100, player.Pos().Y-100, 200, 200)
-// 	}
-// 	base.EnableShader("")
-// }
-
-// type addPlaceMineCastProcessEvent struct {
-// 	PlayerGid game.Gid
-// 	ProcessId int
-// 	Cost      float64
-// }
-
-// func init() {
-// 	gob.Register(addPlaceMineCastProcessEvent{})
-// }
-
-// func (e addPlaceMineCastProcessEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
-// 	if !ok {
-// 		return
-// 	}
-// 	player.Processes[100+e.ProcessId] = &placeMineCastProcess{
-// 		PlayerGid: e.PlayerGid,
-// 		Cost:      e.Cost,
-// 	}
-// }
-
-// type removePlaceMineCastProcessEvent struct {
-// 	PlayerGid game.Gid
-// 	ProcessId int
-// 	Cost      float64
-// }
-
-// func init() {
-// 	gob.Register(removePlaceMineCastProcessEvent{})
-// }
-
-// func (e removePlaceMineCastProcessEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
-// 	if !ok {
-// 		return
-// 	}
-// 	proc := player.Processes[100+e.ProcessId]
-// 	if proc != nil {
-// 		proc.Kill(g)
-// 	}
-// }
-
-// type addPlaceMineFireEvent struct {
-// 	PlayerGid game.Gid
-// 	ProcessId int
-// 	Health    float64
-// 	Mass      float64
-// 	Damage    float64
-// 	Trigger   float64
-// }
-
-// func init() {
-// 	gob.Register(addPlaceMineFireEvent{})
-// }
-
-// func (e addPlaceMineFireEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
-// 	if !ok {
-// 		return
-// 	}
-// 	proc := player.Processes[100+e.ProcessId]
-// 	if proc == nil {
-// 		return
-// 	}
-// 	pmProc, ok := proc.(*placeMineCastProcess)
-// 	if !ok {
-// 		return
-// 	}
-// 	if pmProc.Stored[game.ColorBlue] < pmProc.Cost {
-// 		// Can't cast until you've stored up the minimum amount
-// 		return
-// 	}
-// 	pmProc.Stored[game.ColorBlue] -= pmProc.Cost
-
-// 	var angle float64
-// 	if player.Velocity.Mag() < 10 {
-// 		angle = player.Velocity.Angle()
-// 	} else {
-// 		angle = player.Angle()
-// 	}
-// 	pos := player.Position.Add((linear.Vec2{50, 0}).Rotate(angle + math.Pi))
-// 	rng := rand.New(g.Rng)
-// 	pos = pos.Add((linear.Vec2{rng.NormFloat64() * 15, 0}).Rotate(rng.Float64() * math.Pi * 2))
-// 	g.MakeMine(pos, player.Velocity.Scale(0.5), e.Health, e.Mass, e.Damage, e.Trigger)
-// }

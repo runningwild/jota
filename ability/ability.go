@@ -3,7 +3,6 @@ package ability
 import (
 	// 	"github.com/runningwild/cgf"
 	// 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
 	"sync"
 )
@@ -35,22 +34,6 @@ func NextAbilityId() int {
 // type NonRendering struct{}
 
 // func (NonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
-
-type BasicPhases struct {
-	The_phase game.Phase
-}
-
-func (bp *BasicPhases) Kill(g *game.Game) {
-	bp.The_phase = game.PhaseComplete
-}
-
-func (bp *BasicPhases) Terminated() bool {
-	return bp.The_phase == game.PhaseComplete
-}
-
-func (bp *BasicPhases) Phase() game.Phase {
-	return bp.The_phase
-}
 
 type NullCondition struct{}
 

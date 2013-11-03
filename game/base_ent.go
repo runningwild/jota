@@ -105,7 +105,7 @@ func (b *BaseEnt) Think(g *Game) {
 	for _, pid := range pids {
 		proc := b.Processes[pid]
 		proc.Think(g)
-		if proc.Phase() == PhaseComplete {
+		if proc.Dead() {
 			dead = append(dead, pid)
 		} else {
 			b.StatsInst.ApplyCondition(proc)

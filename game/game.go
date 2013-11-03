@@ -2,7 +2,6 @@ package game
 
 import (
 	"encoding/gob"
-	"encoding/json"
 	"fmt"
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
@@ -10,7 +9,6 @@ import (
 	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/champ"
-	"github.com/runningwild/jota/generator"
 	"github.com/runningwild/jota/gui"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
@@ -38,23 +36,6 @@ type Drain interface {
 	Supply(Mana) Mana
 }
 
-type Phase int
-
-const (
-	// This phase is for any process that needs a ui before.  A player can only
-	// have one Process in PhaseUi at a time.  If a player tries to use an ability
-	// while a Process is in PhaseUi the process in PhaseUi will be killed.
-	PhaseUi Phase = iota
-
-	// Once a Process hits PhaseRunning it will remain here until it is complete.
-	// A process should not reach this phase until it is done with player
-	// interaction.
-	PhaseRunning
-
-	// Once a Process returns PhaseComplete it will always return PhaseComplete.
-	PhaseComplete
-)
-
 type Thinker interface {
 	Think(game *Game)
 
@@ -62,7 +43,7 @@ type Thinker interface {
 	// future calls to Phase().
 	Kill(game *Game)
 
-	Phase() Phase
+	Dead() bool
 }
 
 type Process interface {
@@ -375,14 +356,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.local.Data = g.Engines[g.local.Engine.Id()]
 
 	var room Room
-	dx, dy := 1024, 1024
-	generated := generator.GenerateRoom(float64(dx), float64(dy), 100, 64, u.Seed)
-	data, err := json.Marshal(generated)
-	if err != nil {
-		base.Error().Fatalf("%v", err)
-	}
-	err = json.Unmarshal(data, &room)
-	// err = base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
+	err := base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
@@ -729,7 +703,7 @@ func (g *Game) ThinkGame() {
 	for _, proc := range g.Processes {
 		proc.Think(g)
 	}
-	algorithm.Choose(&g.Processes, func(proc Process) bool { return proc.Phase() != PhaseComplete })
+	algorithm.Choose(&g.Processes, func(proc Process) bool { return !proc.Dead() })
 
 	// Advance players, check for collisions, add segments
 	for _, ent := range g.temp.AllEnts {

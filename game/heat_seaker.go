@@ -95,11 +95,8 @@ func (mc *massCondition) Kill(game *Game) {
 	mc.Duration = 0
 }
 
-func (mc *massCondition) Phase() Phase {
-	if mc.Duration <= 0 {
-		return PhaseComplete
-	}
-	return PhaseRunning
+func (mc *massCondition) Dead() bool {
+	return mc.Duration == 0
 }
 func (mc *massCondition) Draw(id Gid, game *Game, side int) {
 }
