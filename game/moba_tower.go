@@ -36,8 +36,10 @@ func (g *Game) MakeControlPoints() {
 	for _, towerData := range g.Level.Room.Towers {
 		cp := ControlPoint{
 			BaseEnt: BaseEnt{
-				Side_:    towerData.Side,
-				Position: towerData.Pos,
+				Abilities_: []Ability{ability_makers["spawnCreeps"](map[string]int{})},
+				Side_:      towerData.Side,
+				Position:   towerData.Pos,
+				Processes:  make(map[int]Process),
 				StatsInst: stats.Make(stats.Base{
 					Health: 100000,
 					Mass:   1000000,
@@ -47,13 +49,17 @@ func (g *Game) MakeControlPoints() {
 				}),
 			},
 		}
+		cps = append(cps, &cp)
+		g.AddEnt(&cp)
+
 		if towerData.Side != -1 {
 			cp.Controlled = true
 			cp.Control = 1.0
 			cp.Controller = towerData.Side
+			// Must do this after the call to AddEnt() because BindAi requires that
+			// the ent's Gid has been set
+			cp.BindAi("tower", g.local.Engine)
 		}
-		cps = append(cps, &cp)
-		g.AddEnt(&cp)
 	}
 
 	// Now set up the target arrays
@@ -128,7 +134,6 @@ func (cp *ControlPoint) Think(g *Game) {
 			// Can't recap something you already control.
 
 		case cp.Controlled && side != cp.Controller:
-			// Can't recap something you already control.
 			cp.Control -= amt
 
 		case !cp.Controlled && side == cp.Controller:
@@ -141,11 +146,18 @@ func (cp *ControlPoint) Think(g *Game) {
 			cp.Control = 0
 			cp.Controlled = false
 			cp.Controller = side
+			if cp.ai != nil {
+				cp.ai.Terminate()
+				cp.ai = nil
+			}
 		}
 		if cp.Control >= 0.999 {
 			cp.Control = 1.0
 			cp.Controlled = true
 			cp.Controller = side
+			if cp.ai == nil {
+				cp.BindAi("tower", g.local.Engine)
+			}
 		}
 	}
 

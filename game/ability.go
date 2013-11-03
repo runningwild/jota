@@ -44,6 +44,7 @@ func (m UseAbility) Apply(_g interface{}) {
 	g := _g.(*Game)
 	ent, ok := g.Ents[m.Gid]
 	if !ok || ent == nil {
+		base.Error().Printf("Got a use ability that made no sense: %v", m)
 		return
 	}
 	abilities := ent.Abilities()

@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/cgf"
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 	"math"
@@ -86,6 +87,14 @@ func (b *BaseEnt) Abilities() []Ability {
 }
 
 func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {
+	if b.ai != nil {
+		base.Warn().Printf("Can't bind an Ai when there is already one bound.")
+		return
+	}
+	if b.Gid == "" {
+		base.Error().Printf("Can't bind an Ai on an ent before setting its Gid.")
+		return
+	}
 	b.ai = ai_maker(name, engine, b.Gid)
 	b.ai.Start()
 }

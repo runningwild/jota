@@ -77,6 +77,9 @@ type JotaModule struct {
 	// underneath it.
 	engine *cgf.Engine
 
+	// Name of the script that this module will load.
+	name string
+
 	// The Gid of the player that this Ai is controlling.  This is used to get the
 	// entity when needed.
 	myGid game.Gid
@@ -232,11 +235,14 @@ type GameAi struct {
 }
 
 func (ai *GameAi) Start() {
+	if ai.jm == nil {
+		return
+	}
 	ctx := runtime.NewCtx(newJotaResolver(), new(compiler.Compiler))
 	ctx.RegisterNativeModule(new(stdlib.TimeMod))
 	ctx.RegisterNativeModule(&LogModule{})
 	ctx.RegisterNativeModule(ai.jm)
-	mod, err := ctx.Load("simple")
+	mod, err := ctx.Load(ai.jm.name)
 	if err != nil {
 		panic(err)
 	}
@@ -245,8 +251,15 @@ func (ai *GameAi) Start() {
 		base.Error().Printf("Error running script: %v", err)
 	}()
 }
-func (ai *GameAi) Stop() {}
+func (ai *GameAi) Stop() {
+	if ai.jm == nil {
+		return
+	}
+}
 func (ai *GameAi) Terminate() {
+	if ai.jm == nil {
+		return
+	}
 	ai.jm.terminated = true
 }
 
@@ -255,8 +268,12 @@ func init() {
 }
 
 func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
+	if engine.Ids == nil {
+		// Scripts should only run on the host engine
+		return &GameAi{}
+	}
 	ai := GameAi{
-		jm: &JotaModule{engine: engine, myGid: gid},
+		jm: &JotaModule{engine: engine, myGid: gid, name: name},
 	}
 	return &ai
 }
