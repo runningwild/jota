@@ -36,7 +36,7 @@ func (g *Game) MakeControlPoints() {
 	for _, towerData := range g.Level.Room.Towers {
 		cp := ControlPoint{
 			BaseEnt: BaseEnt{
-				Side_:    -1,
+				Side_:    towerData.Side,
 				Position: towerData.Pos,
 				StatsInst: stats.Make(stats.Base{
 					Health: 100000,
@@ -58,8 +58,8 @@ func (g *Game) MakeControlPoints() {
 
 	// Now set up the target arrays
 	for i := range cps {
-		for j := range g.Level.Room.Towers[i].Targets {
-			cps[i].Targets = append(cps[i].Targets, cps[j].Id())
+		for _, index := range g.Level.Room.Towers[i].Targets {
+			cps[i].Targets = append(cps[i].Targets, cps[index].Id())
 		}
 	}
 }
@@ -75,6 +75,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	cp.BaseEnt.Think(g)
 
 	// All of this is basic logic for capturing control points
+
 	// Find the first side that isn't -1
 	side := -1
 	count := 0
@@ -99,6 +100,25 @@ func (cp *ControlPoint) Think(g *Game) {
 			}
 			count++
 		}
+	}
+
+	// If there is a single side contesting this control point, check that this
+	// point can actually be captured by this side.  It can be captured if one of
+	// the following is true:
+	// 1. This is a base control point (i.e. side == cp.Side_)  *OR*
+	// 2. At least one of this control point's targets in controlled by side.
+	capturable := false
+	if side == cp.Side_ {
+		capturable = true
+	}
+	for _, targetGid := range cp.Targets {
+		tcp := g.Ents[targetGid].(*ControlPoint)
+		if tcp.Controlled && tcp.Controller == side {
+			capturable = true
+		}
+	}
+	if !capturable {
+		side = -1
 	}
 
 	if side != -1 {
