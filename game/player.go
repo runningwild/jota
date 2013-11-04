@@ -93,6 +93,7 @@ func RegisterAiMaker(maker AiMaker) {
 }
 
 type Ai interface {
+	SetParam(name string, value interface{})
 	Start()
 	Stop()
 	Terminate()

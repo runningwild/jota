@@ -80,6 +80,9 @@ type Ent interface {
 	Vel() linear.Vec2
 	Dead() bool
 
+	// For applying move events
+	Move(angle, magnitude float64)
+
 	Id() Gid
 	SetId(Gid)
 	Pos() linear.Vec2
@@ -786,16 +789,11 @@ func init() {
 
 func (m Move) Apply(_g interface{}) {
 	g := _g.(*Game)
-	player, ok := g.Ents[m.Gid].(*PlayerEnt)
-	if !ok {
+	ent := g.Ents[m.Gid]
+	if ent == nil {
 		return
 	}
-	if m.Magnitude == 0 {
-		player.Target.Angle = player.Angle_
-	} else {
-		player.Target.Angle = m.Angle
-	}
-	player.Delta.Speed = m.Magnitude
+	ent.Move(m.Angle, m.Magnitude)
 }
 
 type GameWindow struct {

@@ -8,10 +8,12 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
+	"github.com/runningwild/linear"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"sync"
 	// "time"
 )
 
@@ -91,6 +93,9 @@ type JotaModule struct {
 		angle float64 // [-pi, pi]
 		acc   float64 // [-1.0, 1.0]
 	}
+
+	paramsMutex sync.Mutex
+	params      map[string]interface{}
 }
 
 func (jm *JotaModule) dieOnTerminated() {
@@ -166,8 +171,10 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		// Export some functions...
 		jm.ob.Set(runtime.String("Me"), runtime.NewNativeFunc(jm.ctx, "jota.Me", jm.Me))
 		jm.ob.Set(runtime.String("Move"), runtime.NewNativeFunc(jm.ctx, "jota.Move", jm.Move))
+		jm.ob.Set(runtime.String("MoveTowards"), runtime.NewNativeFunc(jm.ctx, "jota.MoveTowards", jm.MoveTowards))
 		jm.ob.Set(runtime.String("Turn"), runtime.NewNativeFunc(jm.ctx, "jota.Turn", jm.Turn))
 		jm.ob.Set(runtime.String("UseAbility"), runtime.NewNativeFunc(jm.ctx, "jota.UseAbility", jm.UseAbility))
+		jm.ob.Set(runtime.String("Param"), runtime.NewNativeFunc(jm.ctx, "jota.Param", jm.Param))
 	}
 	return jm.ob, nil
 }
@@ -183,6 +190,33 @@ func (jm *JotaModule) Move(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.controller.acc = vs[0].Float()
 	jm.engine.ApplyEvent(game.Move{jm.myGid, jm.controller.angle, jm.controller.acc})
+	return runtime.Nil
+}
+
+func (jm *JotaModule) MoveTowards(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	pos, ok := vs[0].Native().(*agoraVec)
+	if !ok {
+		base.Warn().Printf("Script called MoveTowards with the wrong type: %T", vs[0].Native())
+		return runtime.Nil
+	}
+	targetPos := linear.Vec2{
+		X: pos.Get(runtime.String("X")).Float(),
+		Y: pos.Get(runtime.String("Y")).Float(),
+	}
+
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+
+	g := jm.engine.GetState().(*game.Game)
+	me := g.Ents[jm.myGid]
+	if me == nil {
+		base.Warn().Printf("Darn, I don't exist")
+		return runtime.Nil
+	}
+	angle := targetPos.Sub(me.Pos()).Angle()
+	jm.engine.ApplyEvent(game.Move{jm.myGid, angle, 1.0})
+	base.Log().Printf("Move: %2.3v -> %2.3v", me.Pos(), targetPos)
 	return runtime.Nil
 }
 
@@ -202,6 +236,54 @@ func (jm *JotaModule) UseAbility(vs ...runtime.Val) runtime.Val {
 		Trigger: vs[2].Bool(),
 	})
 	return runtime.Nil
+}
+
+func (jm *JotaModule) Param(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.paramsMutex.Lock()
+	defer jm.paramsMutex.Unlock()
+	paramName := vs[0].String()
+	value, ok := jm.params[paramName]
+	if !ok {
+		return runtime.Nil
+	}
+	switch t := value.(type) {
+	case string:
+		return runtime.String(t)
+	case bool:
+		return runtime.Bool(t)
+	case int:
+		return runtime.Number(t)
+	case float64:
+		return runtime.Number(t)
+	case linear.Vec2:
+		return jm.newVec(t.X, t.Y)
+	case game.Gid:
+		return jm.newEnt(t)
+	default:
+		base.Error().Printf("Requested parameter of unexpected type: %T", t)
+		return runtime.Nil
+	}
+}
+
+func (jm *JotaModule) setParam(name string, value interface{}) {
+	jm.paramsMutex.Lock()
+	defer jm.paramsMutex.Unlock()
+
+	// NOTE: The list of supported types here should match the list in
+	// JotaModule.Param()
+	switch value.(type) {
+	case string:
+	case bool:
+	case int:
+	case float64:
+	case linear.Vec2:
+	case game.Gid:
+	default:
+		base.Error().Printf("Tried to specify a parameter with an unexpected type: %T", value)
+		return
+	}
+	jm.params[name] = value
 }
 
 func (jm *JotaModule) newVec(x, y float64) *agoraVec {
@@ -251,6 +333,12 @@ func (ai *GameAi) Start() {
 		base.Error().Printf("Error running script: %v", err)
 	}()
 }
+func (ai *GameAi) SetParam(name string, value interface{}) {
+	if ai.jm == nil {
+		return
+	}
+	ai.jm.setParam(name, value)
+}
 func (ai *GameAi) Stop() {
 	if ai.jm == nil {
 		return
@@ -273,7 +361,7 @@ func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
 		return &GameAi{}
 	}
 	ai := GameAi{
-		jm: &JotaModule{engine: engine, myGid: gid, name: name},
+		jm: &JotaModule{engine: engine, myGid: gid, name: name, params: make(map[string]interface{})},
 	}
 	return &ai
 }

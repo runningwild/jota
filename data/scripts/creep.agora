@@ -1,0 +1,11 @@
+jota := import("jota")
+time := import("time")
+log := import("log")
+
+// me := jota.Me()
+for i := range 1000000 {
+  target := jota.Param("target")
+  log.Printf("Target: %s", target)
+  jota.MoveTowards(target.Pos())
+  time.Sleep(100)
+}

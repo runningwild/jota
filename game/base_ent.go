@@ -69,7 +69,14 @@ func (b *BaseEnt) Pos() linear.Vec2 {
 func (b *BaseEnt) Vel() linear.Vec2 {
 	return b.Velocity
 }
-
+func (b *BaseEnt) Move(angle, magnitude float64) {
+	if magnitude == 0 {
+		b.Target.Angle = b.Angle_
+	} else {
+		b.Target.Angle = angle
+	}
+	b.Delta.Speed = magnitude
+}
 func (b *BaseEnt) Angle() float64 {
 	return b.Angle_
 }

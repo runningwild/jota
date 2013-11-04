@@ -90,7 +90,7 @@ func (cp *ControlPoint) Think(g *Game) {
 		if ent.Side() == -1 {
 			continue
 		}
-		if _, ok := ent.(*PlayerEnt); !ok {
+		if _, ok := ent.(*ControlPoint); ok {
 			continue
 		}
 		if ent.Pos().Sub(cp.Position).Mag2() > controlRangeSquared {
