@@ -233,8 +233,8 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 
 	// ability0Key := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
 	// abilityTrigger := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-	ability0Key := gin.In().GetKey(gin.AnyKeyB)
-	abilityTrigger := gin.In().GetKey(gin.AnyKeyH)
+	ability0Key := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
+	abilityTrigger := gin.In().GetKeyFlat(gin.ControllerButton0+6, gin.DeviceTypeController, gin.DeviceIndexAny)
 	foundButton, _ := group.FindEvent(ability0Key.Id())
 	foundTrigger, triggerEvent := group.FindEvent(abilityTrigger.Id())
 	// TODO: Check if any abilities are Active before sending events to other abilities.
@@ -497,9 +497,9 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 		control.up = gin.In().BindDerivedKey("upKey", gin.In().MakeBinding(controllerUp.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyW, nil, nil))
 		controllerDown := gin.In().GetKeyFlat(gin.ControllerAxis0Positive+1, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.down = gin.In().BindDerivedKey("downKey", gin.In().MakeBinding(controllerDown.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyS, nil, nil))
-		controllerLeft := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
+		controllerLeft := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.left = gin.In().BindDerivedKey("leftKey", gin.In().MakeBinding(controllerLeft.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyA, nil, nil))
-		controllerRight := gin.In().GetKeyFlat(gin.ControllerAxis0Negative, gin.DeviceTypeController, gin.DeviceIndexAny)
+		controllerRight := gin.In().GetKeyFlat(gin.ControllerAxis0Positive, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.right = gin.In().BindDerivedKey("rightKey", gin.In().MakeBinding(controllerRight.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyD, nil, nil))
 		control.any = gin.In().BindDerivedKey(
 			"any",
@@ -508,6 +508,7 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 			gin.In().MakeBinding(control.left.Id(), nil, nil),
 			gin.In().MakeBinding(control.right.Id(), nil, nil))
 	}
+
 	// TODO: Unregister this at some point, nub
 	gin.In().RegisterEventListener(GameEventHandleWrapper{g})
 	g.local.Engine = engine

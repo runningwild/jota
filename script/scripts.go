@@ -216,7 +216,6 @@ func (jm *JotaModule) MoveTowards(vs ...runtime.Val) runtime.Val {
 	}
 	angle := targetPos.Sub(me.Pos()).Angle()
 	jm.engine.ApplyEvent(game.Move{jm.myGid, angle, 1.0})
-	base.Log().Printf("Move: %2.3v -> %2.3v", me.Pos(), targetPos)
 	return runtime.Nil
 }
 

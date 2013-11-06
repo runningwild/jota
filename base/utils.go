@@ -304,6 +304,7 @@ func DoOrdered(mapIn interface{}, less interface{}, do interface{}) {
 }
 
 func EmailCrashReport(panicData interface{}) {
+	return
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "667565614379191408\n")
 	fmt.Fprintf(&buf, "Panic: %v\n", panicData)
