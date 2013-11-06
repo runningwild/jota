@@ -11,6 +11,7 @@ import (
 
 type BaseEnt struct {
 	StatsInst stats.Inst
+	Suicided  bool
 	Position  linear.Vec2
 	Velocity  linear.Vec2
 	Angle_    float64
@@ -86,7 +87,13 @@ func (b *BaseEnt) SetPos(pos linear.Vec2) {
 }
 
 func (b *BaseEnt) Dead() bool {
+	if b.Suicided {
+		return true
+	}
 	return b.Stats().HealthCur() <= 0
+}
+func (b *BaseEnt) Suicide() {
+	b.Suicided = true
 }
 
 func (b *BaseEnt) Abilities() []Ability {

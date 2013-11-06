@@ -80,6 +80,10 @@ type Ent interface {
 	Vel() linear.Vec2
 	Dead() bool
 
+	// Suicide should circumvent all conditions/buffs/etc... and just kill the
+	// ent.  After Suicide() all calls to Dead() should return true.
+	Suicide()
+
 	// For applying move events
 	Move(angle, magnitude float64)
 

@@ -6,5 +6,6 @@ log := import("log")
 for i := range 1000000 {
   target := jota.Param("target")
   jota.MoveTowards(target.Pos())
-  time.Sleep(100)
+  time.Sleep(1000)
+  jota.UseAbility(0, 1.0, true)
 }

@@ -62,11 +62,9 @@ func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]int
 		c.Side_ = side
 		c.Gid = g.NextGid()
 
-		// for _, ability := range g.Champs[playerData.champ].Abilities {
-		//  c.Abilities_ = append(
-		//    c.Abilities_,
-		//    ability_makers[ability.Name](ability.Params))
-		// }
+		c.Abilities_ = append(
+			c.Abilities_,
+			ability_makers["asplode"](map[string]int{"startRadius": 40, "endRadius": 70, "durationThinks": 50, "dps": 5}))
 
 		// if playerData.gid[0:2] == "Ai" {
 		//  c.BindAi("simple", g.local.Engine)
