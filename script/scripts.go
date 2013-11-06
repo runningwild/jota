@@ -119,6 +119,7 @@ func (jm *JotaModule) newEnt(gid game.Gid) *agoraEnt {
 		gid:    gid,
 	}
 	ob.Set(runtime.String("Pos"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Pos", ent.pos))
+	ob.Set(runtime.String("Side"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Side", ent.side))
 	ob.Set(runtime.String("Vel"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Vel", ent.vel))
 	ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Angle", ent.angle))
 	return ent
@@ -128,6 +129,16 @@ type agoraEnt struct {
 	runtime.Object
 	jm  *JotaModule
 	gid game.Gid
+}
+
+func (aEnt *agoraEnt) side(args ...runtime.Val) runtime.Val {
+	aEnt.jm.engine.Pause()
+	defer aEnt.jm.engine.Unpause()
+	ent := aEnt.jm.engine.GetState().(*game.Game).Ents[aEnt.gid]
+	if ent == nil {
+		return runtime.Nil
+	}
+	return runtime.Number(ent.Side())
 }
 
 func (aEnt *agoraEnt) pos(args ...runtime.Val) runtime.Val {
@@ -175,6 +186,7 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob.Set(runtime.String("Turn"), runtime.NewNativeFunc(jm.ctx, "jota.Turn", jm.Turn))
 		jm.ob.Set(runtime.String("UseAbility"), runtime.NewNativeFunc(jm.ctx, "jota.UseAbility", jm.UseAbility))
 		jm.ob.Set(runtime.String("Param"), runtime.NewNativeFunc(jm.ctx, "jota.Param", jm.Param))
+		jm.ob.Set(runtime.String("NearestEnt"), runtime.NewNativeFunc(jm.ctx, "jota.NearestEnt", jm.NearestEnt))
 	}
 	return jm.ob, nil
 }
@@ -237,6 +249,33 @@ func (jm *JotaModule) UseAbility(vs ...runtime.Val) runtime.Val {
 	return runtime.Nil
 }
 
+func (jm *JotaModule) NearestEnt(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+	g := jm.engine.GetState().(*game.Game)
+	me := g.Ents[jm.myGid]
+	if me == nil {
+		return runtime.Nil
+	}
+	var closest game.Ent
+	dist := 1e9
+	for _, ent := range g.Ents {
+		if ent == me {
+			continue
+		}
+		if closest == nil {
+			closest = ent
+		} else if closest.Pos().Sub(me.Pos()).Mag2() < dist {
+			dist = closest.Pos().Sub(me.Pos()).Mag2()
+		}
+	}
+	if closest == nil {
+		return runtime.Nil
+	}
+	return jm.newEnt(closest.Id())
+}
+
 func (jm *JotaModule) Param(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.paramsMutex.Lock()
@@ -289,8 +328,10 @@ func (jm *JotaModule) newVec(x, y float64) *agoraVec {
 	ob := runtime.NewObject()
 	v := &agoraVec{
 		Object: ob,
+		jm:     jm,
 	}
 	ob.Set(runtime.String("Length"), runtime.NewNativeFunc(jm.ctx, "jota.Vec.Length", v.length))
+	ob.Set(runtime.String("Sub"), runtime.NewNativeFunc(jm.ctx, "jota.Vec.Sub", v.sub))
 	ob.Set(runtime.String("X"), runtime.Number(x))
 	ob.Set(runtime.String("Y"), runtime.Number(y))
 	return v
@@ -298,6 +339,7 @@ func (jm *JotaModule) newVec(x, y float64) *agoraVec {
 
 type agoraVec struct {
 	runtime.Object
+	jm *JotaModule
 }
 
 func (v *agoraVec) Int() int64          { panic("Bad!") }
@@ -309,6 +351,14 @@ func (v *agoraVec) length(args ...runtime.Val) runtime.Val {
 	x := v.Get(runtime.String("X")).Float()
 	y := v.Get(runtime.String("Y")).Float()
 	return runtime.Number(math.Sqrt(x*x + y*y))
+}
+func (v *agoraVec) sub(args ...runtime.Val) runtime.Val {
+	v2 := args[0].Native().(*agoraVec)
+	x := v.Get(runtime.String("X")).Float()
+	y := v.Get(runtime.String("Y")).Float()
+	x2 := v2.Get(runtime.String("X")).Float()
+	y2 := v2.Get(runtime.String("Y")).Float()
+	return v.jm.newVec(x-x2, y-y2)
 }
 
 type GameAi struct {

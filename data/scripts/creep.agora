@@ -2,10 +2,13 @@ jota := import("jota")
 time := import("time")
 log := import("log")
 
-// me := jota.Me()
+me := jota.Me()
 for i := range 1000000 {
   target := jota.Param("target")
   jota.MoveTowards(target.Pos())
-  time.Sleep(1000)
-  jota.UseAbility(0, 1.0, true)
+  time.Sleep(30)
+  nearest := jota.NearestEnt()
+  if nearest.Side() != me.Side() && nearest.Pos().Sub(me.Pos()).Length() < 50 {
+    jota.UseAbility(0, 1.0, true)
+  }
 }

@@ -2,15 +2,21 @@ jota := import("jota")
 time := import("time")
 log := import("log")
 
-me := jota.Me()
-angle := 0.0
-for i := range 1000000 {
-log.Printf("Tower ai %v", me)
+// TODO: This script should be able to choose where to spawn the creeps, and it
+// should be able to set their destinations.  Currently this is done in the
+// ability code for the control point.
+
+for {
+  // Start draining nearby mana to spawn some creeps
   jota.UseAbility(0, 1.0, false)
+
+  // Hold for 1 second.
   time.Sleep(1000)
+
+  // Trigger the ability and then stop draining.
   jota.UseAbility(0, 1.0, true)
   jota.UseAbility(0, 0.0, false)
+
+  // Wait 9 more seconds.
   time.Sleep(9000)
-//  pos := me.Pos()
-//  log.Printf("Pos: %2.3f %2.3f", pos.X, pos.Y)
 }
