@@ -33,7 +33,11 @@ func (c *CreepEnt) Draw(g *Game) {
 	base.SetUniformF("status_bar", "outer", 0.03)
 	base.SetUniformF("status_bar", "buffer", 0.01)
 	base.SetUniformF("status_bar", "frac", 1.0)
-	gl.Color4ub(255, 255, 255, 255)
+	if c.Side() == g.local.Side {
+		gl.Color4ub(100, 255, 100, 255)
+	} else {
+		gl.Color4ub(255, 100, 100, 255)
+	}
 	texture.Render(c.Position.X-100, c.Position.Y-100, 200, 200)
 	base.SetUniformF("status_bar", "inner", 0.04)
 	base.SetUniformF("status_bar", "outer", 0.045)
@@ -51,9 +55,9 @@ func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]int
 	for i := 0; i < count; i++ {
 		var c CreepEnt
 		c.StatsInst = stats.Make(stats.Base{
-			Health: 1000,
-			Mass:   750,
-			Acc:    100.0,
+			Health: 100,
+			Mass:   250,
+			Acc:    50.0,
 			Rate:   0.0,
 			Size:   8,
 			Vision: 600,
