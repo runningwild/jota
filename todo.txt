@@ -1,15 +1,11 @@
-- MAJOR REORG
--- Move local stuff into the game state itself under un-exported variables.  This should make lots of things a lot easier.
--- Rethink abilities a bit - maybe they can be easier to use.
--- Anything that renders based on the side should just render based on Gid.
--- Rethink Gids, they are super-annoying.
-
+- Make the ai api a little more powerful.
+- Camera should track only the primary character, perhaps a ghost cam on death.
 - Fix shaders on ATI cards.
 - Controller support on windows and linux.
 - Allow local movement for better user experience.
 - Emailing bug reports should just be handled by a single service, no emails
-  required, except maybe to report previously unseen crashes.
-- Simple AIs are in, give them a way to randomly use abilities.
+  required, except maybe to report previously unseen crashes.  - TRIED THIS, not
+  great so far, disable it for now.
 - Once glop stuff is all stubbed out make a server binary that can be run anywhere.
 - Instead of shadows being black they should show a greyed out version of the map, with no entities.
 

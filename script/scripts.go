@@ -13,8 +13,9 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime/debug"
+	"sort"
 	"sync"
-	// "time"
 )
 
 type jotaResolver struct {
@@ -187,6 +188,7 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob.Set(runtime.String("UseAbility"), runtime.NewNativeFunc(jm.ctx, "jota.UseAbility", jm.UseAbility))
 		jm.ob.Set(runtime.String("Param"), runtime.NewNativeFunc(jm.ctx, "jota.Param", jm.Param))
 		jm.ob.Set(runtime.String("NearestEnt"), runtime.NewNativeFunc(jm.ctx, "jota.NearestEnt", jm.NearestEnt))
+		jm.ob.Set(runtime.String("NearbyEnts"), runtime.NewNativeFunc(jm.ctx, "jota.NearbyEnts", jm.NearbyEnts))
 	}
 	return jm.ob, nil
 }
@@ -274,6 +276,72 @@ func (jm *JotaModule) NearestEnt(vs ...runtime.Val) runtime.Val {
 		return runtime.Nil
 	}
 	return jm.newEnt(closest.Id())
+}
+
+type entDistSlice struct {
+	ents []game.Ent
+	dist []float64
+}
+
+func (eds *entDistSlice) Len() int           { return len(eds.ents) }
+func (eds *entDistSlice) Less(i, j int) bool { return eds.dist[i] < eds.dist[j] }
+func (eds *entDistSlice) Swap(i, j int) {
+	eds.ents[i], eds.ents[j] = eds.ents[j], eds.ents[i]
+	eds.dist[i], eds.dist[j] = eds.dist[j], eds.dist[i]
+}
+
+// type agoraSlice []runtime.Val
+
+// func (a agoraSlice) Int() int64          { return 0 }
+// func (a agoraSlice) Float() float64      { return 0.0 }
+// func (a agoraSlice) String() string      { return "" }
+// func (a agoraSlice) Bool() bool          { return false }
+// func (a agoraSlice) Native() interface{} { return a }
+// func (a agoraSlice) Get(index runtime.Val) runtime.Val {
+// 	return a[int(index.Int())]
+// }
+// func (a agoraSlice) Set(index runtime.Val, value runtime.Val) {
+// 	a[int(index.Int())] = value
+// }
+// func (a agoraSlice) Len() runtime.Val {
+// return runtime.Number(len(a))
+// }
+// func (a agoraSlice) Keys() runtime.Val {
+
+// }
+
+func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+	defer func() {
+		if r := recover(); r != nil {
+			base.Log().Printf("%s", debug.Stack())
+		}
+	}()
+	g := jm.engine.GetState().(*game.Game)
+	me := g.Ents[jm.myGid]
+	obj := runtime.NewObject()
+	if me == nil {
+		return obj
+	}
+
+	var eds entDistSlice
+	for _, ent := range g.Ents {
+		if ent == me {
+			continue
+		}
+		dist := ent.Pos().Sub(me.Pos()).Mag()
+		if dist < me.Stats().Vision() { // && g.ExistsLos(me.Pos(), ent.Pos()) {
+			eds.ents = append(eds.ents, ent)
+			eds.dist = append(eds.dist, dist)
+		}
+	}
+	sort.Sort(&eds)
+	for i, ent := range eds.ents {
+		obj.Set(runtime.Number(i), jm.newEnt(ent.Id()))
+	}
+	return obj
 }
 
 func (jm *JotaModule) Param(vs ...runtime.Val) runtime.Val {
@@ -375,7 +443,8 @@ func (ai *GameAi) Start() {
 	ctx.RegisterNativeModule(ai.jm)
 	mod, err := ctx.Load(ai.jm.name)
 	if err != nil {
-		panic(err)
+		base.Error().Printf("Error compiling script: %v", err)
+		return
 	}
 	go func() {
 		_, err := mod.Run()

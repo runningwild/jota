@@ -3,12 +3,14 @@ time := import("time")
 log := import("log")
 
 me := jota.Me()
-for i := range 1000000 {
+for {
   target := jota.Param("target")
   jota.MoveTowards(target.Pos())
   time.Sleep(30)
-  nearest := jota.NearestEnt()
-  if nearest.Side() != me.Side() && nearest.Pos().Sub(me.Pos()).Length() < 50 {
-    jota.UseAbility(0, 1.0, true)
+  nearby := jota.NearbyEnts()
+  if len(nearby) > 0 {
+    if nearby[0].Side() != me.Side() && nearby[0].Pos().Sub(me.Pos()).Length() < 50 {
+      jota.UseAbility(0, 1.0, true)
+    }
   }
 }
