@@ -32,6 +32,9 @@ func (g *Game) MakeMine(pos, vel linear.Vec2, health, mass, damage, trigger floa
 	g.AddEnt(&mine)
 }
 
+func (m *Mine) Type() EntType {
+	return EntTypeObstacle
+}
 func (m *Mine) Think(g *Game) {
 	m.BaseEnt.Think(g)
 	prox := 50.0

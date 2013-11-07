@@ -101,6 +101,10 @@ func (mc *massCondition) Dead() bool {
 func (mc *massCondition) Draw(id Gid, game *Game, side int) {
 }
 
+func (hs *HeatSeeker) Type() EntType {
+	return EntTypeProjectile
+}
+
 func (hs *HeatSeeker) Dead() bool {
 	if hs.Asploded {
 		return true

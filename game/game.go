@@ -92,6 +92,7 @@ type Ent interface {
 	Pos() linear.Vec2
 	Angle() float64
 	Side() int // which side the ent belongs to
+	Type() EntType
 
 	// Need to have a SetPos method because we don't want ents moving through
 	// walls.
@@ -103,6 +104,17 @@ type Ent interface {
 
 	BindAi(name string, engine *cgf.Engine)
 }
+
+type EntType int
+
+const (
+	EntTypePlayer EntType = iota
+	EntTypeControlPoint
+	EntTypeObstacle
+	EntTypeProjectile
+	EntTypeCreep
+	EntTypeOther
+)
 
 type NonManaUser struct{}
 
@@ -724,9 +736,15 @@ func (g *Game) ThinkGame() {
 	}
 
 	for i := 0; i < len(g.temp.AllEnts); i++ {
+		outerEnt := g.temp.AllEnts[i]
+		if outerEnt.Stats().Size() == 0 {
+			continue
+		}
 		for j := i + 1; j < len(g.temp.AllEnts); j++ {
-			outerEnt := g.temp.AllEnts[i]
 			innerEnt := g.temp.AllEnts[j]
+			if innerEnt.Stats().Size() == 0 {
+				continue
+			}
 			distSq := outerEnt.Pos().Sub(innerEnt.Pos()).Mag2()
 			colDist := outerEnt.Stats().Size() + innerEnt.Stats().Size()
 			if distSq > colDist*colDist {

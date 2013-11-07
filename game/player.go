@@ -13,6 +13,10 @@ type PlayerEnt struct {
 	Champ int
 }
 
+func (p *PlayerEnt) Type() EntType {
+	return EntTypePlayer
+}
+
 func init() {
 	gob.Register(&PlayerEnt{})
 }

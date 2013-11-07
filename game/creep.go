@@ -13,6 +13,10 @@ type CreepEnt struct {
 	BaseEnt
 }
 
+func (c *CreepEnt) Type() EntType {
+	return EntTypeCreep
+}
+
 func init() {
 	gob.Register(&CreepEnt{})
 }

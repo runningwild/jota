@@ -123,6 +123,11 @@ func (jm *JotaModule) newEnt(gid game.Gid) *agoraEnt {
 	ob.Set(runtime.String("Side"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Side", ent.side))
 	ob.Set(runtime.String("Vel"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Vel", ent.vel))
 	ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Angle", ent.angle))
+	ob.Set(runtime.String("IsPlayer"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsPlayer", ent.isType(game.EntTypePlayer)))
+	ob.Set(runtime.String("IsCreep"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsCreep", ent.isType(game.EntTypeCreep)))
+	ob.Set(runtime.String("IsControlPoint"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsControlPoint", ent.isType(game.EntTypeControlPoint)))
+	ob.Set(runtime.String("IsObstacle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsObstacle", ent.isType(game.EntTypeObstacle)))
+	ob.Set(runtime.String("IsProjectile"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsProjectile", ent.isType(game.EntTypeProjectile)))
 	return ent
 }
 
@@ -170,6 +175,18 @@ func (aEnt *agoraEnt) angle(args ...runtime.Val) runtime.Val {
 		return runtime.Nil
 	}
 	return runtime.Number(ent.Angle())
+}
+
+func (aEnt *agoraEnt) isType(entType game.EntType) runtime.FuncFn {
+	return func(args ...runtime.Val) runtime.Val {
+		aEnt.jm.engine.Pause()
+		defer aEnt.jm.engine.Unpause()
+		ent := aEnt.jm.engine.GetState().(*game.Game).Ents[aEnt.gid]
+		if ent == nil {
+			return runtime.Bool(false)
+		}
+		return runtime.Bool(ent.Type() == entType)
+	}
 }
 
 // Not interested in any argument in this case. Note the named return values.
@@ -332,7 +349,7 @@ func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 			continue
 		}
 		dist := ent.Pos().Sub(me.Pos()).Mag()
-		if dist < me.Stats().Vision() { // && g.ExistsLos(me.Pos(), ent.Pos()) {
+		if dist < me.Stats().Vision() && g.ExistsLos(me.Pos(), ent.Pos()) {
 			eds.ents = append(eds.ents, ent)
 			eds.dist = append(eds.dist, dist)
 		}

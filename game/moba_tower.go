@@ -27,6 +27,9 @@ type ControlPoint struct {
 	// count down on every think until it reaches zero again.
 	AttackTimer int
 
+	// Radius of region within which players/creeps must be to capture.
+	Radius float64
+
 	// Other control points that this one can send creeps to attack.
 	Targets []Gid
 }
@@ -44,10 +47,11 @@ func (g *Game) MakeControlPoints() {
 					Health: 100000,
 					Mass:   1000000,
 					Rate:   1,
-					Size:   50,
+					Size:   0,
 					Vision: 900,
 				}),
 			},
+			Radius: 50,
 		}
 		cps = append(cps, &cp)
 		g.AddEnt(&cp)
@@ -69,7 +73,9 @@ func (g *Game) MakeControlPoints() {
 		}
 	}
 }
-
+func (cp *ControlPoint) Type() EntType {
+	return EntTypeControlPoint
+}
 func (cp *ControlPoint) Side() int {
 	if cp.Controlled {
 		return cp.Controller
@@ -85,7 +91,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	// Find the first side that isn't -1
 	side := -1
 	count := 0
-	controlRangeSquared := 4 * cp.Stats().Size() * cp.Stats().Size()
+	controlRangeSquared := 4 * cp.Radius * cp.Radius
 	for _, ent := range g.temp.AllEnts {
 		if ent.Side() == -1 {
 			continue
@@ -201,47 +207,62 @@ func (cp *ControlPoint) Think(g *Game) {
 func (cp *ControlPoint) Draw(g *Game) {
 	base.EnableShader("circle")
 	base.SetUniformF("circle", "edge", 0.95)
-	gl.Color4ub(50, 50, 100, 150)
+	gl.Color4ub(50, 50, 100, 50)
 	texture.Render(
-		cp.Position.X-cp.Stats().Size()*2,
-		cp.Position.Y-cp.Stats().Size()*2,
-		2*cp.Stats().Size()*2,
-		2*cp.Stats().Size()*2)
+		cp.Position.X-cp.Radius*2,
+		cp.Position.Y-cp.Radius*2,
+		2*cp.Radius*2,
+		2*cp.Radius*2)
 
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "inner", 0.0)
 	base.SetUniformF("status_bar", "outer", 0.5)
 	base.SetUniformF("status_bar", "buffer", 0.01)
 	base.SetUniformF("status_bar", "frac", 1.0)
-	gl.Color4ub(50, 50, 50, 200)
+	gl.Color4ub(50, 50, 50, 50)
 	texture.Render(
-		cp.Position.X-cp.Stats().Size(),
-		cp.Position.Y-cp.Stats().Size(),
-		2*cp.Stats().Size(),
-		2*cp.Stats().Size())
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius)
 
+	var rgba []gl.Ubyte
 	base.SetUniformF("status_bar", "frac", float32(cp.Control))
 	if cp.Controlled {
 		if g.local.Side == cp.Controller {
-			gl.Color4ub(0, 255, 0, 255)
+			rgba = []gl.Ubyte{0, 255, 0, 100}
 		} else {
-			gl.Color4ub(255, 0, 0, 255)
+			rgba = []gl.Ubyte{255, 0, 0, 100}
 		}
 	} else {
-		gl.Color4ub(100, 100, 100, 255)
+		rgba = []gl.Ubyte{100, 100, 100, 100}
 	}
 
 	// The texture is flipped if this is being drawn for the controlling side.
 	// This makes it look a little nicer when someone neutralizes a control point
 	// because it makes the angle of the pie slice thingy continue going in the
 	// same direction as it passes the neutralization point.
+	gl.Color4ub(rgba[0], rgba[1], rgba[2], rgba[3])
 	texture.RenderAdvanced(
-		cp.Position.X-cp.Stats().Size(),
-		cp.Position.Y-cp.Stats().Size(),
-		2*cp.Stats().Size(),
-		2*cp.Stats().Size(),
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius,
 		0,
 		g.local.Side == cp.Controller)
+
+	base.SetUniformF("status_bar", "inner", 0.45)
+	base.SetUniformF("status_bar", "outer", 0.5)
+	base.SetUniformF("status_bar", "frac", 1)
+	gl.Color4ub(rgba[0], rgba[1], rgba[2], 255)
+	texture.RenderAdvanced(
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius,
+		0,
+		g.local.Side == cp.Controller)
+
 	base.EnableShader("")
 }
 func (cp *ControlPoint) Supply(mana Mana) Mana {
@@ -329,7 +350,7 @@ func (cpap *controlPointAttackProcess) Draw(src, obs Gid, g *Game) {
 	// For people on the controlling side this will draw a circle around the area
 	// that is being targeted by the control point.
 	if cpap.Side == side && cpap.Timer >= cpap.LockTime {
-		gl.Color4ub(200, 200, 200, 80)
+		gl.Color4ub(200, 200, 200, 40)
 		texture.Render(
 			cpap.LockPos.X-50,
 			cpap.LockPos.Y-50,
@@ -339,7 +360,7 @@ func (cpap *controlPointAttackProcess) Draw(src, obs Gid, g *Game) {
 
 	// This draws the projectile itself.
 	if cpap.Timer >= cpap.FireTime {
-		gl.Color4ub(255, 50, 50, 240)
+		gl.Color4ub(255, 50, 50, 40)
 		texture.Render(
 			cpap.ProjPos.X-5,
 			cpap.ProjPos.Y-5,

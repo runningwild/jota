@@ -4,13 +4,19 @@ log := import("log")
 
 me := jota.Me()
 for {
-  target := jota.Param("target")
-  jota.MoveTowards(target.Pos())
-  time.Sleep(30)
+  controlPoint := jota.Param("target")
+  target := controlPoint
   nearby := jota.NearbyEnts()
   if len(nearby) > 0 {
-    if nearby[0].Side() != me.Side() && nearby[0].Pos().Sub(me.Pos()).Length() < 50 {
-      jota.UseAbility(0, 1.0, true)
+    if nearby[0].Side() != me.Side() && (nearby[0].IsPlayer() || nearby[0].IsCreep()) {
+      dist := nearby[0].Pos().Sub(me.Pos()).Length()
+      if dist < 50 {
+        jota.UseAbility(0, 1.0, true)
+      } else if nearby[0].IsPlayer() || controlPoint.Pos().Sub(me.Pos()).Length() < 100 {
+        target = nearby[0]
+      }
     }
   }
+  jota.MoveTowards(target.Pos())
+  time.Sleep(30)
 }
