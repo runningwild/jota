@@ -1,5 +1,12 @@
+- Make Utility abilities - Nitro, Cloak, Shield - One for each color.  Press a button
+  to turn them on, use the trigger to keep them on.  Bonus: Let players choose a single
+  utility ability when the game starts.
+- Randomize how creeps are placed around the control points.
+- Draw lines between connected towers, red if both towers are controlled by the
+  enemy, green if both are controlled by your team, and yellow if one is
+  controlled by you.
+- Serious optimizations are needed, the game sucks up 500% cpu and runs OOM.
 - Make the ai api a little more powerful.
-- Camera should track only the primary character, perhaps a ghost cam on death.
 - Fix shaders on ATI cards.
 - Controller support on windows and linux.
 - Allow local movement for better user experience.
@@ -15,9 +22,3 @@ Theoretically fixed, still need verification:
   on windows, hopefully that eliminates the need to do anything weird in jota.
 
 Fixed:
-- Make the los cache an lru cache to reduce memory usage. <- This was fixed by
-  just doing the los texture different, basically just on the graphics card.
-- The vast majority of cpu time is spent doing los calculations.  Consider rendering
-  the los texture as infinitely tall columns from a viewpoint that looks directly down
-  onto the player.  There would need to be a way to combine this with other player's
-  los, but it would put all of this work onto the graphics card and it would look a lot cleaner.
