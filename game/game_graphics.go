@@ -30,44 +30,23 @@ type cameraInfo struct {
 func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 	min := linear.Vec2{1e9, 1e9}
 	max := linear.Vec2{-1e9, -1e9}
-	hits := 0
-	for _, ent := range g.temp.AllEnts {
-		if ent.Side() != side {
-			continue
-		}
-		if player, ok := ent.(*PlayerEnt); ok {
-			hits++
-			pos := player.Pos()
-			if pos.X < min.X {
-				min.X = pos.X
-			}
-			if pos.Y < min.Y {
-				min.Y = pos.Y
-			}
-			if pos.X > max.X {
-				max.X = pos.X
-			}
-			if pos.Y > max.Y {
-				max.Y = pos.Y
-			}
-		}
-	}
-	if hits == 0 {
+	player := g.Ents[g.local.Gid]
+	if player == nil {
 		min.X = 0
 		min.Y = 0
 		max.X = float64(g.Level.Room.Dx)
 		max.Y = float64(g.Level.Room.Dy)
 	} else {
-		min.X -= stats.LosPlayerHorizon + 50
-		min.Y -= stats.LosPlayerHorizon + 50
+		min.X = player.Pos().X - (stats.LosPlayerHorizon + 50)
+		min.Y = player.Pos().Y - (stats.LosPlayerHorizon + 50)
 		if min.X < 0 {
 			min.X = 0
 		}
 		if min.Y < 0 {
 			min.Y = 0
 		}
-		max.X += stats.LosPlayerHorizon + 50
-		max.Y += stats.LosPlayerHorizon + 50
+		max.X = player.Pos().X + (stats.LosPlayerHorizon + 50)
+		max.Y = player.Pos().Y + (stats.LosPlayerHorizon + 50)
 		if max.X > float64(g.Level.Room.Dx) {
 			max.X = float64(g.Level.Room.Dx)
 		}

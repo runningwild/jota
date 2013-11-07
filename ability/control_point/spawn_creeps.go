@@ -3,7 +3,6 @@ package control_point
 import (
 	"encoding/gob"
 	"github.com/runningwild/jota/ability"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 )
 
@@ -73,7 +72,7 @@ func (sc *spawnCreeps) Input(ent game.Ent, g *game.Game, pressAmt float64, trigg
 		delete(cp.Processes, sc.id)
 		return
 	}
-	proc, ok := cp.Processes[sc.id].(*omniDrain)
+	_, ok := cp.Processes[sc.id].(*omniDrain)
 	if !ok {
 		cp.Processes[sc.id] = &omniDrain{Gid: cp.Gid}
 		return

@@ -3,10 +3,20 @@ time := import("time")
 log := import("log")
 
 me := jota.Me()
+controlPoint := jota.Param("target")
 for {
-  controlPoint := jota.Param("target")
-  target := controlPoint
   nearby := jota.NearbyEnts()
+  if controlPoint.Side() == me.Side() {
+    // Need to choose a new control point, if possible
+    for pair := range nearby {
+      ent := pair.v
+      if ent.IsControlPoint() && ent.Side() != me.Side() {
+        controlPoint = ent
+        break
+      }
+    }
+  }
+  target := controlPoint
   if len(nearby) > 0 {
     if nearby[0].Side() != me.Side() && (nearby[0].IsPlayer() || nearby[0].IsCreep()) {
       dist := nearby[0].Pos().Sub(me.Pos()).Length()
@@ -17,6 +27,8 @@ for {
       }
     }
   }
-  jota.MoveTowards(target.Pos())
+  if target.Side() != me.Side() {
+    jota.MoveTowards(target.Pos())
+  }
   time.Sleep(30)
 }
