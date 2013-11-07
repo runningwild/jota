@@ -1,9 +1,9 @@
 package game
 
 import (
-	"github.com/runningwild/linear"
 	"github.com/runningwild/jota/los"
 	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/linear"
 	"math"
 	"sort"
 	"sync"

@@ -11,6 +11,9 @@ type wallCache struct {
 }
 
 func (wc *wallCache) GetWalls(x, y int) []linear.Seg2 {
+	if len(wc.walls) == 0 {
+		return nil
+	}
 	x /= wallGridSize
 	y /= wallGridSize
 	if x < 0 {
@@ -18,6 +21,9 @@ func (wc *wallCache) GetWalls(x, y int) []linear.Seg2 {
 	}
 	if x >= len(wc.walls) {
 		x = len(wc.walls) - 1
+	}
+	if len(wc.walls[x]) == 0 {
+		return nil
 	}
 	if y < 0 {
 		y = 0
