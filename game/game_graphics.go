@@ -231,6 +231,47 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 		gl.End()
 	}
 
+	// Draw edges between nodes
+	for _, ent := range g.Ents {
+		cp0, ok := ent.(*ControlPoint)
+		if !ok {
+			continue
+		}
+		for _, target := range cp0.Targets {
+			cp1, ok := g.Ents[target].(*ControlPoint)
+			if !ok {
+				continue
+			}
+			ally := 0
+			enemy := 0
+			if cp0.Side() == g.local.Side {
+				ally++
+			} else if cp0.Side() == -1 {
+				enemy++
+			}
+			if cp1.Side() == g.local.Side {
+				ally++
+			} else if cp1.Side() == -1 {
+				enemy++
+			}
+			if ally == 2 {
+				gl.Color4ub(0, 255, 0, 255)
+			} else if enemy == 2 {
+				gl.Color4ub(255, 0, 0, 255)
+			} else if ally == 1 {
+				gl.Color4ub(255, 255, 0, 255)
+			} else if enemy == 1 {
+				gl.Color4ub(255, 0, 0, 255)
+			} else {
+				gl.Color4ub(200, 200, 200, 255)
+			}
+			gl.Begin(gl.LINES)
+			gl.Vertex2d(gl.Double(cp0.Pos().X), gl.Double(cp0.Pos().Y))
+			gl.Vertex2d(gl.Double(cp1.Pos().X), gl.Double(cp1.Pos().Y))
+			gl.End()
+		}
+	}
+
 	gui.SetFontColor(0, 255, 0, 255)
 	for side, data := range g.Level.Room.SideData {
 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), data.Base.X, data.Base.Y, 0, 100, gui.Center)
