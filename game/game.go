@@ -779,15 +779,16 @@ func (g *Game) Think() {
 // Returns true iff a has los to b, regardless of distance, except that nothing
 // can ever have los to something that is beyond stats.LosPlayerHorizon.
 func (g *Game) ExistsLos(a, b linear.Vec2) bool {
-	vps := g.losCache.Get(int(a.X), int(a.Y), stats.LosPlayerHorizon)
-	x := int(b.X / LosGridSize)
-	y := int(b.Y / LosGridSize)
-	for _, vp := range vps {
-		if vp.X == x && vp.Y == y {
-			return true
+	los := linear.Seg2{a, b}
+	for _, wall := range g.Level.Room.Walls {
+		for i := range wall {
+			seg := wall.Seg(i)
+			if seg.DoesIsect(los) {
+				return false
+			}
 		}
 	}
-	return false
+	return true
 }
 
 func clamp(v, low, high float64) float64 {
