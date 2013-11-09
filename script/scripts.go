@@ -1,6 +1,7 @@
 package script
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/PuerkitoBio/agora/compiler"
 	"github.com/PuerkitoBio/agora/runtime"
@@ -10,8 +11,8 @@ import (
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/linear"
 	"io"
+	"io/ioutil"
 	"math"
-	"os"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
@@ -20,15 +21,37 @@ import (
 
 type jotaResolver struct {
 	root string
+
+	cacheMutex sync.Mutex
+	cache      map[string][]byte
 }
 
 func (jr jotaResolver) Resolve(id string) (io.Reader, error) {
+	jr.cacheMutex.Lock()
+	defer jr.cacheMutex.Unlock()
+	if data, ok := jr.cache[id]; ok {
+		return bytes.NewReader(data), nil
+	}
 	base.Log().Printf("Opening: %s", jr.root)
-	return os.Open(filepath.Join(jr.root, id+".agora"))
+	data, err := ioutil.ReadFile(filepath.Join(jr.root, id+".agora"))
+	if err != nil {
+		return nil, err
+	}
+	jr.cache[id] = data
+	return bytes.NewReader(data), nil
 }
 
-func newJotaResolver() runtime.ModuleResolver {
-	return jotaResolver{filepath.Join(base.GetDataDir(), "scripts")}
+var globalJotaResolverOnce sync.Once
+var globalJotaResolver jotaResolver
+
+func getGlobalJotaResolver() *jotaResolver {
+	globalJotaResolverOnce.Do(func() {
+		globalJotaResolver = jotaResolver{
+			cache: make(map[string][]byte),
+			root:  filepath.Join(base.GetDataDir(), "scripts"),
+		}
+	})
+	return &globalJotaResolver
 }
 
 type LogModule struct {
@@ -315,26 +338,6 @@ func (eds *entDistSlice) Swap(i, j int) {
 	eds.dist[i], eds.dist[j] = eds.dist[j], eds.dist[i]
 }
 
-// type agoraSlice []runtime.Val
-
-// func (a agoraSlice) Int() int64          { return 0 }
-// func (a agoraSlice) Float() float64      { return 0.0 }
-// func (a agoraSlice) String() string      { return "" }
-// func (a agoraSlice) Bool() bool          { return false }
-// func (a agoraSlice) Native() interface{} { return a }
-// func (a agoraSlice) Get(index runtime.Val) runtime.Val {
-// 	return a[int(index.Int())]
-// }
-// func (a agoraSlice) Set(index runtime.Val, value runtime.Val) {
-// 	a[int(index.Int())] = value
-// }
-// func (a agoraSlice) Len() runtime.Val {
-// return runtime.Number(len(a))
-// }
-// func (a agoraSlice) Keys() runtime.Val {
-
-// }
-
 func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.engine.Pause()
@@ -462,7 +465,7 @@ func (ai *GameAi) Start() {
 	if ai.jm == nil {
 		return
 	}
-	ctx := runtime.NewCtx(newJotaResolver(), new(compiler.Compiler))
+	ctx := runtime.NewCtx(getGlobalJotaResolver(), new(compiler.Compiler))
 	ctx.RegisterNativeModule(new(stdlib.TimeMod))
 	ctx.RegisterNativeModule(&LogModule{})
 	ctx.RegisterNativeModule(ai.jm)
