@@ -489,6 +489,7 @@ type Game struct {
 		// List of all ents, in the order that they should be iterated in.
 		AllEnts      []Ent
 		AllEntsDirty bool
+		EntGrid      *entGridCache
 	}
 }
 
@@ -714,6 +715,10 @@ func (g *Game) ThinkGame() {
 		})
 		g.temp.AllEntsDirty = false
 	}
+	if g.temp.EntGrid == nil {
+		g.temp.EntGrid = MakeEntCache(g.Level.Room.Dx, g.Level.Room.Dy)
+	}
+	g.temp.EntGrid.SetEnts(g.temp.AllEnts)
 
 	for _, proc := range g.Processes {
 		proc.Think(g)
@@ -733,13 +738,14 @@ func (g *Game) ThinkGame() {
 		ent.SetPos(pos)
 	}
 
+	var nearby []Ent
 	for i := 0; i < len(g.temp.AllEnts); i++ {
 		outerEnt := g.temp.AllEnts[i]
 		if outerEnt.Stats().Size() == 0 {
 			continue
 		}
-		for j := i + 1; j < len(g.temp.AllEnts); j++ {
-			innerEnt := g.temp.AllEnts[j]
+		g.temp.EntGrid.EntsInRange(outerEnt.Pos(), 200, &nearby)
+		for _, innerEnt := range nearby {
 			if innerEnt.Stats().Size() == 0 {
 				continue
 			}
@@ -756,7 +762,6 @@ func (g *Game) ThinkGame() {
 			}
 			dist := math.Sqrt(distSq)
 			force := 50.0 * (colDist - dist)
-			outerEnt.ApplyForce(outerEnt.Pos().Sub(innerEnt.Pos()).Scale(force / dist))
 			innerEnt.ApplyForce(innerEnt.Pos().Sub(outerEnt.Pos()).Scale(force / dist))
 		}
 	}

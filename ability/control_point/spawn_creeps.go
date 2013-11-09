@@ -80,7 +80,7 @@ func (sc *spawnCreeps) Input(ent game.Ent, g *game.Game, pressAmt float64, trigg
 	if trigger {
 		g.AddEnt(ent)
 		delete(cp.Processes, sc.id)
-		g.AddCreeps(cp.Pos(), 2, cp.Side(), map[string]interface{}{"target": cp.Targets[0]})
+		g.AddCreeps(cp.Pos(), 50, cp.Side(), map[string]interface{}{"target": cp.Targets[0]})
 	}
 }
 func (sc *spawnCreeps) Think(ent game.Ent, game *game.Game) {
