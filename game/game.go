@@ -249,18 +249,25 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 
 	// ability0Key := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
 	// abilityTrigger := gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny)
-	ability0Key := gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny)
+	buttons := []gin.Key{
+		gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny),
+		gin.In().GetKeyFlat(gin.ControllerButton0+3, gin.DeviceTypeController, gin.DeviceIndexAny),
+		gin.In().GetKeyFlat(gin.ControllerButton0+4, gin.DeviceTypeController, gin.DeviceIndexAny),
+		gin.In().GetKeyFlat(gin.ControllerButton0+5, gin.DeviceTypeController, gin.DeviceIndexAny),
+	}
 	abilityTrigger := gin.In().GetKeyFlat(gin.ControllerButton0+6, gin.DeviceTypeController, gin.DeviceIndexAny)
-	foundButton, _ := group.FindEvent(ability0Key.Id())
-	foundTrigger, triggerEvent := group.FindEvent(abilityTrigger.Id())
-	// TODO: Check if any abilities are Active before sending events to other abilities.
-	if foundButton || foundTrigger {
-		g.local.Engine.ApplyEvent(UseAbility{
-			Gid:     g.local.Gid,
-			Index:   0,
-			Button:  ability0Key.CurPressAmt(),
-			Trigger: foundTrigger && triggerEvent.Type == gin.Press,
-		})
+	for i, button := range buttons {
+		foundButton, _ := group.FindEvent(button.Id())
+		foundTrigger, triggerEvent := group.FindEvent(abilityTrigger.Id())
+		// TODO: Check if any abilities are Active before sending events to other abilities.
+		if foundButton || foundTrigger {
+			g.local.Engine.ApplyEvent(UseAbility{
+				Gid:     g.local.Gid,
+				Index:   i,
+				Button:  button.CurPressAmt(),
+				Trigger: foundTrigger && triggerEvent.Type == gin.Press,
+			})
+		}
 	}
 }
 
@@ -546,6 +553,7 @@ func MakeGame() *Game {
 	for i, name := range names {
 		g.Champs[i].Defname = name
 		base.GetObject("champs", &g.Champs[i])
+		base.Log().Printf("Champ %v has %v", name, g.Champs[i].Abilities)
 	}
 	return &g
 }
@@ -728,6 +736,9 @@ func (g *Game) ThinkGame() {
 	// Advance players, check for collisions, add segments
 	for _, ent := range g.temp.AllEnts {
 		ent.Think(g)
+		for _, ab := range ent.Abilities() {
+			ab.Think(ent, g)
+		}
 		pos := ent.Pos()
 		eps := 1.0e-3
 		pos.X = clamp(pos.X, eps, float64(g.Level.Room.Dx)-eps)

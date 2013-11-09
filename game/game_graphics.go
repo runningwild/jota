@@ -280,6 +280,9 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range g.temp.AllEnts {
 		ent.Draw(g)
+		for _, ab := range ent.Abilities() {
+			ab.Draw(ent, g)
+		}
 	}
 	gl.Disable(gl.TEXTURE_2D)
 

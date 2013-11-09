@@ -81,7 +81,7 @@ func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
 		}
 
 		if playerData.gid[0:2] == "Ai" {
-			p.BindAi("simple", g.local.Engine)
+			// p.BindAi("simple", g.local.Engine)
 		}
 
 		g.AddEnt(&p)
