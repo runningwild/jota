@@ -17,6 +17,6 @@ for {
   jota.UseAbility(0, 1.0, true)
   jota.UseAbility(0, 0.0, false)
 
-  // Wait 9 more seconds.
-  time.Sleep(9000)
+  // Wait 29 more seconds.
+  time.Sleep(19000)
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
+	"math"
+	"math/rand"
 )
 
 type CreepEnt struct {
@@ -64,7 +66,8 @@ func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]int
 		})
 
 		// Evenly space the players on a circle around the starting position.
-		rot := (linear.Vec2{50, 0}).Rotate(float64(i) * 2 * 3.1415926535 / float64(count))
+		randAngle := rand.New(g.Rng).Float64() * math.Pi
+		rot := (linear.Vec2{15, 0}).Rotate(randAngle + float64(i)*2*3.1415926535/float64(count))
 		c.Position = pos.Add(rot)
 
 		c.Side_ = side
