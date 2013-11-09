@@ -480,14 +480,7 @@ type Game struct {
 	local localGameData
 
 	temp struct {
-		// This include all room walls for each room, and all walls declared by any
-		// ents in that room.
-		AllWalls []linear.Seg2
-		// It looks silly, but this is...
-		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
-		// AllWallsGrid  [][][][]linear.Vec2
-		AllWallsDirty bool
-		WallCache     *wallCache
+		WallCache *wallCache
 		// VisibleWallCache is like WallCache but returns all segments visible from
 		// a location, rather than all segments that should be checked for
 		// collision.
@@ -663,21 +656,15 @@ func (g *Game) ThinkSetup() {
 
 func (g *Game) ThinkGame() {
 	// cache wall data
-	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
-		g.temp.AllWalls = nil
-		g.temp.WallCache = nil
-		g.temp.VisibleWallCache = nil
+	if g.temp.WallCache == nil {
 		var allWalls []linear.Seg2
 		base.DoOrdered(g.Level.Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
 			for i := range walls {
 				allWalls = append(allWalls, walls.Seg(i))
 			}
 		})
-		g.temp.AllWalls = allWalls
 		g.temp.WallCache = &wallCache{}
 		g.temp.WallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, 100)
-		g.temp.VisibleWallCache = &wallCache{}
-		g.temp.VisibleWallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, stats.LosPlayerHorizon)
 	}
 
 	// cache ent data
