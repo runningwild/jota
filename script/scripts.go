@@ -97,6 +97,9 @@ type JotaModule struct {
 
 	paramsMutex sync.Mutex
 	params      map[string]interface{}
+
+	gidToAgoraEntMutex sync.Mutex
+	gidToAgoraEnt      map[game.Gid]*agoraEnt
 }
 
 func (jm *JotaModule) dieOnTerminated() {
@@ -113,22 +116,27 @@ func (jm *JotaModule) SetCtx(ctx *runtime.Ctx) {
 }
 
 func (jm *JotaModule) newEnt(gid game.Gid) *agoraEnt {
-	ob := runtime.NewObject()
-	ent := &agoraEnt{
-		Object: ob,
-		jm:     jm,
-		gid:    gid,
+	jm.gidToAgoraEntMutex.Lock()
+	defer jm.gidToAgoraEntMutex.Unlock()
+	if _, ok := jm.gidToAgoraEnt[gid]; !ok {
+		ob := runtime.NewObject()
+		ent := &agoraEnt{
+			Object: ob,
+			jm:     jm,
+			gid:    gid,
+		}
+		ob.Set(runtime.String("Pos"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Pos", ent.pos))
+		ob.Set(runtime.String("Side"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Side", ent.side))
+		ob.Set(runtime.String("Vel"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Vel", ent.vel))
+		ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Angle", ent.angle))
+		ob.Set(runtime.String("IsPlayer"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsPlayer", ent.isType(game.EntTypePlayer)))
+		ob.Set(runtime.String("IsCreep"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsCreep", ent.isType(game.EntTypeCreep)))
+		ob.Set(runtime.String("IsControlPoint"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsControlPoint", ent.isType(game.EntTypeControlPoint)))
+		ob.Set(runtime.String("IsObstacle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsObstacle", ent.isType(game.EntTypeObstacle)))
+		ob.Set(runtime.String("IsProjectile"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsProjectile", ent.isType(game.EntTypeProjectile)))
+		jm.gidToAgoraEnt[gid] = ent
 	}
-	ob.Set(runtime.String("Pos"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Pos", ent.pos))
-	ob.Set(runtime.String("Side"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Side", ent.side))
-	ob.Set(runtime.String("Vel"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Vel", ent.vel))
-	ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.Angle", ent.angle))
-	ob.Set(runtime.String("IsPlayer"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsPlayer", ent.isType(game.EntTypePlayer)))
-	ob.Set(runtime.String("IsCreep"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsCreep", ent.isType(game.EntTypeCreep)))
-	ob.Set(runtime.String("IsControlPoint"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsControlPoint", ent.isType(game.EntTypeControlPoint)))
-	ob.Set(runtime.String("IsObstacle"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsObstacle", ent.isType(game.EntTypeObstacle)))
-	ob.Set(runtime.String("IsProjectile"), runtime.NewNativeFunc(jm.ctx, "jota.Ent.IsProjectile", ent.isType(game.EntTypeProjectile)))
-	return ent
+	return jm.gidToAgoraEnt[gid]
 }
 
 type agoraEnt struct {
@@ -496,7 +504,13 @@ func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
 		return &GameAi{}
 	}
 	ai := GameAi{
-		jm: &JotaModule{engine: engine, myGid: gid, name: name, params: make(map[string]interface{})},
+		jm: &JotaModule{
+			engine:        engine,
+			myGid:         gid,
+			name:          name,
+			params:        make(map[string]interface{}),
+			gidToAgoraEnt: make(map[game.Gid]*agoraEnt),
+		},
 	}
 	return &ai
 }
