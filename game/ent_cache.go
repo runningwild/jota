@@ -2,14 +2,7 @@ package game
 
 import (
 	"github.com/runningwild/linear"
-	"sort"
 )
-
-type entsByGid []Ent
-
-func (ebg entsByGid) Len() int           { return len(ebg) }
-func (ebg entsByGid) Less(i, j int) bool { return ebg[i].Id() < ebg[j].Id() }
-func (ebg entsByGid) Swap(i, j int)      { ebg[i], ebg[j] = ebg[j], ebg[i] }
 
 const entGridSize = 64
 
@@ -47,7 +40,7 @@ func (cache *entGridCache) SetEnts(ents []Ent) {
 
 func (cache *entGridCache) EntsInRange(pos linear.Vec2, dist float64, ents *[]Ent) {
 	*ents = (*ents)[0:0]
-	gridDist := 2 + int(dist/entGridSize)
+	gridDist := 1 + int(dist/entGridSize)
 	minx := int(pos.X)/entGridSize - gridDist
 	if minx < 0 {
 		minx = 0
@@ -67,11 +60,8 @@ func (cache *entGridCache) EntsInRange(pos linear.Vec2, dist float64, ents *[]En
 	for x := minx; x < maxx; x++ {
 		for y := miny; y < maxy; y++ {
 			for _, ent := range cache.grid[x][y] {
-				if pos.Sub(ent.Pos()).Mag()-ent.Stats().Size() <= dist {
-					*ents = append(*ents, ent)
-				}
+				*ents = append(*ents, ent)
 			}
 		}
 	}
-	sort.Sort(entsByGid(*ents))
 }

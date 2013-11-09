@@ -99,14 +99,20 @@ func (s Inst) Cloaking() float64 {
 	return math.Max(0, s.ModifyBase(s.inst.Base).Cloaking)
 }
 func (s Inst) Size() float64 {
-	return math.Max(0, s.inst.Base.Size)
+	if s.inst.Base.Size < 0 {
+		return 0
+	}
+	return s.inst.Base.Size
 }
 func (s Inst) Vision() float64 {
 	vision := s.ModifyBase(s.inst.Base).Vision
 	if vision > LosPlayerHorizon {
 		return LosPlayerHorizon
 	}
-	return math.Max(0, vision)
+	if vision < 0 {
+		return 0
+	}
+	return vision
 }
 
 func (s *Inst) SetHealth(health float64) {

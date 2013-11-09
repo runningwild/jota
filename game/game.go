@@ -739,13 +739,13 @@ func (g *Game) ThinkGame() {
 	algorithm.Choose(&g.Processes, func(proc Process) bool { return !proc.Dead() })
 
 	// Advance players, check for collisions, add segments
+	eps := 1.0e-3
 	for _, ent := range g.temp.AllEnts {
 		ent.Think(g)
 		for _, ab := range ent.Abilities() {
 			ab.Think(ent, g)
 		}
 		pos := ent.Pos()
-		eps := 1.0e-3
 		pos.X = clamp(pos.X, eps, float64(g.Level.Room.Dx)-eps)
 		pos.Y = clamp(pos.Y, eps, float64(g.Level.Room.Dy)-eps)
 		ent.SetPos(pos)
@@ -754,24 +754,23 @@ func (g *Game) ThinkGame() {
 	var nearby []Ent
 	for i := 0; i < len(g.temp.AllEnts); i++ {
 		outerEnt := g.temp.AllEnts[i]
-		if outerEnt.Stats().Size() == 0 {
+		outerSize := outerEnt.Stats().Size()
+		if outerSize == 0 {
 			continue
 		}
-		g.temp.EntGrid.EntsInRange(outerEnt.Pos(), 200, &nearby)
+		g.temp.EntGrid.EntsInRange(outerEnt.Pos(), 100, &nearby)
 		for _, innerEnt := range nearby {
-			if innerEnt.Stats().Size() == 0 {
+			innerSize := innerEnt.Stats().Size()
+			if innerSize == 0 {
 				continue
 			}
 			distSq := outerEnt.Pos().Sub(innerEnt.Pos()).Mag2()
-			colDist := outerEnt.Stats().Size() + innerEnt.Stats().Size()
+			colDist := innerSize + outerSize
 			if distSq > colDist*colDist {
 				continue
 			}
-			if distSq < 0.0001 {
+			if distSq < 0.015625 { // this means that dist < 0.125
 				continue
-			}
-			if distSq <= 0.25 {
-				distSq = 0.25
 			}
 			dist := math.Sqrt(distSq)
 			force := 50.0 * (colDist - dist)

@@ -91,8 +91,10 @@ func (cp *ControlPoint) Think(g *Game) {
 	// Find the first side that isn't -1
 	side := -1
 	count := 0
-	controlRangeSquared := 4 * cp.Radius * cp.Radius
-	for _, ent := range g.temp.AllEnts {
+	var ents []Ent
+	g.temp.EntGrid.EntsInRange(cp.Position, cp.Radius, &ents)
+	controlRangeSquared := cp.Radius * cp.Radius
+	for _, ent := range ents {
 		if ent.Side() == -1 {
 			continue
 		}
