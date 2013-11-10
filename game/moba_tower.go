@@ -6,6 +6,7 @@ import (
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
+	"math"
 )
 
 type ControlPoint struct {
@@ -136,7 +137,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 
 	if side != -1 {
-		amt := 0.003 * float64(count)
+		amt := 0.001 * math.Sqrt(float64(count))
 		switch {
 		case cp.Controlled && side == cp.Controller:
 			// Can't recap something you already control.
@@ -159,10 +160,9 @@ func (cp *ControlPoint) Think(g *Game) {
 				cp.ai = nil
 			}
 		}
-		if cp.Control >= 0.999 {
+		if cp.Control >= 0.999 && cp.Controller == side {
 			cp.Control = 1.0
 			cp.Controlled = true
-			cp.Controller = side
 			if cp.ai == nil {
 				cp.BindAi("tower", g.local.Engine)
 			}
