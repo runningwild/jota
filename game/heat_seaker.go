@@ -183,6 +183,3 @@ func (m *HeatSeeker) Draw(g *Game) {
 	base.EnableShader("")
 }
 func (m *HeatSeeker) Supply(mana Mana) Mana { return Mana{} }
-func (m *HeatSeeker) Walls() [][]linear.Vec2 {
-	return nil
-}

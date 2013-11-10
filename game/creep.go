@@ -62,7 +62,7 @@ func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]int
 			Acc:    50.0,
 			Rate:   0.0,
 			Size:   8,
-			Vision: 600,
+			Vision: 400,
 		})
 
 		// Evenly space the players on a circle around the starting position.

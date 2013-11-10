@@ -68,11 +68,6 @@ type Ent interface {
 	Think(game *Game)
 	ApplyForce(force linear.Vec2)
 
-	// If this Ent is immovable it may provide walls that will be considered just
-	// like normal walls.
-	// TODO: Decide whether or not to actually support this
-	// Walls() [][]linear.Vec2
-
 	// Stats based methods
 	OnDeath(g *Game)
 	Stats() *stats.Inst

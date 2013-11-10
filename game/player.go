@@ -63,7 +63,7 @@ func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
-			Vision: 600,
+			Vision: 500,
 		})
 
 		// Evenly space the players on a circle around the starting position.

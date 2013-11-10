@@ -79,6 +79,3 @@ func (m *Mine) Draw(g *Game) {
 	base.EnableShader("")
 }
 func (m *Mine) Supply(mana Mana) Mana { return mana }
-func (m *Mine) Walls() [][]linear.Vec2 {
-	return nil
-}

@@ -39,9 +39,6 @@ func (b *BaseEnt) OnDeath(g *Game) {
 		b.ai.Terminate()
 	}
 }
-func (b *BaseEnt) Walls() [][]linear.Vec2 {
-	return nil
-}
 
 func (b *BaseEnt) ApplyForce(f linear.Vec2) {
 	b.Velocity = b.Velocity.Add(f.Scale(1 / b.Mass()))

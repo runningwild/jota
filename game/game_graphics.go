@@ -8,7 +8,7 @@ import (
 	"github.com/runningwild/glop/gui"
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
-	"github.com/runningwild/jota/stats"
+	// "github.com/runningwild/jota/stats"
 	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 	"path/filepath"
@@ -37,16 +37,16 @@ func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 		max.X = float64(g.Level.Room.Dx)
 		max.Y = float64(g.Level.Room.Dy)
 	} else {
-		min.X = player.Pos().X - (stats.LosPlayerHorizon + 50)
-		min.Y = player.Pos().Y - (stats.LosPlayerHorizon + 50)
+		min.X = player.Pos().X - player.Stats().Vision()
+		min.Y = player.Pos().Y - player.Stats().Vision()
 		if min.X < 0 {
 			min.X = 0
 		}
 		if min.Y < 0 {
 			min.Y = 0
 		}
-		max.X = player.Pos().X + (stats.LosPlayerHorizon + 50)
-		max.Y = player.Pos().Y + (stats.LosPlayerHorizon + 50)
+		max.X = player.Pos().X + player.Stats().Vision()
+		max.Y = player.Pos().Y + player.Stats().Vision()
 		if max.X > float64(g.Level.Room.Dx) {
 			max.X = float64(g.Level.Room.Dx)
 		}
@@ -162,7 +162,7 @@ func (g *Game) RenderLosMask() {
 	gl.End()
 	base.EnableShader("horizon")
 	base.SetUniformV2("horizon", "center", ent.Pos())
-	base.SetUniformF("horizon", "horizon", LosMaxDist)
+	base.SetUniformF("horizon", "horizon", float32(ent.Stats().Vision()))
 	gl.Begin(gl.QUADS)
 	dx := gl.Int(g.Level.Room.Dx)
 	dy := gl.Int(g.Level.Room.Dy)
