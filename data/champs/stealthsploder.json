@@ -2,13 +2,17 @@
   "Name": "Stealthsploder",
   "Abilities": [
     {
-      "Name": "cloak",
-      "Params": {
-      }
-    },
-    {
       "Name": "fire",
       "Params": {
+        "region": 1,
+        "cost": 100,
+        "deviance": 125,
+        "distToCenter": 250,
+        "startRadius": 30,
+        "endRadius": 50,
+        "durationThinks": 15,
+        "dps": 2,
+        "xps": 120
       }
     }
   ]

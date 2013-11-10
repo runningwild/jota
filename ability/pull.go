@@ -49,7 +49,7 @@ func (p *pull) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool)
 		}
 		_, ok := player.Processes[p.id].(*multiDrain)
 		if !ok {
-			player.Processes[p.id] = &multiDrain{Gid: player.Gid, Unit: game.Mana{0, 0, 100}}
+			player.Processes[p.id] = &multiDrain{Gid: player.Gid, Unit: game.Mana{0, 0, p.cost}}
 			return
 		}
 	}
