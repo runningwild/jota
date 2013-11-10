@@ -7,7 +7,21 @@
         "region": 1,
         "cost": 100,
         "deviance": 125,
-        "distToCenter": 250,
+        "distToCenter": 275,
+        "startRadius": 30,
+        "endRadius": 50,
+        "durationThinks": 15,
+        "dps": 2,
+        "xps": 120
+      }
+    },
+    {
+      "Name": "fire",
+      "Params": {
+        "region": 3,
+        "cost": 100,
+        "deviance": 125,
+        "distToCenter": 100,
         "startRadius": 30,
         "endRadius": 50,
         "durationThinks": 15,

@@ -92,7 +92,7 @@ func (f *fire) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool)
 	}
 }
 
-func (f *fire) getPos(ent game.Ent, g *game.Game) linear.Vec2 {
+func (f *fire) getFrontPos(ent game.Ent, g *game.Game) linear.Vec2 {
 	r := rand.New(g.Rng)
 	theta := r.Float64() * math.Pi * 2
 	dist := math.Abs(r.NormFloat64() * f.deviance)
@@ -102,6 +102,43 @@ func (f *fire) getPos(ent game.Ent, g *game.Game) linear.Vec2 {
 	dist = dist + dist*math.Cos(theta)
 	center := (linear.Vec2{f.distToCenter, 0}).Rotate(ent.Angle()).Add(ent.Pos())
 	return (linear.Vec2{0, dist}).Rotate(ent.Angle() - math.Pi/2 + theta).Add(center)
+}
+
+func (f *fire) getFlankPos(ent game.Ent, g *game.Game) linear.Vec2 {
+	r := rand.New(g.Rng)
+	theta := r.Float64() * math.Pi * 2
+	dist := math.Abs(r.NormFloat64() * f.deviance)
+	if dist > f.deviance*4 {
+		dist = f.deviance * 4
+	}
+	dist = dist + dist*math.Cos(theta)
+	center := (linear.Vec2{f.distToCenter, 0}).Rotate(ent.Angle()).Add(ent.Pos())
+	return (linear.Vec2{0, dist}).Rotate(ent.Angle() - math.Pi/2 + theta).Add(center)
+}
+
+func (f *fire) getBackPos(ent game.Ent, g *game.Game) linear.Vec2 {
+	r := rand.New(g.Rng)
+	theta := r.Float64() * math.Pi * 2
+	dist := math.Abs(r.NormFloat64() * f.deviance)
+	if dist > f.deviance*4 {
+		dist = f.deviance * 4
+	}
+	dist = dist + dist*math.Cos(theta)
+	center := (linear.Vec2{f.distToCenter, 0}).Rotate(ent.Angle() + math.Pi).Add(ent.Pos())
+	return (linear.Vec2{0, dist}).Rotate(ent.Angle() + math.Pi/2 + theta).Add(center)
+}
+
+func (f *fire) getPos(ent game.Ent, g *game.Game) linear.Vec2 {
+	switch f.region {
+	case fireRegionFront:
+		return f.getFrontPos(ent, g)
+	case fireRegionFlank:
+		return f.getFlankPos(ent, g)
+	case fireRegionBack:
+		return f.getBackPos(ent, g)
+	default:
+		return linear.Vec2{}
+	}
 }
 
 func (f *fire) Think(ent game.Ent, g *game.Game) {
