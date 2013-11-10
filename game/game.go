@@ -151,7 +151,7 @@ type SetupData struct {
 }
 
 func (setup *SetupData) HandleEventGroup(group gin.EventGroup, engine *cgf.Engine) {
-	if found, event := group.FindEvent(gin.AnyUp); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(control.hat.up.Id()); found && event.Type == gin.Press {
 		setup.local.Lock()
 		defer setup.local.Unlock()
 		if setup.local.Index > 0 {
@@ -159,7 +159,7 @@ func (setup *SetupData) HandleEventGroup(group gin.EventGroup, engine *cgf.Engin
 		}
 		return
 	}
-	if found, event := group.FindEvent(gin.AnyDown); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(control.hat.down.Id()); found && event.Type == gin.Press {
 		setup.local.Lock()
 		defer setup.local.Unlock()
 		if setup.local.Index < len(setup.EngineIds) {
@@ -168,15 +168,15 @@ func (setup *SetupData) HandleEventGroup(group gin.EventGroup, engine *cgf.Engin
 		return
 	}
 
-	if found, event := group.FindEvent(gin.AnyLeft); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(control.hat.left.Id()); found && event.Type == gin.Press {
 		engine.ApplyEvent(SetupChampSelect{engine.Id(), -1})
 		return
 	}
-	if found, event := group.FindEvent(gin.AnyRight); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(control.hat.right.Id()); found && event.Type == gin.Press {
 		engine.ApplyEvent(SetupChampSelect{engine.Id(), 1})
 		return
 	}
-	if found, event := group.FindEvent(gin.AnyReturn); found && event.Type == gin.Press {
+	if found, event := group.FindEvent(control.hat.enter.Id()); found && event.Type == gin.Press {
 		setup.local.Lock()
 		defer setup.local.Unlock()
 		if setup.local.Index < len(setup.EngineIds) {
@@ -212,6 +212,9 @@ func axisControl(v float64) float64 {
 }
 
 var control struct {
+	hat struct {
+		up, down, left, right, enter gin.Key
+	}
 	any, up, down, left, right gin.Key
 }
 
@@ -524,6 +527,49 @@ func (g *Game) NextId() int {
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
 	if control.up == nil {
+		hatUp := gin.In().GetKeyFlat(gin.ControllerHatSwitchUp, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.hat.up = gin.In().BindDerivedKey(
+			"menuUp",
+			gin.In().MakeBinding(hatUp.Id(), nil, nil),
+			gin.In().MakeBinding(gin.AnyKeyW, nil, nil),
+			gin.In().MakeBinding(gin.AnyUp, nil, nil))
+
+		hatDown := gin.In().GetKeyFlat(gin.ControllerHatSwitchDown, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.hat.down = gin.In().BindDerivedKey(
+			"menuDown",
+			gin.In().MakeBinding(hatDown.Id(), nil, nil),
+			gin.In().MakeBinding(gin.AnyKeyS, nil, nil),
+			gin.In().MakeBinding(gin.AnyDown, nil, nil))
+
+		hatLeft := gin.In().GetKeyFlat(gin.ControllerHatSwitchLeft, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.hat.left = gin.In().BindDerivedKey(
+			"menuLeft",
+			gin.In().MakeBinding(hatLeft.Id(), nil, nil),
+			gin.In().MakeBinding(gin.AnyKeyA, nil, nil),
+			gin.In().MakeBinding(gin.AnyLeft, nil, nil))
+
+		hatRight := gin.In().GetKeyFlat(gin.ControllerHatSwitchRight, gin.DeviceTypeController, gin.DeviceIndexAny)
+		control.hat.right = gin.In().BindDerivedKey(
+			"menuRight",
+			gin.In().MakeBinding(hatRight.Id(), nil, nil),
+			gin.In().MakeBinding(gin.AnyKeyD, nil, nil),
+			gin.In().MakeBinding(gin.AnyRight, nil, nil))
+
+		control.hat.enter = gin.In().BindDerivedKey(
+			"menuEnter",
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+0, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+1, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+2, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+3, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+4, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+5, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+6, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+7, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+8, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.In().GetKeyFlat(gin.ControllerButton0+9, gin.DeviceTypeController, gin.DeviceIndexAny).Id(), nil, nil),
+			gin.In().MakeBinding(gin.AnyReturn, nil, nil),
+		)
+
 		// TODO: This is thread-safe, don't worry, but it is dumb.
 		controllerUp := gin.In().GetKeyFlat(gin.ControllerAxis0Negative+1, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.up = gin.In().BindDerivedKey("upKey", gin.In().MakeBinding(controllerUp.Id(), nil, nil), gin.In().MakeBinding(gin.AnyKeyW, nil, nil))
