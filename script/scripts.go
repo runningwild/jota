@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"math"
 	"path/filepath"
-	"runtime/debug"
 	"sort"
 	"sync"
 )
@@ -236,6 +235,7 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob.Set(runtime.String("UseAbility"), runtime.NewNativeFunc(jm.ctx, "jota.UseAbility", jm.UseAbility))
 		jm.ob.Set(runtime.String("Param"), runtime.NewNativeFunc(jm.ctx, "jota.Param", jm.Param))
 		jm.ob.Set(runtime.String("NearestEnt"), runtime.NewNativeFunc(jm.ctx, "jota.NearestEnt", jm.NearestEnt))
+		jm.ob.Set(runtime.String("ControlPoints"), runtime.NewNativeFunc(jm.ctx, "jota.ControlPoints", jm.ControlPoints))
 		jm.ob.Set(runtime.String("NearbyEnts"), runtime.NewNativeFunc(jm.ctx, "jota.NearbyEnts", jm.NearbyEnts))
 	}
 	return jm.ob, nil
@@ -338,15 +338,26 @@ func (eds *entDistSlice) Swap(i, j int) {
 	eds.dist[i], eds.dist[j] = eds.dist[j], eds.dist[i]
 }
 
+func (jm *JotaModule) ControlPoints(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+	g := jm.engine.GetState().(*game.Game)
+	obj := runtime.NewObject()
+	count := 0
+	for _, ent := range g.Ents {
+		if cp, ok := ent.(*game.ControlPoint); ok {
+			obj.Set(runtime.Number(count), jm.newEnt(cp.Id()))
+			count++
+		}
+	}
+	return obj
+}
+
 func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.engine.Pause()
 	defer jm.engine.Unpause()
-	defer func() {
-		if r := recover(); r != nil {
-			base.Log().Printf("%s", debug.Stack())
-		}
-	}()
 	g := jm.engine.GetState().(*game.Game)
 	me := g.Ents[jm.myGid]
 	obj := runtime.NewObject()
@@ -354,8 +365,9 @@ func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 		return obj
 	}
 
+	ents := g.EntsInRange(me.Pos(), me.Stats().Vision())
 	var eds entDistSlice
-	for _, ent := range g.Ents {
+	for _, ent := range ents {
 		if ent == me {
 			continue
 		}
@@ -475,8 +487,13 @@ func (ai *GameAi) Start() {
 		return
 	}
 	go func() {
-		_, err := mod.Run()
-		base.Error().Printf("Error running script: %v", err)
+		for {
+			_, err := mod.Run()
+			if err.Error() == "module terminated" {
+				return
+			}
+			base.Error().Printf("Error running script: %v", err)
+		}
 	}()
 }
 func (ai *GameAi) SetParam(name string, value interface{}) {

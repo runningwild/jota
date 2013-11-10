@@ -449,6 +449,26 @@ type localGameData struct {
 	// Event handling and engine thinking can happen concurrently, so we need to
 	// be able to lock the local data.  Embedded for convenience.
 	sync.RWMutex
+
+	temp struct {
+		// This include all room walls for each room, and all walls declared by any
+		// ents in that room.
+		AllWalls []linear.Seg2
+		// It looks silly, but this is...
+		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
+		// AllWallsGrid  [][][][]linear.Vec2
+		AllWallsDirty bool
+		WallCache     *wallCache
+		// VisibleWallCache is like WallCache but returns all segments visible from
+		// a location, rather than all segments that should be checked for
+		// collision.
+		VisibleWallCache *wallCache
+
+		// List of all ents, in the order that they should be iterated in.
+		AllEnts      []Ent
+		AllEntsDirty bool
+		EntGrid      *entGridCache
+	}
 }
 
 type Game struct {
@@ -478,30 +498,18 @@ type Game struct {
 	Champs []champ.Champion
 
 	local localGameData
-
-	temp struct {
-		// This include all room walls for each room, and all walls declared by any
-		// ents in that room.
-		AllWalls []linear.Seg2
-		// It looks silly, but this is...
-		// map[LevelId][x/cacheGridSize][y/cacheGridSize] slice of linear.Poly
-		// AllWallsGrid  [][][][]linear.Vec2
-		AllWallsDirty bool
-		WallCache     *wallCache
-		// VisibleWallCache is like WallCache but returns all segments visible from
-		// a location, rather than all segments that should be checked for
-		// collision.
-		VisibleWallCache *wallCache
-
-		// List of all ents, in the order that they should be iterated in.
-		AllEnts      []Ent
-		AllEntsDirty bool
-		EntGrid      *entGridCache
-	}
 }
 
 func (g *Game) InitializeClientData() {
 	// TODO: Do something useful with this.
+}
+
+func (g *Game) EntsInRange(pos linear.Vec2, dist float64) []Ent {
+	g.local.RLock()
+	defer g.local.RUnlock()
+	var ents []Ent
+	g.local.temp.EntGrid.EntsInRange(pos, dist, &ents)
+	return ents
 }
 
 func (g *Game) NextGid() Gid {
@@ -622,7 +630,7 @@ func (g *Game) DoForEnts(f func(Gid, Ent)) {
 
 func (g *Game) RemoveEnt(gid Gid) {
 	delete(g.Ents, gid)
-	g.temp.AllEntsDirty = true
+	g.local.temp.AllEntsDirty = true
 }
 
 func (g *Game) AddEnt(ent Ent) {
@@ -630,7 +638,7 @@ func (g *Game) AddEnt(ent Ent) {
 		ent.SetId(g.NextGid())
 	}
 	g.Ents[ent.Id()] = ent
-	g.temp.AllEntsDirty = true
+	g.local.temp.AllEntsDirty = true
 }
 
 // Give the gid of a Player ent (ai or engine) this will return that player's
@@ -664,25 +672,25 @@ func (g *Game) ThinkSetup() {
 
 func (g *Game) ThinkGame() {
 	// cache wall data
-	if g.temp.AllWalls == nil || g.temp.AllWallsDirty {
-		g.temp.AllWalls = nil
-		g.temp.WallCache = nil
-		g.temp.VisibleWallCache = nil
+	if g.local.temp.AllWalls == nil || g.local.temp.AllWallsDirty {
+		g.local.temp.AllWalls = nil
+		g.local.temp.WallCache = nil
+		g.local.temp.VisibleWallCache = nil
 		var allWalls []linear.Seg2
 		base.DoOrdered(g.Level.Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
 			for i := range walls {
 				allWalls = append(allWalls, walls.Seg(i))
 			}
 		})
-		g.temp.AllWalls = allWalls
-		g.temp.WallCache = &wallCache{}
-		g.temp.WallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, 100)
-		g.temp.VisibleWallCache = &wallCache{}
-		g.temp.VisibleWallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, stats.LosPlayerHorizon)
+		g.local.temp.AllWalls = allWalls
+		g.local.temp.WallCache = &wallCache{}
+		g.local.temp.WallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, 100)
+		g.local.temp.VisibleWallCache = &wallCache{}
+		g.local.temp.VisibleWallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, stats.LosPlayerHorizon)
 	}
 
 	// cache ent data
-	for _, ent := range g.temp.AllEnts {
+	for _, ent := range g.local.temp.AllEnts {
 		if ent.Dead() {
 			if _, ok := ent.(*PlayerEnt); ok {
 				var id int64
@@ -721,17 +729,17 @@ func (g *Game) ThinkGame() {
 		}
 	}
 
-	if g.temp.AllEnts == nil || g.temp.AllEntsDirty {
-		g.temp.AllEnts = g.temp.AllEnts[0:0]
+	if g.local.temp.AllEnts == nil || g.local.temp.AllEntsDirty {
+		g.local.temp.AllEnts = g.local.temp.AllEnts[0:0]
 		g.DoForEnts(func(gid Gid, ent Ent) {
-			g.temp.AllEnts = append(g.temp.AllEnts, ent)
+			g.local.temp.AllEnts = append(g.local.temp.AllEnts, ent)
 		})
-		g.temp.AllEntsDirty = false
+		g.local.temp.AllEntsDirty = false
 	}
-	if g.temp.EntGrid == nil {
-		g.temp.EntGrid = MakeEntCache(g.Level.Room.Dx, g.Level.Room.Dy)
+	if g.local.temp.EntGrid == nil {
+		g.local.temp.EntGrid = MakeEntCache(g.Level.Room.Dx, g.Level.Room.Dy)
 	}
-	g.temp.EntGrid.SetEnts(g.temp.AllEnts)
+	g.local.temp.EntGrid.SetEnts(g.local.temp.AllEnts)
 
 	for _, proc := range g.Processes {
 		proc.Think(g)
@@ -740,7 +748,7 @@ func (g *Game) ThinkGame() {
 
 	// Advance players, check for collisions, add segments
 	eps := 1.0e-3
-	for _, ent := range g.temp.AllEnts {
+	for _, ent := range g.local.temp.AllEnts {
 		ent.Think(g)
 		for _, ab := range ent.Abilities() {
 			ab.Think(ent, g)
@@ -752,13 +760,13 @@ func (g *Game) ThinkGame() {
 	}
 
 	var nearby []Ent
-	for i := 0; i < len(g.temp.AllEnts); i++ {
-		outerEnt := g.temp.AllEnts[i]
+	for i := 0; i < len(g.local.temp.AllEnts); i++ {
+		outerEnt := g.local.temp.AllEnts[i]
 		outerSize := outerEnt.Stats().Size()
 		if outerSize == 0 {
 			continue
 		}
-		g.temp.EntGrid.EntsInRange(outerEnt.Pos(), 100, &nearby)
+		g.local.temp.EntGrid.EntsInRange(outerEnt.Pos(), 100, &nearby)
 		for _, innerEnt := range nearby {
 			innerSize := innerEnt.Stats().Size()
 			if innerSize == 0 {

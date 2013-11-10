@@ -38,7 +38,7 @@ func (m *Mine) Type() EntType {
 func (m *Mine) Think(g *Game) {
 	m.BaseEnt.Think(g)
 	prox := 50.0
-	for _, ent := range g.temp.AllEnts {
+	for _, ent := range g.local.temp.AllEnts {
 		if ent == m {
 			continue
 		}
@@ -47,7 +47,7 @@ func (m *Mine) Think(g *Game) {
 		}
 	}
 	if m.Trigger <= 0 {
-		for _, ent := range g.temp.AllEnts {
+		for _, ent := range g.local.temp.AllEnts {
 			if ent.Pos().Sub(m.Position).Mag() < prox {
 				ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, m.Damage})
 			}

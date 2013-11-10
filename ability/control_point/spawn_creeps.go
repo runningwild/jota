@@ -77,10 +77,11 @@ func (sc *spawnCreeps) Input(ent game.Ent, g *game.Game, pressAmt float64, trigg
 		cp.Processes[sc.id] = &omniDrain{Gid: cp.Gid}
 		return
 	}
-	if trigger {
+	if proc, _ := cp.Processes[sc.id].(*omniDrain); proc != nil && trigger {
 		g.AddEnt(ent)
 		delete(cp.Processes, sc.id)
-		g.AddCreeps(cp.Pos(), 50, cp.Side(), map[string]interface{}{"target": cp.Targets[0]})
+		creepCount := int(proc.Stored.Magnitude() / 300)
+		g.AddCreeps(cp.Pos(), creepCount, cp.Side(), map[string]interface{}{"target": cp.Targets[0]})
 	}
 }
 func (sc *spawnCreeps) Think(ent game.Ent, game *game.Game) {

@@ -133,7 +133,7 @@ func (g *Game) RenderLosMask() {
 	if ent == nil {
 		return
 	}
-	walls := g.temp.VisibleWallCache.GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
+	walls := g.local.temp.VisibleWallCache.GetWalls(int(ent.Pos().X), int(ent.Pos().Y))
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4ub(0, 0, 0, 255)
 	gl.Begin(gl.TRIANGLES)
@@ -278,7 +278,7 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 	}
 
 	gl.Color4d(1, 1, 1, 1)
-	for _, ent := range g.temp.AllEnts {
+	for _, ent := range g.local.temp.AllEnts {
 		ent.Draw(g)
 		for _, ab := range ent.Abilities() {
 			ab.Draw(ent, g)

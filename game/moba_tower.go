@@ -92,7 +92,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	side := -1
 	count := 0
 	var ents []Ent
-	g.temp.EntGrid.EntsInRange(cp.Position, cp.Radius, &ents)
+	g.local.temp.EntGrid.EntsInRange(cp.Position, cp.Radius, &ents)
 	controlRangeSquared := cp.Radius * cp.Radius
 	for _, ent := range ents {
 		if ent.Side() == -1 {
@@ -175,7 +175,7 @@ func (cp *ControlPoint) Think(g *Game) {
 		cp.AttackTimer--
 	}
 	if cp.Controlled && cp.AttackTimer == 0 {
-		for _, ent := range g.temp.AllEnts {
+		for _, ent := range g.local.temp.AllEnts {
 			if _, ok := ent.(*PlayerEnt); !ok || ent.Side() == cp.Side() {
 				continue
 			}
@@ -316,7 +316,7 @@ func (cpap *controlPointAttackProcess) Think(g *Game) {
 			cpap.ProjPos = cpap.ProjPos.Add(dir.Norm().Scale(cpap.ProjSpeed))
 		}
 		if hit {
-			for _, ent := range g.temp.AllEnts {
+			for _, ent := range g.local.temp.AllEnts {
 				if ent.Pos().Sub(cpap.ProjPos).Mag() < cpap.BlastRadius {
 					ent.Stats().ApplyDamage(stats.Damage{stats.DamageFire, 100})
 				}

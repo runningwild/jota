@@ -167,7 +167,7 @@ func (b *BaseEnt) Think(g *Game) {
 		epsilon := b.Velocity.Norm().Scale(size / 2)
 		move := linear.Seg2{b.Position.Sub(epsilon), b.Position.Add(b.Velocity)}
 		prev := b.Position
-		walls := g.temp.WallCache.GetWalls(int(b.Position.X), int(b.Position.Y))
+		walls := g.local.temp.WallCache.GetWalls(int(b.Position.X), int(b.Position.Y))
 		for _, wall := range walls {
 			// Don't bother with back-facing segments
 			if wall.Right(b.Position) {
