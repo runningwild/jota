@@ -392,7 +392,7 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Level = &Level{}
 	g.Level.Room = room
 	g.Rng = cmwc.MakeGoodCmwc()
-	g.Rng.Seed(12313131)
+	g.Rng.Seed(u.Seed)
 	g.Ents = make(map[Gid]Ent)
 	g.Friction = 0.97
 	g.losCache = makeLosCache(g.Level.Room.Dx, g.Level.Room.Dy)
