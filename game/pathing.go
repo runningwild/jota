@@ -4,11 +4,15 @@ import (
 	"container/heap"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/linear"
+	"sync"
+	"time"
 )
 
 const pathingDataGrid = 64
 
 type PathingData struct {
+	sync.RWMutex
+
 	// direction [srcX][srcY][dstX][dstY]
 	dirs [][][][]pathingDataCell
 
@@ -20,6 +24,7 @@ type pathingDataCell struct {
 	angle  float64
 	direct bool
 	filled bool
+	dist   float64
 }
 
 type pathingConnection struct {
@@ -75,14 +80,6 @@ func makePathingData(room *Room) *PathingData {
 		}
 	}
 
-	for i := range pd.dirs {
-		for j := range pd.dirs[i] {
-			pd.findAllPaths(i, j)
-		}
-	}
-	// pd.findAllPaths(5, 12)
-	base.Log().Printf("3,8->30,8: %v", pd.dirs[3][8][30][8])
-
 	return &pd
 }
 
@@ -121,18 +118,18 @@ func (pd *PathingData) findAllPaths(srcx, srcy int) {
 			dsty:    conn.y,
 			dist:    conn.dist,
 		})
+		paths[conn.x][conn.y].dist = conn.dist
 	}
-	debug := srcx == 5 && srcy == 12
-	debug = false
-	if debug {
-		base.Log().Printf("Starting pq len: %d", next.Len())
-	}
+	debug := srcx == 1 && srcy == 8 && false
 	for next.Len() > 0 {
-		node := heap.Pop(&next).(pathingNode)
-		cell := &paths[node.dstx][node.dsty]
-		if debug && node.dstx > 20 && node.dsty == srcy+1 {
-			base.Log().Printf("Popping %v", node)
+		if debug {
+			base.Log().Printf("Current len: %v", next.Len())
 		}
+		node := heap.Pop(&next).(pathingNode)
+		if debug {
+			base.Log().Printf("Eval: %v", node)
+		}
+		cell := &paths[node.dstx][node.dsty]
 		if cell.filled {
 			continue
 		}
@@ -147,6 +144,11 @@ func (pd *PathingData) findAllPaths(srcx, srcy int) {
 			if paths[conn.x][conn.y].filled {
 				continue
 			}
+			// cur := &paths[conn.x][conn.y]
+			// if cur.filled && cur.dist < node.dist+conn.dist {
+			// 	continue
+			// }
+			// cur.dist = node.dist + conn.dist
 			heap.Push(&next, pathingNode{
 				originx: node.originx,
 				originy: node.originy,
@@ -163,6 +165,20 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	y := int(src.Y/pathingDataGrid + 0.5)
 	x2 := int(dst.X/pathingDataGrid + 0.5)
 	y2 := int(dst.Y/pathingDataGrid + 0.5)
+	pd.RLock()
+	defer pd.RUnlock()
+	if !pd.dirs[x][y][x][y].filled {
+		pd.RUnlock()
+		pd.Lock()
+		if !pd.dirs[x][y][x][y].filled {
+			start := time.Now()
+			pd.findAllPaths(x, y)
+			base.Log().Printf("(%d, %d) -> (%d, %d): Calculated in %v", x, y, x2, y2, time.Now().Sub(start))
+			pd.dirs[x][y][x][y].filled = true
+		}
+		pd.Unlock()
+		pd.RLock()
+	}
 	cell := pd.dirs[x][y][x2][y2]
 	if !cell.direct {
 		return (linear.Vec2{1, 0}).Rotate(cell.angle)

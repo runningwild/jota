@@ -19,67 +19,67 @@
   "Towers": [
     {
       "Pos": {"X": 64, "Y": 512},
-      "Side": 0,
+      "Side":0,
       "Targets": [1, 2]
     },
     {
       "Pos": {"X": 288, "Y": 768},
-      "Side": 0,
+      "Side":-1,
       "Targets": [0, 3]
     },
     {
       "Pos": {"X": 288, "Y": 256},
-      "Side": 0,
+      "Side":-1,
       "Targets": [0, 3]
     },
     {
       "Pos": {"X": 512, "Y": 512},
-      "Side": -1,
+      "Side":-1,
       "Targets": [1, 2, 4, 5]
     },
     {
       "Pos": {"X": 1024, "Y": 896},
-      "Side": -1,
+      "Side":-1,
       "Targets": [3, 7]
     },
     {
       "Pos": {"X": 1024, "Y": 128},
-      "Side": -1,
+      "Side":-1,
       "Targets": [3, 8]
     },
     {
       "Pos": {"X": 2048, "Y": 512},
-      "Side": -1,
+      "Side":-1,
       "Targets": [3, 9]
     },
     {
       "Pos": {"X": 3076, "Y": 896},
-      "Side": -1,
+      "Side":-1,
       "Targets": [4, 9]
     },
     {
       "Pos": {"X": 3076, "Y": 128},
-      "Side": -1,
+      "Side":-1,
       "Targets": [5, 9]
     },
     {
       "Pos": {"X": 3584, "Y": 512},
-      "Side": -1,
+      "Side":-1,
       "Targets": [7, 8, 10, 11]
     },
     {
       "Pos": {"X": 3808, "Y": 768},
-      "Side": 1,
+      "Side":-1,
       "Targets": [9, 12]
     },
     {
       "Pos": {"X": 3808, "Y": 256},
-      "Side": 1,
+      "Side":-1,
       "Targets": [9, 12]
     },
     {
       "Pos": {"X": 4032, "Y": 512},
-      "Side": 1,
+      "Side":-1,
       "Targets": [10, 11]
     }
   ],
