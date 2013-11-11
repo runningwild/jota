@@ -7,6 +7,8 @@ log := import("log")
 // ability code for the control point.
 
 for {
+  time.Sleep(3000)
+
   // Start draining nearby mana to spawn some creeps
   jota.UseAbility(0, 1.0, false)
 
