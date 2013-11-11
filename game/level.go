@@ -11,6 +11,19 @@ type Room struct {
 	Towers   []towerData
 }
 
+func (r *Room) ExistsLos(a, b linear.Vec2) bool {
+	los := linear.Seg2{a, b}
+	for _, wall := range r.Walls {
+		for i := range wall {
+			seg := wall.Seg(i)
+			if seg.DoesIsect(los) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 type roomSideData struct {
 	Base linear.Vec2 // Position of the base for this side
 }

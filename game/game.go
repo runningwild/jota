@@ -490,7 +490,12 @@ type localGameData struct {
 
 type PathingData struct {
 	// direction [srcX][srcY][dstX][dstY]
-	dirs [][][][]linear.Vec2
+	dirs [][][][]pathingDataCell
+}
+
+type pathingDataCell struct {
+	angle  float64
+	direct bool
 }
 
 const pathingDataGrid = 64
@@ -499,21 +504,35 @@ func makePathingData(room *Room) *PathingData {
 	var pd PathingData
 	dx := room.Dx/pathingDataGrid + 1
 	dy := room.Dy/pathingDataGrid + 1
-	pd.dirs = make([][][][]linear.Vec2, dx)
+	pd.dirs = make([][][][]pathingDataCell, dx)
 	for i := range pd.dirs {
-		pd.dirs[i] = make([][][]linear.Vec2, dy)
+		pd.dirs[i] = make([][][]pathingDataCell, dy)
 		for j := range pd.dirs[i] {
-			pd.dirs[i][j] = make([][]linear.Vec2, dx)
+			pd.dirs[i][j] = make([][]pathingDataCell, dx)
 			for k := range pd.dirs[i][j] {
-				pd.dirs[i][j][k] = make([]linear.Vec2, dy)
+				pd.dirs[i][j][k] = make([]pathingDataCell, dy)
 				for l := range pd.dirs[i][j][k] {
-					pd.dirs[i][j][k][l] = (linear.Vec2{1, 0}).Rotate(0.3)
+					pd.dirs[i][j][k][l].angle = -0.3
+					pd.dirs[i][j][k][l].direct = false
 				}
 			}
 		}
 	}
-	// base.Log().Printf("Dims: %d %d %d %d", len(pd.dirs), len(pd.dirs[0]), len(pd.dirs[0][0]), len(pd.dirs[0][0][0]))
 	return &pd
+}
+
+func (pd *PathingData) findAllDirectPaths(srcx, srcy int, room *Room) {
+	src := linear.Vec2{(float64(srcx) + 0.5) * pathingDataGrid, (float64(srcy) + 0.5) * pathingDataGrid}
+	for x := range pd.dirs[srcx][srcy] {
+		for y := range pd.dirs[srcx][srcy][x] {
+			dst := linear.Vec2{(float64(x) + 0.5) * pathingDataGrid, (float64(y) + 0.5) * pathingDataGrid}
+			if room.ExistsLos(src, dst) {
+				data := &pd.dirs[srcx][srcy][x][y]
+				data.angle = dst.Sub(src).Angle()
+				data.direct = true
+			}
+		}
+	}
 }
 
 func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
@@ -521,9 +540,7 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	y := int(src.Y/pathingDataGrid + 0.5)
 	x2 := int(dst.X/pathingDataGrid + 0.5)
 	y2 := int(dst.Y/pathingDataGrid + 0.5)
-	// base.Log().Printf("Index %d %d %d %d", x, y, x2, y2)
-	// base.Log().Printf("Return %v", pd.dirs[x][y][x2][y2])
-	return pd.dirs[x][y][x2][y2]
+	return (linear.Vec2{1, 0}).Rotate(pd.dirs[x][y][x2][y2].angle)
 }
 
 type Game struct {
@@ -913,16 +930,7 @@ func (g *Game) Think() {
 // Returns true iff a has los to b, regardless of distance, except that nothing
 // can ever have los to something that is beyond stats.LosPlayerHorizon.
 func (g *Game) ExistsLos(a, b linear.Vec2) bool {
-	los := linear.Seg2{a, b}
-	for _, wall := range g.Level.Room.Walls {
-		for i := range wall {
-			seg := wall.Seg(i)
-			if seg.DoesIsect(los) {
-				return false
-			}
-		}
-	}
-	return true
+	return g.Level.Room.ExistsLos(a, b)
 }
 
 func clamp(v, low, high float64) float64 {
