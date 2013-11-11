@@ -5,40 +5,24 @@ log := import("log")
 me := jota.Me()
 controlPoints := jota.ControlPoints()
 for {
-  nearby := jota.NearbyEnts()
   target := nil
-
-  for nearbyPair := range nearby {
-    if nearbyPair.v.Side() != me.Side() {
-      target = nearbyPair.v
-      break
-    }
-  }
-
-  if target == nil {
-    nearest := 1000000000
-    for pair := range controlPoints {
-      if pair.v.Side() != me.Side() {
-        dist := pair.v.Pos().Sub(me.Pos()).Length()
-        if dist < nearest {
-          nearest = dist
-          target = pair.v
-          break
-        }
+  nearest := 1000000000
+  for pair := range controlPoints {
+    if pair.v.Side() != me.Side() {
+      dist := pair.v.Pos().Sub(me.Pos()).Length()
+      if dist < nearest {
+        nearest = dist
+        target = pair.v
+        break
       }
     }
   }
-
   if target != nil {
-    if target.Side() != me.Side() {
-      jota.MoveTowards(target.Pos())
-      if target.Pos().Sub(me.Pos()).Length() < 50 {
-        if target.IsPlayer() || target.IsCreep() {
-          jota.UseAbility(0, 1.0, true)
-        }
-      }
-    }
+    dir := jota.PathDir(me.Pos(), target.Pos())
+    jota.Turn(dir.Angle())
+    jota.Move(1.0)
+  } else {
+    jota.Move(0.0)
   }
-
   time.Sleep(100)
 }

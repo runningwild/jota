@@ -237,6 +237,7 @@ func (jm *JotaModule) Run(_ ...runtime.Val) (v runtime.Val, err error) {
 		jm.ob.Set(runtime.String("NearestEnt"), runtime.NewNativeFunc(jm.ctx, "jota.NearestEnt", jm.NearestEnt))
 		jm.ob.Set(runtime.String("ControlPoints"), runtime.NewNativeFunc(jm.ctx, "jota.ControlPoints", jm.ControlPoints))
 		jm.ob.Set(runtime.String("NearbyEnts"), runtime.NewNativeFunc(jm.ctx, "jota.NearbyEnts", jm.NearbyEnts))
+		jm.ob.Set(runtime.String("PathDir"), runtime.NewNativeFunc(jm.ctx, "jota.PathDir", jm.PathDir))
 	}
 	return jm.ob, nil
 }
@@ -262,11 +263,6 @@ func (jm *JotaModule) MoveTowards(vs ...runtime.Val) runtime.Val {
 		base.Warn().Printf("Script called MoveTowards with the wrong type: %T", vs[0].Native())
 		return runtime.Nil
 	}
-	targetPos := linear.Vec2{
-		X: pos.Get(runtime.String("X")).Float(),
-		Y: pos.Get(runtime.String("Y")).Float(),
-	}
-
 	jm.engine.Pause()
 	defer jm.engine.Unpause()
 
@@ -276,7 +272,7 @@ func (jm *JotaModule) MoveTowards(vs ...runtime.Val) runtime.Val {
 		base.Warn().Printf("Darn, I don't exist")
 		return runtime.Nil
 	}
-	angle := targetPos.Sub(me.Pos()).Angle()
+	angle := pos.Regular().Sub(me.Pos()).Angle()
 	jm.engine.ApplyEvent(game.Move{jm.myGid, angle, 1.0})
 	return runtime.Nil
 }
@@ -384,6 +380,18 @@ func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 	return obj
 }
 
+func (jm *JotaModule) PathDir(vs ...runtime.Val) runtime.Val {
+	jm.dieOnTerminated()
+	jm.engine.Pause()
+	defer jm.engine.Unpause()
+	g := jm.engine.GetState().(*game.Game)
+	pd := g.PathingData()
+	src := vs[0].Native().(*agoraVec).Regular()
+	dst := vs[1].Native().(*agoraVec).Regular()
+	dir := pd.Dir(src, dst)
+	return jm.newVec(dir.X, dir.Y)
+}
+
 func (jm *JotaModule) Param(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.paramsMutex.Lock()
@@ -440,6 +448,7 @@ func (jm *JotaModule) newVec(x, y float64) *agoraVec {
 	}
 	ob.Set(runtime.String("Length"), runtime.NewNativeFunc(jm.ctx, "jota.Vec.Length", v.length))
 	ob.Set(runtime.String("Sub"), runtime.NewNativeFunc(jm.ctx, "jota.Vec.Sub", v.sub))
+	ob.Set(runtime.String("Angle"), runtime.NewNativeFunc(jm.ctx, "jota.Vec.Angle", v.angle))
 	ob.Set(runtime.String("X"), runtime.Number(x))
 	ob.Set(runtime.String("Y"), runtime.Number(y))
 	return v
@@ -450,6 +459,12 @@ type agoraVec struct {
 	jm *JotaModule
 }
 
+func (v *agoraVec) Regular() linear.Vec2 {
+	return linear.Vec2{
+		X: v.Get(runtime.String("X")).Float(),
+		Y: v.Get(runtime.String("Y")).Float(),
+	}
+}
 func (v *agoraVec) Int() int64          { panic("Bad!") }
 func (v *agoraVec) Float() float64      { panic("Bad!") }
 func (v *agoraVec) String() string      { return fmt.Sprintf("%v", *v) }
@@ -467,6 +482,12 @@ func (v *agoraVec) sub(args ...runtime.Val) runtime.Val {
 	x2 := v2.Get(runtime.String("X")).Float()
 	y2 := v2.Get(runtime.String("Y")).Float()
 	return v.jm.newVec(x-x2, y-y2)
+}
+
+func (v *agoraVec) angle(args ...runtime.Val) runtime.Val {
+	base.Log().Printf("Regul: %v", v.Regular())
+	base.Log().Printf("Angle: %v", v.Regular().Angle())
+	return runtime.Number(v.Regular().Angle())
 }
 
 type GameAi struct {

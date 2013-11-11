@@ -461,6 +461,8 @@ type localGameData struct {
 	// Game.Engines[thisEngineId]
 	Data *PlayerData
 
+	pathingData *PathingData
+
 	// Event handling and engine thinking can happen concurrently, so we need to
 	// be able to lock the local data.  Embedded for convenience.
 	sync.RWMutex
@@ -484,6 +486,44 @@ type localGameData struct {
 		AllEntsDirty bool
 		EntGrid      *entGridCache
 	}
+}
+
+type PathingData struct {
+	// direction [srcX][srcY][dstX][dstY]
+	dirs [][][][]linear.Vec2
+}
+
+const pathingDataGrid = 64
+
+func makePathingData(room *Room) *PathingData {
+	var pd PathingData
+	dx := room.Dx/pathingDataGrid + 1
+	dy := room.Dy/pathingDataGrid + 1
+	pd.dirs = make([][][][]linear.Vec2, dx)
+	for i := range pd.dirs {
+		pd.dirs[i] = make([][][]linear.Vec2, dy)
+		for j := range pd.dirs[i] {
+			pd.dirs[i][j] = make([][]linear.Vec2, dx)
+			for k := range pd.dirs[i][j] {
+				pd.dirs[i][j][k] = make([]linear.Vec2, dy)
+				for l := range pd.dirs[i][j][k] {
+					pd.dirs[i][j][k][l] = (linear.Vec2{1, 0}).Rotate(0.3)
+				}
+			}
+		}
+	}
+	// base.Log().Printf("Dims: %d %d %d %d", len(pd.dirs), len(pd.dirs[0]), len(pd.dirs[0][0]), len(pd.dirs[0][0][0]))
+	return &pd
+}
+
+func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
+	x := int(src.X/pathingDataGrid + 0.5)
+	y := int(src.Y/pathingDataGrid + 0.5)
+	x2 := int(dst.X/pathingDataGrid + 0.5)
+	y2 := int(dst.Y/pathingDataGrid + 0.5)
+	// base.Log().Printf("Index %d %d %d %d", x, y, x2, y2)
+	// base.Log().Printf("Return %v", pd.dirs[x][y][x2][y2])
+	return pd.dirs[x][y][x2][y2]
 }
 
 type Game struct {
@@ -518,6 +558,10 @@ type Game struct {
 
 func (g *Game) InitializeClientData() {
 	// TODO: Do something useful with this.
+}
+
+func (g *Game) PathingData() *PathingData {
+	return g.local.pathingData
 }
 
 func (g *Game) EntsInRange(pos linear.Vec2, dist float64) []Ent {
@@ -735,10 +779,14 @@ func (g *Game) ThinkSetup() {
 func (g *Game) ThinkGame() {
 	// cache wall data
 	if g.local.temp.AllWalls == nil || g.local.temp.AllWallsDirty {
+		g.local.temp.AllWallsDirty = false
 		g.local.temp.AllWalls = nil
 		g.local.temp.WallCache = nil
 		g.local.temp.VisibleWallCache = nil
-		var allWalls []linear.Seg2
+
+		// Can't use a nil slice, otherwise we'll run this block every Think for levels
+		// with no walls.
+		allWalls := make([]linear.Seg2, 0)
 		base.DoOrdered(g.Level.Room.Walls, func(a, b string) bool { return a < b }, func(_ string, walls linear.Poly) {
 			for i := range walls {
 				allWalls = append(allWalls, walls.Seg(i))
@@ -749,6 +797,7 @@ func (g *Game) ThinkGame() {
 		g.local.temp.WallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, 100)
 		g.local.temp.VisibleWallCache = &wallCache{}
 		g.local.temp.VisibleWallCache.SetWalls(g.Level.Room.Dx, g.Level.Room.Dy, allWalls, stats.LosPlayerHorizon)
+		g.local.pathingData = makePathingData(&g.Level.Room)
 	}
 
 	// cache ent data
