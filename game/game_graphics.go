@@ -15,12 +15,10 @@ import (
 )
 
 type cameraInfo struct {
-	regionPos  linear.Vec2
 	regionDims linear.Vec2
 	// Camera positions.  target is used for the invaders so that the camera can
-	// follow the players without being too jerky.  limit is used by the architect
-	// so we have a constant reference point.
-	current, target, limit struct {
+	// follow the players without being too jerky.
+	current, target struct {
 		mid, dims linear.Vec2
 	}
 	zoom         float64
@@ -65,6 +63,25 @@ func (camera *cameraInfo) FocusRegion(g *Game, side int) {
 	camera.target.dims = dims
 	camera.target.mid = mid
 
+	camera.approachTarget()
+}
+
+// zoom == 0 fits the level exactly into the viewing region
+func (camera *cameraInfo) StandardRegion(pos linear.Vec2, levelDims linear.Vec2) {
+	mid := pos
+	dims := levelDims
+	if dims.X/dims.Y < camera.regionDims.X/camera.regionDims.Y {
+		dims.X = dims.Y * camera.regionDims.X / camera.regionDims.Y
+	} else {
+		dims.Y = dims.X * camera.regionDims.Y / camera.regionDims.X
+	}
+	camera.target.dims = dims
+	camera.target.mid = mid
+
+	camera.approachTarget()
+}
+
+func (camera *cameraInfo) approachTarget() {
 	if camera.current.mid.X == 0 && camera.current.mid.Y == 0 {
 		// On the very first frame the current midpoint will be (0,0), which should
 		// never happen after the game begins.  In this one case we'll immediately
@@ -174,43 +191,7 @@ func (g *Game) RenderLosMask() {
 	base.EnableShader("")
 }
 
-func (g *Game) RenderLocalGame(region g2.Region) {
-	// func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
-	g.local.Camera.FocusRegion(g, 0)
-	gl.MatrixMode(gl.PROJECTION)
-	gl.PushMatrix()
-	gl.LoadIdentity()
-	// Set the viewport so that we only render into the region that we're supposed
-	// to render to.
-	// TODO: Check if this works on all graphics cards - I've heard that the opengl
-	// spec doesn't actually require that viewport does any clipping.
-	gl.PushAttrib(gl.VIEWPORT_BIT)
-	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
-	defer gl.PopAttrib()
-
-	current := &g.local.Camera.current
-	gl.Ortho(
-		gl.Double(current.mid.X-current.dims.X/2),
-		gl.Double(current.mid.X+current.dims.X/2),
-		gl.Double(current.mid.Y+current.dims.Y/2),
-		gl.Double(current.mid.Y-current.dims.Y/2),
-		gl.Double(1000),
-		gl.Double(-1000),
-	)
-	defer func() {
-		gl.MatrixMode(gl.PROJECTION)
-		gl.PopMatrix()
-		gl.MatrixMode(gl.MODELVIEW)
-	}()
-	gl.MatrixMode(gl.MODELVIEW)
-
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	level := g.Level
-	zoom := current.dims.X / float64(region.Dims.Dx)
-	level.ManaSource.Draw(zoom, float64(level.Room.Dx), float64(level.Room.Dy))
-
+func (g *Game) renderWalls() {
 	gl.Color4d(1, 1, 1, 1)
 	var expandedPoly linear.Poly
 	for _, poly := range g.Level.Room.Walls {
@@ -230,7 +211,9 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 		}
 		gl.End()
 	}
+}
 
+func (g *Game) renderEdges() {
 	// Draw edges between nodes
 	for _, ent := range g.Ents {
 		cp0, ok := ent.(*ControlPoint)
@@ -271,12 +254,16 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 			gl.End()
 		}
 	}
+}
 
+func (g *Game) renderBases() {
 	gui.SetFontColor(0, 255, 0, 255)
 	for side, data := range g.Level.Room.SideData {
 		base.GetDictionary("luxisr").RenderString(fmt.Sprintf("S%d", side), data.Base.X, data.Base.Y, 0, 100, gui.Center)
 	}
+}
 
+func (g *Game) renderEntsAndAbilities() {
 	gl.Color4d(1, 1, 1, 1)
 	for _, ent := range g.local.temp.AllEnts {
 		ent.Draw(g)
@@ -284,23 +271,57 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 			ab.Draw(ent, g)
 		}
 	}
-	gl.Disable(gl.TEXTURE_2D)
+}
 
-	// TODO: figure out how to draw abilities.
-	// for gid, ent:=range g.Ents {
-	// 	for _, proc := range ent.
-	// }
-	// for i := range local.moba.players {
-	// 	p := &local.moba.players[i]
-	// 	if p.abs.activeAbility != nil {
-	// 		p.abs.activeAbility.Draw(p.gid, g, side)
-	// 	}
-	// }
+func (g *Game) renderProcesses() {
 	for _, proc := range g.Processes {
 		proc.Draw(Gid(""), g.local.Gid, g)
 	}
+}
 
-	gl.Color4ub(0, 0, 255, 200)
+func (g *Game) RenderLocalGame(region g2.Region) {
+	g.local.Camera.regionDims = linear.Vec2{float64(region.Dims.Dx), float64(region.Dims.Dy)}
+	// func (g *Game) renderLocalHelper(region g2.Region, local *LocalData, camera *cameraInfo, side int) {
+	g.local.Camera.FocusRegion(g, 0)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	// Set the viewport so that we only render into the region that we're supposed
+	// to render to.
+	// TODO: Check if this works on all graphics cards - I've heard that the opengl
+	// spec doesn't actually require that viewport does any clipping.
+	gl.PushAttrib(gl.VIEWPORT_BIT)
+	gl.Viewport(gl.Int(region.X), gl.Int(region.Y), gl.Sizei(region.Dx), gl.Sizei(region.Dy))
+	defer gl.PopAttrib()
+
+	current := &g.local.Camera.current
+	gl.Ortho(
+		gl.Double(current.mid.X-current.dims.X/2),
+		gl.Double(current.mid.X+current.dims.X/2),
+		gl.Double(current.mid.Y+current.dims.Y/2),
+		gl.Double(current.mid.Y-current.dims.Y/2),
+		gl.Double(1000),
+		gl.Double(-1000),
+	)
+	defer func() {
+		gl.MatrixMode(gl.PROJECTION)
+		gl.PopMatrix()
+		gl.MatrixMode(gl.MODELVIEW)
+	}()
+	gl.MatrixMode(gl.MODELVIEW)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	level := g.Level
+	zoom := current.dims.X / float64(region.Dims.Dx)
+	level.ManaSource.Draw(zoom, float64(level.Room.Dx), float64(level.Room.Dy))
+
+	g.renderWalls()
+	g.renderEdges()
+	g.renderBases()
+	g.renderEntsAndAbilities()
+	g.renderProcesses()
 	g.RenderLosMask()
 }
 
@@ -308,13 +329,16 @@ func (g *Game) RenderLocalGame(region g2.Region) {
 // players across the network.  Any ui used to determine how to place an object
 // or use an ability, for example.
 func (g *Game) RenderLocal(region g2.Region) {
-	if g.Setup != nil {
+	switch {
+	case g.Setup != nil:
 		g.RenderLocalSetup(region)
-		return
+	case !g.editor.Active():
+		g.RenderLocalGame(region)
+	case g.editor.Active():
+		g.RenderLocalEditor(region)
+	default:
+		base.Error().Printf("Unexpected case.")
 	}
-	g.local.Camera.regionPos = linear.Vec2{float64(region.X), float64(region.Y)}
-	g.local.Camera.regionDims = linear.Vec2{float64(region.Dx), float64(region.Dy)}
-	g.RenderLocalGame(region)
 }
 
 func (p *PlayerEnt) Draw(game *Game) {

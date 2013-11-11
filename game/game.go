@@ -145,42 +145,42 @@ type SetupData struct {
 	local localSetupData
 }
 
-func (setup *SetupData) HandleEventGroup(group gin.EventGroup, engine *cgf.Engine) {
+func (game *Game) HandleEventGroupSetup(group gin.EventGroup) {
 	if found, event := group.FindEvent(control.hat.up.Id()); found && event.Type == gin.Press {
-		setup.local.Lock()
-		defer setup.local.Unlock()
-		if setup.local.Index > 0 {
-			setup.local.Index--
+		game.Setup.local.Lock()
+		defer game.Setup.local.Unlock()
+		if game.Setup.local.Index > 0 {
+			game.Setup.local.Index--
 		}
 		return
 	}
 	if found, event := group.FindEvent(control.hat.down.Id()); found && event.Type == gin.Press {
-		setup.local.Lock()
-		defer setup.local.Unlock()
-		if setup.local.Index < len(setup.EngineIds) {
-			setup.local.Index++
+		game.Setup.local.Lock()
+		defer game.Setup.local.Unlock()
+		if game.Setup.local.Index < len(game.Setup.EngineIds) {
+			game.Setup.local.Index++
 		}
 		return
 	}
 
 	if found, event := group.FindEvent(control.hat.left.Id()); found && event.Type == gin.Press {
-		engine.ApplyEvent(SetupChampSelect{engine.Id(), -1})
+		game.local.Engine.ApplyEvent(SetupChampSelect{game.local.Engine.Id(), -1})
 		return
 	}
 	if found, event := group.FindEvent(control.hat.right.Id()); found && event.Type == gin.Press {
-		engine.ApplyEvent(SetupChampSelect{engine.Id(), 1})
+		game.local.Engine.ApplyEvent(SetupChampSelect{game.local.Engine.Id(), 1})
 		return
 	}
 	if found, event := group.FindEvent(control.hat.enter.Id()); found && event.Type == gin.Press {
-		setup.local.Lock()
-		defer setup.local.Unlock()
-		if setup.local.Index < len(setup.EngineIds) {
-			id := setup.EngineIds[setup.local.Index]
-			side := (setup.Players[id].Side + 1) % 2
-			engine.ApplyEvent(SetupChangeSides{id, side})
+		game.Setup.local.Lock()
+		defer game.Setup.local.Unlock()
+		if game.Setup.local.Index < len(game.Setup.EngineIds) {
+			id := game.Setup.EngineIds[game.Setup.local.Index]
+			side := (game.Setup.Players[id].Side + 1) % 2
+			game.local.Engine.ApplyEvent(SetupChangeSides{id, side})
 		} else {
-			if len(engine.Ids()) > 0 {
-				engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			if len(game.local.Engine.Ids()) > 0 {
+				game.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
 			}
 		}
 		return
@@ -211,6 +211,9 @@ var control struct {
 		up, down, left, right, enter gin.Key
 	}
 	any, up, down, left, right gin.Key
+
+	// Debug/Dev mode
+	editor gin.Key
 }
 
 // Queries the input system for the direction that this controller is moving in
@@ -225,16 +228,14 @@ func getControllerDirection(controller gin.DeviceId) linear.Vec2 {
 	return v
 }
 
-func (g *Game) HandleEventGroup(group gin.EventGroup) {
-	g.local.Engine.Pause()
-	defer g.local.Engine.Unpause()
-	if g.Setup != nil {
-		g.Setup.HandleEventGroup(group, g.local.Engine)
-		return
-	}
-
+func (g *Game) HandleEventGroupGame(group gin.EventGroup) {
 	g.local.RLock()
 	defer g.local.RUnlock()
+
+	if found, event := group.FindEvent(control.editor.Id()); found && event.Type == gin.Press {
+		g.editor.Toggle()
+		return
+	}
 
 	if found, _ := group.FindEvent(control.any.Id()); found {
 		dir := getControllerDirection(gin.DeviceId{gin.DeviceTypeController, gin.DeviceIndexAny})
@@ -266,6 +267,21 @@ func (g *Game) HandleEventGroup(group gin.EventGroup) {
 				Trigger: foundTrigger && triggerEvent.Type == gin.Press,
 			})
 		}
+	}
+}
+
+func (g *Game) HandleEventGroup(group gin.EventGroup) {
+	g.local.Engine.Pause()
+	defer g.local.Engine.Unpause()
+	switch {
+	case g.Setup != nil:
+		g.HandleEventGroupSetup(group)
+	case g.editor.Active():
+		g.HandleEventGroupEditor(group)
+	case !g.editor.Active():
+		g.HandleEventGroupGame(group)
+	default:
+		base.Error().Printf("Unexpected case in HandleEventGroup()")
 	}
 }
 
@@ -495,7 +511,8 @@ type Game struct {
 	// sent to clients to make debugging and tuning easier.
 	Champs []champ.Champion
 
-	local localGameData
+	local  localGameData
+	editor editorData
 }
 
 func (g *Game) InitializeClientData() {
@@ -580,6 +597,8 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 			gin.In().MakeBinding(control.down.Id(), nil, nil),
 			gin.In().MakeBinding(control.left.Id(), nil, nil),
 			gin.In().MakeBinding(control.right.Id(), nil, nil))
+
+		control.editor = gin.In().GetKey(gin.AnyKeyE)
 	}
 
 	// TODO: Unregister this at some point, nub
