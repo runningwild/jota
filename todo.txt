@@ -4,10 +4,6 @@
 - Make Utility abilities - Nitro, Cloak, Shield - One for each color.  Press a button
   to turn them on, use the trigger to keep them on.  Bonus: Let players choose a single
   utility ability when the game starts.
-- Randomize how creeps are placed around the control points.
-- Draw lines between connected towers, red if both towers are controlled by the
-  enemy, green if both are controlled by your team, and yellow if one is
-  controlled by you.
 - Serious optimizations are needed, the game sucks up 500% cpu and runs OOM.
 - Make the ai api a little more powerful.
 - Fix shaders on ATI cards.

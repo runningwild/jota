@@ -18,11 +18,6 @@ function doBuild {
 }
 
 doBuild 'host'
-doBuild 'client'
+open host.app
+#doBuild 'client'
 false
-open host.app
-doBuild 'client'
-
-open host.app
-sleep 0.9
-open client.app

@@ -195,7 +195,7 @@ func (r *RootWidget) Draw(region Region, style StyleStack) {
 		case AnchorLR:
 			cp.child.Draw(Region{Pos: Pos{r.region.Dx - dims.Dx, r.region.Dy - dims.Dy}, Dims: dims}, style)
 		case AnchorDeadCenter:
-			cp.child.Draw(Region{Pos: Pos{(r.region.Dx - dims.Dx) / 2, (r.region.Dy - dims.Dy) / 2}, Dims: dims}, style)
+			cp.child.Draw(Region{Pos: Pos{r.region.X + (r.region.Dx-dims.Dx)/2, r.region.Y + (r.region.Dy-dims.Dy)/2}, Dims: dims}, style)
 		}
 	}
 }

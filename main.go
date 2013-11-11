@@ -43,8 +43,8 @@ func init() {
 	datadir = filepath.Join(os.Args[0], "..", "..")
 	base.SetDatadir(datadir)
 	base.Log().Printf("Setting datadir: %s", datadir)
-	wdx = 1024
-	wdy = 768
+	wdx = 1000
+	wdy = 800
 	var key_binds base.KeyBinds
 	base.LoadJson(filepath.Join(datadir, "key_binds.json"), &key_binds)
 	fmt.Printf("Prething: %v\n", key_binds)
@@ -74,7 +74,7 @@ func debugHookup(version string) *cgf.Engine {
 		engine.GetState().(*game.Game).SetEngine(engine)
 	} else {
 		sys.Think()
-		g := game.MakeGame()
+		g := game.MakeGame(sys)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 20007, base.EmailCrashReport, base.Log())
 			if err != nil {
@@ -106,8 +106,8 @@ func mainLoop(engine *cgf.Engine, mode string) {
 
 	ticker := time.Tick(time.Millisecond * 17)
 	ui := g2.Make(0, 0, wdx, wdy)
-	ui.AddChild(&game.GameWindow{Engine: engine, Dims: g2.Dims{wdx, wdy}}, g2.AnchorDeadCenter)
-	ui.AddChild(g2.MakeConsole(wdx, wdy), g2.AnchorDeadCenter)
+	ui.AddChild(&game.GameWindow{Engine: engine, Dims: g2.Dims{wdx - 50, wdy - 50}}, g2.AnchorDeadCenter)
+	ui.AddChild(g2.MakeConsole(wdx-50, wdy-50), g2.AnchorDeadCenter)
 	// side0Index := gin.In().BindDerivedKeyFamily("Side0", gin.In().MakeBindingFamily(gin.Key1, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
 	// side1Index := gin.In().BindDerivedKeyFamily("Side1", gin.In().MakeBindingFamily(gin.Key2, []gin.KeyIndex{gin.EitherControl}, []bool{true}))
 	// side2Index := gin.In().BindDerivedKeyFamily("Side2", gin.In().MakeBindingFamily(gin.Key3, []gin.KeyIndex{gin.EitherControl}, []bool{true}))

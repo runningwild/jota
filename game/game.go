@@ -6,6 +6,7 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
+	"github.com/runningwild/glop/system"
 	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/champ"
@@ -606,8 +607,9 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 	g.local.Engine = engine
 }
 
-func MakeGame() *Game {
+func MakeGame(sys system.System) *Game {
 	var g Game
+	g.editor.sys = sys
 	g.Setup = &SetupData{}
 	g.Setup.Players = make(map[int64]*SetupPlayerData)
 
