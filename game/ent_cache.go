@@ -31,8 +31,17 @@ func (cache *entGridCache) SetEnts(ents []Ent) {
 	for _, ent := range ents {
 		x := int(ent.Pos().X+entGridSize/2) / entGridSize
 		y := int(ent.Pos().Y+entGridSize/2) / entGridSize
-		if x < 0 || x >= cache.dx || y < 0 || y >= cache.dy {
-			continue
+		if x < 0 {
+			x = 0
+		}
+		if x >= cache.dx {
+			x = cache.dx - 1
+		}
+		if y < 0 {
+			y = 0
+		}
+		if y >= cache.dy {
+			y = cache.dy - 1
 		}
 		cache.grid[x][y] = append(cache.grid[x][y], ent)
 	}

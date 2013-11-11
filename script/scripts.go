@@ -485,8 +485,6 @@ func (v *agoraVec) sub(args ...runtime.Val) runtime.Val {
 }
 
 func (v *agoraVec) angle(args ...runtime.Val) runtime.Val {
-	base.Log().Printf("Regul: %v", v.Regular())
-	base.Log().Printf("Angle: %v", v.Regular().Angle())
 	return runtime.Number(v.Regular().Angle())
 }
 
