@@ -213,7 +213,6 @@ func (editor *editorData) renderPathing(room *Room, pathing *PathingData) {
 	}
 	gl.End()
 	src := editor.cursorPosInGameCoords(room)
-	base.Log().Printf("path from %v", src)
 
 	tri := [3]linear.Vec2{
 		(linear.Vec2{0.6, 0}).Scale(pathingDataGrid / 2),
