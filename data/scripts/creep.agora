@@ -31,7 +31,9 @@ for {
 
   if target != nil {
     if target.Side() != me.Side() {
-      jota.MoveTowards(target.Pos())
+      dir := jota.PathDir(me.Pos(), target.Pos())
+      jota.Turn(dir.Angle())
+      jota.Move(1.0)
       if target.Pos().Sub(me.Pos()).Length() < 50 {
         if target.IsPlayer() || target.IsCreep() {
           jota.UseAbility(0, 1.0, true)
