@@ -136,8 +136,7 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 
 	if side != -1 {
-		// amt := 0.001 * math.Sqrt(float64(count))
-		amt := 0.101 * math.Sqrt(float64(count))
+		amt := 0.001 * math.Sqrt(float64(count))
 		switch {
 		case cp.Controlled && side == cp.Controller:
 			// Can't recap something you already control.
