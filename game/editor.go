@@ -2,14 +2,19 @@ package game
 
 import (
 	"encoding/gob"
+	"encoding/json"
+	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/system"
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
 	"github.com/runningwild/linear"
+	"io/ioutil"
 	"math"
+	"path/filepath"
 	"sync"
+	"time"
 )
 
 type editorData struct {
@@ -34,6 +39,7 @@ type editorAction int
 const (
 	editorActionNone editorAction = iota
 	editorActionPlaceBlock
+	editorActionSave
 )
 
 func (editor *editorData) Active() bool {
@@ -61,6 +67,11 @@ func (g *Game) HandleEventGroupEditor(group gin.EventGroup) {
 
 	if found, event := group.FindEvent(gin.AnyKeyB); found && event.Type == gin.Press {
 		g.editor.placeBlockAction()
+		return
+	}
+
+	if found, event := group.FindEvent(gin.AnyKeyS); found && event.Type == gin.Press {
+		g.editor.saveAction(&g.Level.Room)
 		return
 	}
 
@@ -130,14 +141,14 @@ func (editor *editorData) placeBlockAction() {
 		return
 	}
 	editor.action = editorActionPlaceBlock
-	editor.placeBlock.offset = linear.Vec2{32, 32}
+	editor.placeBlock.offset = linear.Vec2{pathingDataGrid / 2, pathingDataGrid / 2}
 	editor.placeBlock.block = linear.Poly{
 		linear.Vec2{0, 0},
-		linear.Vec2{0, 64},
-		linear.Vec2{64, 64},
-		linear.Vec2{64, 0},
+		linear.Vec2{0, pathingDataGrid},
+		linear.Vec2{pathingDataGrid, pathingDataGrid},
+		linear.Vec2{pathingDataGrid, 0},
 	}
-	editor.placeBlock.grid = 64
+	editor.placeBlock.grid = pathingDataGrid
 }
 
 func (editor *editorData) renderPlaceBlock(g *Game) {
@@ -150,6 +161,21 @@ func (editor *editorData) renderPlaceBlock(g *Game) {
 		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
 	}
 	gl.End()
+}
+
+func (editor *editorData) saveAction(room *Room) {
+	data, err := json.MarshalIndent(room, "", "  ")
+	if err != nil {
+		base.Error().Printf("Unable to encode room to json: %v", err)
+		return
+	}
+	name := fmt.Sprintf("save-%v.json", time.Now())
+	fullPath := filepath.Join(base.GetDataDir(), name)
+	err = ioutil.WriteFile(fullPath, data, 0664)
+	if err != nil {
+		base.Warn().Printf("Unable to write output json file: %v", err)
+		return
+	}
 }
 
 func (g *Game) RenderLocalEditor(region g2.Region) {
