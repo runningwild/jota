@@ -16,7 +16,7 @@ func (r *Room) ExistsLos(a, b linear.Vec2) bool {
 	for _, wall := range r.Walls {
 		for i := range wall {
 			seg := wall.Seg(i)
-			if seg.DoesIsect(los) {
+			if seg.DoesIsectOrTouch(los) {
 				return false
 			}
 		}

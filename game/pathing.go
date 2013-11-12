@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/linear"
 	"sync"
 )
@@ -50,8 +51,8 @@ type pathingNode struct {
 
 func makePathingData(room *Room) *PathingData {
 	var pd PathingData
-	dx := room.Dx/pathingDataGrid + 1
-	dy := room.Dy/pathingDataGrid + 1
+	dx := (room.Dx + pathingDataGrid - 1) / pathingDataGrid
+	dy := (room.Dy + pathingDataGrid - 1) / pathingDataGrid
 	pd.dirs = make([][][][]pathingDataCell, dx)
 	pd.conns = make([][][]pathingConnection, dx)
 	pd.srcData = make([][]pathingSrcData, dx)
@@ -152,6 +153,9 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	y := int(src.Y / pathingDataGrid)
 	x2 := int(dst.X / pathingDataGrid)
 	y2 := int(dst.Y / pathingDataGrid)
+	if x < 0 || y < 0 || x >= len(pd.srcData) || y >= len(pd.srcData[x]) {
+		return linear.Vec2{0, 0}
+	}
 	srcData := &pd.srcData[x][y]
 	srcData.RLock()
 	defer srcData.RUnlock()
@@ -161,6 +165,7 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 				srcData.Lock()
 				defer srcData.Unlock()
 				pd.findAllPaths(x, y)
+				base.Log().Printf("Computed %d %d", x, y)
 				srcData.complete = true
 			}()
 		})

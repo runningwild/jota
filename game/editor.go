@@ -32,6 +32,10 @@ type editorData struct {
 
 	action     editorAction
 	placeBlock placeBlockData
+	pathing    struct {
+		on   bool
+		x, y int
+	}
 }
 
 type editorAction int
@@ -40,6 +44,7 @@ const (
 	editorActionNone editorAction = iota
 	editorActionPlaceBlock
 	editorActionSave
+	editorActionTogglePathing
 )
 
 func (editor *editorData) Active() bool {
@@ -72,6 +77,11 @@ func (g *Game) HandleEventGroupEditor(group gin.EventGroup) {
 
 	if found, event := group.FindEvent(gin.AnyKeyS); found && event.Type == gin.Press {
 		g.editor.saveAction(&g.Level.Room)
+		return
+	}
+
+	if found, event := group.FindEvent(gin.AnyKeyP); found && event.Type == gin.Press {
+		g.editor.pathingAction()
 		return
 	}
 
@@ -111,18 +121,22 @@ type placeBlockData struct {
 	grid   float64
 }
 
-func (editor *editorData) getPoly(g *Game) linear.Poly {
+func (editor *editorData) cursorPosInGameCoords(room *Room) linear.Vec2 {
 	x, y := editor.sys.GetCursorPos()
 	pos := linear.Vec2{float64(x), float64(y)}
 	regionPos := linear.Vec2{float64(editor.region.Pos.X), float64(editor.region.Pos.Y)}
 	pos = pos.Sub(regionPos)
-	pos = pos.Scale(float64(g.Level.Room.Dx) / float64(editor.region.Dims.Dx))
+	pos = pos.Scale(float64(room.Dx) / float64(editor.region.Dims.Dx))
 	cameraOffset := linear.Vec2{
-		g.editor.camera.current.dims.X/2 - g.editor.camera.current.mid.X,
-		g.editor.camera.current.dims.Y/2 - g.editor.camera.current.mid.Y,
+		editor.camera.current.dims.X/2 - editor.camera.current.mid.X,
+		editor.camera.current.dims.Y/2 - editor.camera.current.mid.Y,
 	}
 	pos = pos.Sub(cameraOffset)
+	return pos
+}
 
+func (editor *editorData) getPoly(g *Game) linear.Poly {
+	pos := editor.cursorPosInGameCoords(&g.Level.Room)
 	var offset linear.Vec2
 	offset.X = pos.X - editor.placeBlock.offset.X
 	offset.X = math.Floor(offset.X/editor.placeBlock.grid+0.5) * editor.placeBlock.grid
@@ -178,6 +192,53 @@ func (editor *editorData) saveAction(room *Room) {
 	}
 }
 
+func (editor *editorData) pathingAction() {
+	editor.pathing.on = !editor.pathing.on
+}
+
+func (editor *editorData) renderPathing(room *Room, pathing *PathingData) {
+	if !editor.pathing.on {
+		return
+	}
+	gl.Disable(gl.TEXTURE_2D)
+	gl.Color4ub(255, 255, 255, 255)
+	gl.Begin(gl.LINES)
+	for x := 0; x <= room.Dx; x += pathingDataGrid {
+		gl.Vertex2d(gl.Double(x), 0)
+		gl.Vertex2d(gl.Double(x), gl.Double(room.Dy))
+	}
+	for y := 0; y <= room.Dy; y += pathingDataGrid {
+		gl.Vertex2d(0, gl.Double(y))
+		gl.Vertex2d(gl.Double(room.Dx), gl.Double(y))
+	}
+	gl.End()
+	src := editor.cursorPosInGameCoords(room)
+	base.Log().Printf("path from %v", src)
+
+	tri := [3]linear.Vec2{
+		(linear.Vec2{0.6, 0}).Scale(pathingDataGrid / 2),
+		(linear.Vec2{-0.2, 0.2}).Scale(pathingDataGrid / 2),
+		(linear.Vec2{-0.2, -0.2}).Scale(pathingDataGrid / 2),
+	}
+
+	gl.Begin(gl.TRIANGLES)
+	for x := 0; x < room.Dx; x += pathingDataGrid {
+		for y := 0; y < room.Dy; y += pathingDataGrid {
+			dst := linear.Vec2{
+				float64(x) + pathingDataGrid/2.0,
+				float64(y) + pathingDataGrid/2.0,
+			}
+			angle := pathing.Dir(src, dst).Angle()
+			for _, v := range tri {
+				p := v.Rotate(angle).Add(dst)
+				gl.Vertex2d(gl.Double(p.X), gl.Double(p.Y))
+			}
+		}
+	}
+	gl.End()
+	// pathing.Dir(src, dst)
+}
+
 func (g *Game) RenderLocalEditor(region g2.Region) {
 	g.editor.Lock()
 	defer g.editor.Unlock()
@@ -220,6 +281,8 @@ func (g *Game) RenderLocalEditor(region g2.Region) {
 	g.renderBases()
 	g.renderEntsAndAbilities()
 	g.renderProcesses()
+
+	g.editor.renderPathing(&g.Level.Room, g.local.pathingData)
 
 	switch g.editor.action {
 	case editorActionNone:
