@@ -49,7 +49,7 @@ func (cache *entGridCache) SetEnts(ents []Ent) {
 
 func (cache *entGridCache) EntsInRange(pos linear.Vec2, dist float64, ents *[]Ent) {
 	*ents = (*ents)[0:0]
-	gridDist := 1 + int(dist/entGridSize)
+	gridDist := 2 + int(dist/entGridSize)
 	minx := int(pos.X)/entGridSize - gridDist
 	if minx < 0 {
 		minx = 0
