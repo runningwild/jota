@@ -126,25 +126,6 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 	}
 }
 
-func expandPoly(in linear.Poly, out *linear.Poly) {
-	if len(*out) < len(in) {
-		*out = make(linear.Poly, len(in))
-	}
-	for i := range *out {
-		(*out)[i] = linear.Vec2{}
-	}
-	for i, v := range in {
-		segi := in.Seg(i)
-		(*out)[i] = (*out)[i].Add(v.Add(segi.Ray().Cross().Norm().Scale(8.0)))
-		j := (i - 1 + len(in)) % len(in)
-		segj := in.Seg(j)
-		(*out)[i] = (*out)[i].Add(v.Add(segj.Ray().Cross().Norm().Scale(8.0)))
-	}
-	for i := range *out {
-		(*out)[i] = (*out)[i].Scale(0.5)
-	}
-}
-
 func (g *Game) RenderLosMask() {
 	ent := g.Ents[g.local.Gid]
 	if ent == nil {

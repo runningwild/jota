@@ -24,6 +24,24 @@ func (r *Room) ExistsLos(a, b linear.Vec2) bool {
 	return true
 }
 
+// ExistsClearLos checks that there is a clear LoS bettween two points and
+// expands all polys in the room so that anything that might normally only clip
+// on a vertex will be guaranteed to block LoS.
+func (r *Room) ExistsClearLos(a, b linear.Vec2, epsilon float64) bool {
+	los := linear.Seg2{a, b}
+	var expandedPoly linear.Poly
+	for _, wall := range r.Walls {
+		expandPoly(wall, &expandedPoly)
+		for i := range expandedPoly {
+			seg := expandedPoly.Seg(i)
+			if seg.DoesIsect(los) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 type roomSideData struct {
 	Base linear.Vec2 // Position of the base for this side
 }
