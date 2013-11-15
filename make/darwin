@@ -19,5 +19,5 @@ function doBuild {
 
 doBuild 'host'
 open host.app
-#doBuild 'client'
+doBuild 'client'
 false

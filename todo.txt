@@ -1,5 +1,7 @@
 - Ability Draw (and maybe other Draw methods) should take the relevant local data
   so that it can draw properly depending on what side you're on.
+- Need separate creeps for each color.
+- Pathing should be single-dest rather than single-source.
 - Fix wall cache - currently ExistsLos checks every segment.
 - Make Utility abilities - Nitro, Cloak, Shield - One for each color.  Press a button
   to turn them on, use the trigger to keep them on.  Bonus: Let players choose a single
