@@ -6,23 +6,23 @@ import (
 	"sync"
 )
 
-const pathingDataGrid = 128
+const pathingDataGrid = 64
 
 type PathingData struct {
 	sync.RWMutex
 
-	// direction [srcX][srcY][dstX][dstY]
+	// direction [dstX][dstY][srcX][srcY]
 	dirs [][][][]pathingDataCell
 
 	// List of directly connected cells for every position
 	conns [][][]pathingConnection
 
 	// Fine grained locking so that we can ask to compute the paths from a single
-	// source and retrieve the results later.
-	srcData [][]pathingSrcData
+	// destination and retrieve the results later.
+	dstData [][]pathingDstData
 }
 
-type pathingSrcData struct {
+type pathingDstData struct {
 	sync.RWMutex
 	once     sync.Once
 	complete bool
@@ -41,10 +41,7 @@ type pathingConnection struct {
 }
 
 type pathingNode struct {
-	// every non-direct path will be src->intermediate1->intermediaten...->dst
-	// originx,originy is the first intermediate cell
-	originx, originy int
-
+	srcx, srcy int
 	dstx, dsty int
 	dist       float64
 }
@@ -55,11 +52,11 @@ func makePathingData(room *Room) *PathingData {
 	dy := (room.Dy + pathingDataGrid - 1) / pathingDataGrid
 	pd.dirs = make([][][][]pathingDataCell, dx)
 	pd.conns = make([][][]pathingConnection, dx)
-	pd.srcData = make([][]pathingSrcData, dx)
+	pd.dstData = make([][]pathingDstData, dx)
 	for i := range pd.dirs {
 		pd.dirs[i] = make([][][]pathingDataCell, dy)
 		pd.conns[i] = make([][]pathingConnection, dy)
-		pd.srcData[i] = make([]pathingSrcData, dy)
+		pd.dstData[i] = make([]pathingDstData, dy)
 		for j := range pd.dirs[i] {
 			pd.dirs[i][j] = make([][]pathingDataCell, dx)
 			for k := range pd.dirs[i][j] {
@@ -72,23 +69,23 @@ func makePathingData(room *Room) *PathingData {
 	return &pd
 }
 
-func (pd *PathingData) findAllDirectPaths(srcx, srcy int, room *Room) {
-	src := linear.Vec2{(float64(srcx) + 0.5) * pathingDataGrid, (float64(srcy) + 0.5) * pathingDataGrid}
-	for x := range pd.dirs[srcx][srcy] {
-		for y := range pd.dirs[srcx][srcy][x] {
-			dst := linear.Vec2{(float64(x) + 0.5) * pathingDataGrid, (float64(y) + 0.5) * pathingDataGrid}
-			if srcx == 1 && srcy == 4 {
+func (pd *PathingData) findAllDirectPaths(dstx, dsty int, room *Room) {
+	dst := linear.Vec2{(float64(dstx) + 0.5) * pathingDataGrid, (float64(dsty) + 0.5) * pathingDataGrid}
+	for x := range pd.dirs[dstx][dsty] {
+		for y := range pd.dirs[dstx][dsty][x] {
+			src := linear.Vec2{(float64(x) + 0.5) * pathingDataGrid, (float64(y) + 0.5) * pathingDataGrid}
+			if dstx == 1 && dsty == 4 {
 			}
 			if room.ExistsLos(src, dst) {
-				if srcx == 1 && srcy == 4 {
+				if dstx == 1 && dsty == 4 {
 				}
-				pd.conns[srcx][srcy] = append(pd.conns[srcx][srcy], pathingConnection{
+				pd.conns[dstx][dsty] = append(pd.conns[dstx][dsty], pathingConnection{
 					x:    x,
 					y:    y,
 					dist: dst.Sub(src).Mag(),
 				})
-				data := &pd.dirs[srcx][srcy][x][y]
-				data.angle = dst.Sub(src).Angle()
+				data := &pd.dirs[dstx][dsty][x][y]
+				data.angle = src.Sub(dst).Angle()
 				data.direct = true
 				// data.filled = true
 			}
@@ -96,53 +93,42 @@ func (pd *PathingData) findAllDirectPaths(srcx, srcy int, room *Room) {
 	}
 }
 
-func (pd *PathingData) findAllPaths(srcx, srcy int) {
-	paths := pd.dirs[srcx][srcy]
+func (pd *PathingData) findAllPaths(dstx, dsty int) {
+	paths := pd.dirs[dstx][dsty]
 	var next pathHeap
-	for _, conn := range pd.conns[srcx][srcy] {
-		if conn.x == srcx && conn.y == srcy {
+	for _, conn := range pd.conns[dstx][dsty] {
+		if conn.x == dstx && conn.y == dsty {
 			continue
 		}
 		next.Push(pathingNode{
-			originx: conn.x,
-			originy: conn.y,
-			dstx:    conn.x,
-			dsty:    conn.y,
-			dist:    conn.dist,
+			srcx: conn.x,
+			srcy: conn.y,
+			dstx: dstx,
+			dsty: dsty,
+			dist: conn.dist,
 		})
 		paths[conn.x][conn.y].dist = conn.dist
 	}
-	debug := srcx == 1 && srcy == 4 && false
-	if debug {
-	}
 	for len(next) > 0 {
-		if debug {
-		}
 		node := next.Pop()
-		if debug {
-		}
-		cell := &paths[node.dstx][node.dsty]
+		cell := &paths[node.srcx][node.srcy]
 		if cell.filled {
-			if debug {
-			}
 			continue
 		}
 		cell.filled = true
 		if !cell.direct {
-			if debug {
-			}
-			cell.angle = (linear.Vec2{float64(node.originx - srcx), float64(node.originy - srcy)}).Angle()
+			cell.angle = (linear.Vec2{float64(node.dstx - node.srcx), float64(node.dsty - node.srcy)}).Angle()
 		}
-		for _, conn := range pd.conns[node.dstx][node.dsty] {
+		for _, conn := range pd.conns[node.srcx][node.srcy] {
 			if paths[conn.x][conn.y].filled {
 				continue
 			}
 			next.Push(pathingNode{
-				originx: node.originx,
-				originy: node.originy,
-				dstx:    conn.x,
-				dsty:    conn.y,
-				dist:    node.dist + conn.dist,
+				srcx: conn.x,
+				srcy: conn.y,
+				dstx: node.srcx,
+				dsty: node.srcy,
+				dist: node.dist + conn.dist,
 			})
 		}
 	}
@@ -153,25 +139,28 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	y := int(src.Y / pathingDataGrid)
 	x2 := int(dst.X / pathingDataGrid)
 	y2 := int(dst.Y / pathingDataGrid)
-	if x < 0 || y < 0 || x >= len(pd.srcData) || y >= len(pd.srcData[x]) {
+	if x < 0 || y < 0 || x >= len(pd.dstData) || y >= len(pd.dstData[x]) {
 		return linear.Vec2{0, 0}
 	}
-	srcData := &pd.srcData[x][y]
-	srcData.RLock()
-	defer srcData.RUnlock()
-	if !srcData.complete {
-		srcData.once.Do(func() {
+	if x2 < 0 || y2 < 0 || x2 >= len(pd.dstData) || y2 >= len(pd.dstData[x2]) {
+		return linear.Vec2{0, 0}
+	}
+	dstData := &pd.dstData[x2][y2]
+	dstData.RLock()
+	defer dstData.RUnlock()
+	if !dstData.complete {
+		dstData.once.Do(func() {
 			go func() {
-				srcData.Lock()
-				defer srcData.Unlock()
-				pd.findAllPaths(x, y)
-				base.Log().Printf("Computed %d %d", x, y)
-				srcData.complete = true
+				dstData.Lock()
+				defer dstData.Unlock()
+				pd.findAllPaths(x2, y2)
+				base.Log().Printf("Computed %d %d", x2, y2)
+				dstData.complete = true
 			}()
 		})
 		return dst.Sub(src).Norm()
 	}
-	cell := pd.dirs[x][y][x2][y2]
+	cell := pd.dirs[x2][y2][x][y]
 	if !cell.direct {
 		return (linear.Vec2{1, 0}).Rotate(cell.angle)
 	}

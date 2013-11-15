@@ -212,7 +212,7 @@ func (editor *editorData) renderPathing(room *Room, pathing *PathingData) {
 		gl.Vertex2d(gl.Double(room.Dx), gl.Double(y))
 	}
 	gl.End()
-	src := editor.cursorPosInGameCoords(room)
+	dst := editor.cursorPosInGameCoords(room)
 
 	tri := [3]linear.Vec2{
 		(linear.Vec2{0.6, 0}).Scale(pathingDataGrid / 2),
@@ -223,13 +223,13 @@ func (editor *editorData) renderPathing(room *Room, pathing *PathingData) {
 	gl.Begin(gl.TRIANGLES)
 	for x := 0; x < room.Dx; x += pathingDataGrid {
 		for y := 0; y < room.Dy; y += pathingDataGrid {
-			dst := linear.Vec2{
+			src := linear.Vec2{
 				float64(x) + pathingDataGrid/2.0,
 				float64(y) + pathingDataGrid/2.0,
 			}
 			angle := pathing.Dir(src, dst).Angle()
 			for _, v := range tri {
-				p := v.Rotate(angle).Add(dst)
+				p := v.Rotate(angle).Add(src)
 				gl.Vertex2d(gl.Double(p.X), gl.Double(p.Y))
 			}
 		}
