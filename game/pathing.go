@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/linear"
 	"sync"
 )
@@ -20,6 +19,11 @@ type PathingData struct {
 	// Fine grained locking so that we can ask to compute the paths from a single
 	// destination and retrieve the results later.
 	dstData [][]pathingDstData
+
+	// Makes sure that we can't do any complete paths until we've finished all
+	// direct paths.  This way we don't block the initial Think() on doing all
+	// direct paths, which, until the ExistsLos() is faster, will be kinda slow.
+	finishDirectPaths sync.WaitGroup
 }
 
 type pathingDstData struct {
@@ -53,6 +57,7 @@ func makePathingData(room *Room) *PathingData {
 	pd.dirs = make([][][][]pathingDataCell, dx)
 	pd.conns = make([][][]pathingConnection, dx)
 	pd.dstData = make([][]pathingDstData, dx)
+	pd.finishDirectPaths.Add(dx * dy)
 	for i := range pd.dirs {
 		pd.dirs[i] = make([][][]pathingDataCell, dy)
 		pd.conns[i] = make([][]pathingConnection, dy)
@@ -62,14 +67,14 @@ func makePathingData(room *Room) *PathingData {
 			for k := range pd.dirs[i][j] {
 				pd.dirs[i][j][k] = make([]pathingDataCell, dy)
 			}
-			pd.findAllDirectPaths(i, j, room)
+			go pd.findAllDirectPaths(i, j, room)
 		}
 	}
-
 	return &pd
 }
 
 func (pd *PathingData) findAllDirectPaths(dstx, dsty int, room *Room) {
+	defer pd.finishDirectPaths.Done()
 	dst := linear.Vec2{(float64(dstx) + 0.5) * pathingDataGrid, (float64(dsty) + 0.5) * pathingDataGrid}
 	for x := range pd.dirs[dstx][dsty] {
 		for y := range pd.dirs[dstx][dsty][x] {
@@ -151,10 +156,10 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	if !dstData.complete {
 		dstData.once.Do(func() {
 			go func() {
+				pd.finishDirectPaths.Wait()
 				dstData.Lock()
 				defer dstData.Unlock()
 				pd.findAllPaths(x2, y2)
-				base.Log().Printf("Computed %d %d", x2, y2)
 				dstData.complete = true
 			}()
 		})
