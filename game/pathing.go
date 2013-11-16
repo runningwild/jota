@@ -1,11 +1,13 @@
 package game
 
 import (
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/linear"
 	"sync"
+	"time"
 )
 
-const pathingDataGrid = 64
+const pathingDataGrid = 128
 
 type PathingData struct {
 	sync.RWMutex
@@ -51,25 +53,31 @@ type pathingNode struct {
 }
 
 func makePathingData(room *Room) *PathingData {
+	start := time.Now()
+	defer func() {
+		base.Log().Printf("Pathing: %v", time.Now().Sub(start))
+	}()
 	var pd PathingData
 	dx := (room.Dx + pathingDataGrid - 1) / pathingDataGrid
 	dy := (room.Dy + pathingDataGrid - 1) / pathingDataGrid
-	pd.dirs = make([][][][]pathingDataCell, dx)
-	pd.conns = make([][][]pathingConnection, dx)
-	pd.dstData = make([][]pathingDstData, dx)
 	pd.finishDirectPaths.Add(dx * dy)
-	for i := range pd.dirs {
-		pd.dirs[i] = make([][][]pathingDataCell, dy)
-		pd.conns[i] = make([][]pathingConnection, dy)
-		pd.dstData[i] = make([]pathingDstData, dy)
-		for j := range pd.dirs[i] {
-			pd.dirs[i][j] = make([][]pathingDataCell, dx)
-			for k := range pd.dirs[i][j] {
-				pd.dirs[i][j][k] = make([]pathingDataCell, dy)
+	go func() {
+		pd.dirs = make([][][][]pathingDataCell, dx)
+		pd.conns = make([][][]pathingConnection, dx)
+		pd.dstData = make([][]pathingDstData, dx)
+		for i := range pd.dirs {
+			pd.dirs[i] = make([][][]pathingDataCell, dy)
+			pd.conns[i] = make([][]pathingConnection, dy)
+			pd.dstData[i] = make([]pathingDstData, dy)
+			for j := range pd.dirs[i] {
+				pd.dirs[i][j] = make([][]pathingDataCell, dx)
+				for k := range pd.dirs[i][j] {
+					pd.dirs[i][j][k] = make([]pathingDataCell, dy)
+				}
+				go pd.findAllDirectPaths(i, j, room)
 			}
-			go pd.findAllDirectPaths(i, j, room)
 		}
-	}
+	}()
 	return &pd
 }
 
@@ -155,6 +163,7 @@ func (pd *PathingData) Dir(src, dst linear.Vec2) linear.Vec2 {
 	defer dstData.RUnlock()
 	if !dstData.complete {
 		dstData.once.Do(func() {
+			base.Log().Printf("Eval: %2.2v %2.2v", src, dst)
 			go func() {
 				pd.finishDirectPaths.Wait()
 				dstData.Lock()

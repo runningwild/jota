@@ -383,9 +383,8 @@ func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 func (jm *JotaModule) PathDir(vs ...runtime.Val) runtime.Val {
 	jm.dieOnTerminated()
 	jm.engine.Pause()
-	defer jm.engine.Unpause()
-	g := jm.engine.GetState().(*game.Game)
-	pd := g.PathingData()
+	pd := jm.engine.GetState().(*game.Game).PathingData()
+	jm.engine.Unpause()
 	src := vs[0].Native().(*agoraVec).Regular()
 	dst := vs[1].Native().(*agoraVec).Regular()
 	dir := pd.Dir(src, dst)

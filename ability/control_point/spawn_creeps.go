@@ -3,6 +3,7 @@ package control_point
 import (
 	"encoding/gob"
 	"github.com/runningwild/jota/ability"
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 )
 
@@ -81,6 +82,7 @@ func (sc *spawnCreeps) Input(ent game.Ent, g *game.Game, pressAmt float64, trigg
 		g.AddEnt(ent)
 		delete(cp.Processes, sc.id)
 		creepCount := int(proc.Stored.Magnitude() / 300)
+		base.Log().Printf("Creeps: %d", creepCount)
 		g.AddCreeps(cp.Pos(), creepCount, cp.Side(), map[string]interface{}{"target": cp.Targets[0]})
 	}
 }
