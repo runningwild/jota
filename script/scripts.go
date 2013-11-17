@@ -368,7 +368,13 @@ func (jm *JotaModule) NearbyEnts(vs ...runtime.Val) runtime.Val {
 			continue
 		}
 		dist := ent.Pos().Sub(me.Pos()).Mag()
-		if dist < me.Stats().Vision() && g.ExistsLos(me.Pos(), ent.Pos()) {
+		if dist > me.Stats().Vision() {
+			continue
+		}
+		if ent.Stats().Cloaking() > 0.9 && ent.Side() != me.Side() {
+			continue
+		}
+		if g.ExistsLos(me.Pos(), ent.Pos()) {
 			eds.ents = append(eds.ents, ent)
 			eds.dist = append(eds.dist, dist)
 		}
