@@ -51,7 +51,7 @@ func (c *CreepEnt) Draw(g *Game) {
 
 func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]interface{}) {
 	if side < 0 || side >= len(g.Level.Room.SideData) {
-		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", len(g.Level.Room.SideData)-1)
+		base.Error().Fatalf("Got side %d, but this level only supports sides from 0 to %d.", side, len(g.Level.Room.SideData)-1)
 		return
 	}
 	for i := 0; i < count; i++ {

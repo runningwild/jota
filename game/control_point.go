@@ -135,8 +135,9 @@ func (cp *ControlPoint) Think(g *Game) {
 		side = -1
 	}
 
+	progress := 0.0002
 	if side != -1 {
-		amt := 0.001 * math.Sqrt(float64(count))
+		amt := progress * math.Sqrt(float64(count))
 		switch {
 		case cp.Controlled && side == cp.Controller:
 			// Can't recap something you already control.
@@ -150,7 +151,7 @@ func (cp *ControlPoint) Think(g *Game) {
 		case !cp.Controlled && side != cp.Controller:
 			cp.Control -= amt
 		}
-		if cp.Control <= 0.0001 {
+		if cp.Control <= progress/2 {
 			cp.Control = 0
 			cp.Controlled = false
 			cp.Controller = side
@@ -159,7 +160,7 @@ func (cp *ControlPoint) Think(g *Game) {
 				cp.ai = nil
 			}
 		}
-		if cp.Control >= 0.999 && cp.Controller == side {
+		if cp.Control >= 1-(progress/2) && cp.Controller == side {
 			cp.Control = 1.0
 			cp.Controlled = true
 			if cp.ai == nil {
