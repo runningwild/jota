@@ -401,6 +401,13 @@ func (u SetupComplete) Apply(_g interface{}) {
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
+	errs := room.Validate()
+	for _, err := range errs {
+		base.Error().Printf("%v", err)
+	}
+	if len(errs) > 0 {
+		base.Error().Fatalf("Errors with the level, bailing...")
+	}
 	g.Level = &Level{}
 	g.Level.Room = room
 	g.Rng = cmwc.MakeGoodCmwc()
