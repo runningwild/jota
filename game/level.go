@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"github.com/runningwild/linear"
 )
 
@@ -9,6 +10,27 @@ type Room struct {
 	Dx, Dy   int
 	SideData []roomSideData
 	Towers   []towerData
+}
+
+// Validate returns a list of errors about this Room.  Currently the following things are checked:
+// 1. If tower x targets tower Y, then tower Y should target tower X.
+func (r *Room) Validate() []error {
+	var errs []error
+	for i := range r.Towers {
+		for _, target := range r.Towers[i].Targets {
+			found := false
+			for _, source := range r.Towers[target].Targets {
+				if source == i {
+					found = true
+					break
+				}
+			}
+			if !found {
+				errs = append(errs, fmt.Errorf("Tower %d targets %d, but not vice-versa", i, target))
+			}
+		}
+	}
+	return errs
 }
 
 func (r *Room) ExistsLos(a, b linear.Vec2) bool {
