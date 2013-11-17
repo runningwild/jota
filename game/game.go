@@ -21,7 +21,7 @@ import (
 
 const LosMaxDist = 1000
 
-type EffectMaker func(params map[string]int) Process
+type EffectMaker func(params map[string]float64) Process
 
 var effect_makers map[string]EffectMaker
 

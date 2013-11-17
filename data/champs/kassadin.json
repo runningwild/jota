@@ -16,6 +16,21 @@
         "force": -200,
         "cost": 100
       }
+    },
+    {
+      "Name": "nitro",
+      "Params": {
+        "maxNitro": 5000,
+        "manaPerNitro": 0.1,
+        "nitroPerTick": 150
+      }
+    },
+    {
+      "Name": "shield",
+      "Params": {
+        "maxShield": 1000,
+        "manaPerShield": 1
+      }
     }
   ]
 }

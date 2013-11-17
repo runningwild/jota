@@ -12,14 +12,14 @@ import (
 	// "math/rand"
 )
 
-func makeLightning(params map[string]int) game.Ability {
+func makeLightning(params map[string]float64) game.Ability {
 	var l lightning
 	l.id = NextAbilityId()
-	l.cost = float64(params["cost"])
-	l.width = float64(params["width"])
-	l.buildThinks = params["buildThinks"]
-	l.durationThinks = params["durationThinks"]
-	l.dps = float64(params["dps"])
+	l.cost = params["cost"]
+	l.width = params["width"]
+	l.buildThinks = int(params["buildThinks"])
+	l.durationThinks = int(params["durationThinks"])
+	l.dps = params["dps"]
 	return &l
 }
 

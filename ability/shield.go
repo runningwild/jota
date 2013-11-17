@@ -12,11 +12,11 @@ import (
 	// "math/rand"
 )
 
-func makeShield(params map[string]int) game.Ability {
+func makeShield(params map[string]float64) game.Ability {
 	var s shield
 	s.id = NextAbilityId()
-	s.maxShield = float64(params["maxShield"])
-	s.manaPerShield = float64(params["manaPerShield"])
+	s.maxShield = params["maxShield"]
+	s.manaPerShield = params["manaPerShield"]
 	return &s
 }
 

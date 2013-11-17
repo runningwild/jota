@@ -75,7 +75,7 @@ func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]int
 
 		c.Abilities_ = append(
 			c.Abilities_,
-			ability_makers["asplode"](map[string]int{"startRadius": 40, "endRadius": 70, "durationThinks": 50, "dps": 5}))
+			ability_makers["asplode"](map[string]float64{"startRadius": 40, "endRadius": 70, "durationThinks": 50, "dps": 5}))
 
 		// if playerData.gid[0:2] == "Ai" {
 		//  c.BindAi("simple", g.local.Engine)

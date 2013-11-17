@@ -22,7 +22,7 @@ type BaseEntParams struct {
 
 type ConditionMaker struct {
 	Name   string
-	Params map[string]int
+	Params map[string]float64
 }
 
 type HeatSeekerParams struct {

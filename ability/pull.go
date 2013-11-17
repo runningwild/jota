@@ -8,12 +8,12 @@ import (
 	"math"
 )
 
-func makePull(params map[string]int) game.Ability {
+func makePull(params map[string]float64) game.Ability {
 	var p pull
 	p.id = NextAbilityId()
-	p.force = float64(params["force"])
-	p.angle = float64(params["angle"]) * math.Pi / 180
-	p.cost = float64(params["cost"])
+	p.force = params["force"]
+	p.angle = params["angle"] * math.Pi / 180
+	p.cost = params["cost"]
 	return &p
 }
 

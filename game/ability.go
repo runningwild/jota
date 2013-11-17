@@ -18,7 +18,7 @@ type Ability interface {
 	IsActive() bool
 }
 
-type AbilityMaker func(params map[string]int) Ability
+type AbilityMaker func(params map[string]float64) Ability
 
 var ability_makers map[string]AbilityMaker
 

@@ -2,7 +2,7 @@ package champ
 
 type Ability struct {
 	Name   string
-	Params map[string]int
+	Params map[string]float64
 }
 
 type Champion struct {

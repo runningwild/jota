@@ -11,13 +11,13 @@ import (
 	"github.com/runningwild/linear"
 )
 
-func makeAsplode(params map[string]int) game.Ability {
+func makeAsplode(params map[string]float64) game.Ability {
 	var a asplode
 	a.id = ability.NextAbilityId()
-	a.startRadius = float64(params["startRadius"])
-	a.endRadius = float64(params["endRadius"])
-	a.durationThinks = params["durationThinks"]
-	a.dps = float64(params["dps"])
+	a.startRadius = params["startRadius"]
+	a.endRadius = params["endRadius"]
+	a.durationThinks = int(params["durationThinks"])
+	a.dps = params["dps"]
 	return &a
 }
 

@@ -5,10 +5,10 @@ import (
 	"github.com/runningwild/jota/stats"
 )
 
-func makeSilence(params map[string]int) game.Process {
+func makeSilence(params map[string]float64) game.Process {
 	var s silence
-	s.Duration = params["duration"]
-	s.Ticker = params["duration"]
+	s.Duration = int(params["duration"])
+	s.Ticker = int(params["duration"])
 	return &s
 }
 

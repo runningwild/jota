@@ -20,7 +20,7 @@ const (
 	fireRegionBack
 )
 
-func makeFire(params map[string]int) game.Ability {
+func makeFire(params map[string]float64) game.Ability {
 	var f fire
 	f.id = NextAbilityId()
 	switch params["region"] {
@@ -33,14 +33,14 @@ func makeFire(params map[string]int) game.Ability {
 	default:
 		panic("Unexpected value for 'region' parameter of fire ability")
 	}
-	f.distToCenter = float64(params["distToCenter"])
-	f.deviance = float64(params["deviance"])
-	f.startRadius = float64(params["startRadius"])
-	f.endRadius = float64(params["endRadius"])
-	f.durationThinks = params["durationThinks"]
-	f.dps = float64(params["dps"])
-	f.xps = float64(params["xps"])
-	f.cost = float64(params["cost"])
+	f.distToCenter = params["distToCenter"]
+	f.deviance = params["deviance"]
+	f.startRadius = params["startRadius"]
+	f.endRadius = params["endRadius"]
+	f.durationThinks = int(params["durationThinks"])
+	f.dps = params["dps"]
+	f.xps = params["xps"]
+	f.cost = params["cost"]
 	return &f
 }
 

@@ -12,12 +12,12 @@ import (
 	// "math/rand"
 )
 
-func makeNitro(params map[string]int) game.Ability {
+func makeNitro(params map[string]float64) game.Ability {
 	var n nitro
 	n.id = NextAbilityId()
-	n.maxNitro = float64(params["maxNitro"])
-	n.manaPerNitro = float64(params["manaPerNitro"])
-	n.nitroPerTick = float64(params["nitroPerTick"])
+	n.maxNitro = params["maxNitro"]
+	n.manaPerNitro = params["manaPerNitro"]
+	n.nitroPerTick = params["nitroPerTick"]
 	return &n
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/runningwild/jota/game"
 )
 
-func makeSpawnCreeps(params map[string]int) game.Ability {
+func makeSpawnCreeps(params map[string]float64) game.Ability {
 	var sc spawnCreeps
 	sc.id = ability.NextAbilityId()
 	return &sc

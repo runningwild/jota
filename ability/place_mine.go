@@ -6,14 +6,14 @@ import (
 	"github.com/runningwild/linear"
 )
 
-func makePlaceMine(params map[string]int) game.Ability {
+func makePlaceMine(params map[string]float64) game.Ability {
 	var pm placeMine
 	pm.id = NextAbilityId()
-	pm.health = float64(params["health"])
-	pm.damage = float64(params["damage"])
-	pm.trigger = float64(params["trigger"])
-	pm.mass = float64(params["mass"])
-	pm.cost = float64(params["cost"])
+	pm.health = params["health"]
+	pm.damage = params["damage"]
+	pm.trigger = params["trigger"]
+	pm.mass = params["mass"]
+	pm.cost = params["cost"]
 	return &pm
 }
 

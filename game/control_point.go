@@ -39,7 +39,7 @@ func (g *Game) MakeControlPoints() {
 	for _, towerData := range g.Level.Room.Towers {
 		cp := ControlPoint{
 			BaseEnt: BaseEnt{
-				Abilities_: []Ability{ability_makers["spawnCreeps"](map[string]int{})},
+				Abilities_: []Ability{ability_makers["spawnCreeps"](map[string]float64{})},
 				Side_:      towerData.Side,
 				Position:   towerData.Pos,
 				Processes:  make(map[int]Process),
