@@ -59,7 +59,7 @@ func (g *Game) addPlayersToSide(playerDatas []addPlayerData, side int) {
 		p.StatsInst = stats.Make(stats.Base{
 			Health: 1000,
 			Mass:   750,
-			Acc:    300.0,
+			Acc:    120.0,
 			Turn:   0.07,
 			Rate:   0.5,
 			Size:   12,
