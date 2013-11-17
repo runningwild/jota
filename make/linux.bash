@@ -1,7 +1,7 @@
 # Run from jota root directory.
 cd $GOPATH/src/github.com/runningwild/jota
 
-if CGO_LDFLAGS=-L../glop/gos/linux/lib/ go build --tags host . ; then
+if go build --tags host . ; then
 		rm -rf bin
 		mkdir -p bin/fail
 
