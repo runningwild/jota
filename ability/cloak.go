@@ -102,6 +102,9 @@ func (p *cloakProc) CauseDamage() stats.Damage {
 }
 
 func (p *cloakProc) Draw(src, obs game.Gid, game *game.Game) {
+	if src != obs {
+		return
+	}
 	ent := game.Ents[src]
 	if ent == nil {
 		return

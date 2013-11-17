@@ -102,6 +102,9 @@ func (p *nitroProc) CauseDamage() stats.Damage {
 }
 
 func (p *nitroProc) Draw(src, obs game.Gid, game *game.Game) {
+	if src != obs {
+		return
+	}
 	ent := game.Ents[src]
 	if ent == nil {
 		return

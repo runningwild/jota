@@ -101,6 +101,9 @@ func (p *shieldProc) CauseDamage() stats.Damage {
 }
 
 func (p *shieldProc) Draw(src, obs game.Gid, game *game.Game) {
+	if src != obs {
+		return
+	}
 	ent := game.Ents[src]
 	if ent == nil {
 		return
