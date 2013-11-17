@@ -10,6 +10,14 @@
         "durationThinks": 30,
         "dps": 10
       }
+    },
+    {
+      "Name": "nitro",
+      "Params": {
+        "maxNitro": 5000,
+        "manaPerNitro": 0.1,
+        "nitroPerTick": 150
+      }
     }
   ]
 }

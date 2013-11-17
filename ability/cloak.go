@@ -55,7 +55,6 @@ func (c *cloak) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool
 		player.Processes[c.id] = &cloakProc{Gid: player.Gid, MaxCloak: c.maxCloak, ManaPerCloak: c.manaPerCloak, CloakPerTick: c.cloakPerTick}
 	} else {
 		delete(player.Processes, c.id)
-		return
 	}
 }
 
@@ -109,7 +108,7 @@ func (p *cloakProc) Draw(src, obs game.Gid, game *game.Game) {
 	if ent == nil {
 		return
 	}
-	gl.Color4ub(255, 0, 0, 255)
+	gl.Color4ub(0, 0, 255, 255)
 	frac := float32(p.Cloak / p.MaxCloak)
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "frac", frac)

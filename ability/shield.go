@@ -108,7 +108,7 @@ func (p *shieldProc) Draw(src, obs game.Gid, game *game.Game) {
 	if ent == nil {
 		return
 	}
-	gl.Color4ub(0, 0, 255, 255)
+	gl.Color4ub(0, 255, 0, 255)
 	frac := float32(p.Shield / p.MaxShield)
 	base.EnableShader("status_bar")
 	base.SetUniformF("status_bar", "frac", frac)

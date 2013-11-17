@@ -28,6 +28,14 @@
         "dps": 2,
         "xps": 120
       }
+    },
+    {
+      "Name": "cloak",
+      "Params": {
+        "maxCloak": 500,
+        "manaPerCloak": 1,
+        "cloakPerTick": 10
+      }
     }
   ]
 }
