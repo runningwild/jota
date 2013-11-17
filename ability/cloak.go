@@ -1,138 +1,143 @@
 package ability
 
-// import (
-// 	"encoding/gob"
-// 	"github.com/runningwild/cgf"
-// 	"github.com/runningwild/jota/game"
-// 	"github.com/runningwild/jota/stats"
-// )
+import (
+	"encoding/gob"
+	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/game"
+	"github.com/runningwild/jota/stats"
+	"github.com/runningwild/jota/texture"
+	// "github.com/runningwild/linear"
+	// "math"
+	// "math/rand"
+)
 
-// func makeCloak(params map[string]int) game.Ability {
-// 	var c cloak
-// 	c.id = NextAbilityId()
-// 	return &c
-// }
+func makeCloak(params map[string]float64) game.Ability {
+	var c cloak
+	c.id = NextAbilityId()
+	c.maxCloak = params["maxCloak"]
+	c.manaPerCloak = params["manaPerCloak"]
+	c.cloakPerTick = params["cloakPerTick"]
+	return &c
+}
 
-// func init() {
-// 	game.RegisterAbility("cloak", makeCloak)
-// }
+func init() {
+	game.RegisterAbility("cloak", makeCloak)
+	gob.Register(&cloak{})
+}
 
-// type cloak struct {
-// 	NonResponder
-// 	NonThinker
-// 	NonRendering
+type cloak struct {
+	id int
 
-// 	id int
-// }
+	// Params
+	maxCloak     float64
+	manaPerCloak float64
+	cloakPerTick float64
 
-// func (p *cloak) Activate(gid game.Gid, keyPress bool) ([]cgf.Event, bool) {
-// 	ret := []cgf.Event{
-// 		addCloakEvent{
-// 			PlayerGid: gid,
-// 			Id:        p.id,
-// 			Press:     keyPress,
-// 		},
-// 	}
-// 	return ret, false
-// }
+	on       bool
+	previous struct {
+		pressAmt float64
+		trigger  bool
+	}
+}
 
-// func (p *cloak) Deactivate(gid game.Gid) []cgf.Event {
-// 	return nil
-// 	ret := []cgf.Event{
-// 		removeCloakEvent{
-// 			PlayerGid: gid,
-// 			Id:        p.id,
-// 		},
-// 	}
-// 	return ret
-// }
+func (c *cloak) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool) {
+	player := ent.(*game.PlayerEnt)
+	if pressAmt == c.previous.pressAmt {
+		return
+	}
+	if !c.on {
+		c.on = pressAmt > 0
+	} else {
+		c.on = pressAmt == 0
+	}
+	if c.on {
+		player.Processes[c.id] = &cloakProc{Gid: player.Gid, MaxCloak: c.maxCloak, ManaPerCloak: c.manaPerCloak, CloakPerTick: c.cloakPerTick}
+	} else {
+		delete(player.Processes, c.id)
+		return
+	}
+}
 
-// type addCloakEvent struct {
-// 	PlayerGid game.Gid
-// 	Id        int
-// 	Press     bool
-// }
+func (c *cloak) Think(ent game.Ent, g *game.Game) {
+}
+func (f *cloak) Draw(ent game.Ent, g *game.Game) {
+}
+func (f *cloak) IsActive() bool {
+	return false
+}
 
-// func init() {
-// 	gob.Register(addCloakEvent{})
-// }
+// Typical process for draining mana for an ability that can be triggered
+// multiple times in discrete unitc.
+type cloakProc struct {
+	NullCondition
 
-// func (e addCloakEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
-// 	if !ok {
-// 		return
-// 	}
-// 	if !e.Press {
-// 		if proc := player.Processes[100+e.Id]; proc != nil {
-// 			proc.Kill(g)
-// 			delete(player.Processes, 100+e.Id)
-// 		}
-// 		return
-// 	}
-// 	player.Processes[100+e.Id] = &cloakProcess{
-// 		BasicPhases: BasicPhases{game.PhaseRunning},
-// 		Id:          e.Id,
-// 		PlayerGid:   e.PlayerGid,
-// 	}
-// }
+	// Gid of the Player with this Process
+	Gid game.Gid
 
-// type removeCloakEvent struct {
-// 	PlayerGid game.Gid
-// 	Id        int
-// }
+	// The number of multiples of Unit currently stored
+	Cloak        float64
+	MaxCloak     float64
+	CloakPerTick float64
 
-// func init() {
-// 	gob.Register(removeCloakEvent{})
-// }
+	// Conversion rate from mana cloak
+	ManaPerCloak float64
 
-// func (e removeCloakEvent) Apply(_g interface{}) {
-// 	g := _g.(*game.Game)
-// 	player, ok := g.Ents[e.PlayerGid].(*game.PlayerEnt)
-// 	if !ok {
-// 		return
-// 	}
-// 	proc := player.Processes[100+e.Id]
-// 	if proc != nil {
-// 		proc.Kill(g)
-// 		delete(player.Processes, 100+e.Id)
-// 	}
-// }
+	Killed bool
+}
 
-// func init() {
-// 	gob.Register(&cloakProcess{})
-// }
+func (p *cloakProc) ModifyBase(baseStats stats.Base) stats.Base {
+	if p.Cloak > p.CloakPerTick {
+		baseStats.Cloaking = 1.0
+	} else {
+		baseStats.Cloaking = 1.0 - (1.0-baseStats.Cloaking)*(1.0-p.Cloak/p.CloakPerTick)
+	}
+	return baseStats
+}
+func (p *cloakProc) ModifyDamage(damage stats.Damage) stats.Damage {
+	return damage
+}
+func (p *cloakProc) CauseDamage() stats.Damage {
+	return stats.Damage{}
+}
 
-// type cloakProcess struct {
-// 	BasicPhases
-// 	NullCondition
-// 	NonRendering
-// 	Id        int
-// 	PlayerGid game.Gid
-
-// 	supplied float64
-// 	alpha    float64
-// }
-
-// func (p *cloakProcess) ModifyBase(base stats.Base) stats.Base {
-// 	base.Cloaking = 1.0 - ((1.0 - base.Cloaking) * p.alpha)
-// 	return base
-// }
-
-// const cloakRate = 15
-
-// func (p *cloakProcess) Supply(supply game.Mana) game.Mana {
-// 	if supply[game.ColorGreen] > cloakRate-p.supplied {
-// 		supply[game.ColorGreen] -= cloakRate - p.supplied
-// 		p.supplied = cloakRate
-// 	} else {
-// 		p.supplied += supply[game.ColorGreen]
-// 		supply[game.ColorGreen] = 0
-// 	}
-// 	return supply
-// }
-
-// func (p *cloakProcess) Think(g *game.Game) {
-// 	p.alpha = 1.0 - float64(p.supplied)/float64(cloakRate)
-// 	p.supplied = 0
-// }
+func (p *cloakProc) Draw(src, obs game.Gid, game *game.Game) {
+	ent := game.Ents[src]
+	if ent == nil {
+		return
+	}
+	gl.Color4ub(255, 0, 0, 255)
+	frac := float32(p.Cloak / p.MaxCloak)
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "frac", frac)
+	base.SetUniformF("status_bar", "inner", 0.2)
+	base.SetUniformF("status_bar", "outer", 0.23)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	texture.Render(ent.Pos().X-100, ent.Pos().Y-100, 200, 200)
+	base.EnableShader("")
+}
+func (p *cloakProc) Supply(mana game.Mana) game.Mana {
+	remaining := (p.MaxCloak - p.Cloak) * p.ManaPerCloak
+	if mana[game.ColorBlue] > remaining {
+		mana[game.ColorBlue] -= remaining
+		p.Cloak = p.MaxCloak
+	} else {
+		p.Cloak += mana[game.ColorBlue] / p.ManaPerCloak
+		mana[game.ColorBlue] = 0
+	}
+	return mana
+}
+func (p *cloakProc) Think(g *game.Game) {
+	if p.Cloak > p.CloakPerTick {
+		p.Cloak -= p.CloakPerTick
+	} else {
+		p.Cloak = 0
+	}
+	p.Cloak *= 0.98
+}
+func (p *cloakProc) Kill(g *game.Game) {
+	p.Killed = true
+}
+func (p *cloakProc) Dead() bool {
+	return p.Killed
+}

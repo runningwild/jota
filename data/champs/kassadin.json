@@ -18,6 +18,21 @@
       }
     },
     {
+      "Name": "shield",
+      "Params": {
+        "maxShield": 1000,
+        "manaPerShield": 1
+      }
+    },
+    {
+      "Name": "cloak",
+      "Params": {
+        "maxCloak": 500,
+        "manaPerCloak": 1,
+        "cloakPerTick": 10
+      }
+    },
+    {
       "Name": "nitro",
       "Params": {
         "maxNitro": 5000,
