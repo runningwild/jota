@@ -122,7 +122,6 @@ func mainLoop(engine *cgf.Engine, mode string) {
 		}
 		start := time.Now()
 		sys.Think()
-		base.Log().Printf("TIME: sys.Think(): %v", time.Now().Sub(start))
 		start = time.Now()
 		render.Queue(func() {
 			ui.Draw()
@@ -130,10 +129,8 @@ func mainLoop(engine *cgf.Engine, mode string) {
 		render.Queue(func() {
 			start = time.Now()
 			sys.SwapBuffers()
-			base.Log().Printf("TIME: sys.SwapBuffers(): %v", time.Now().Sub(start))
 		})
 		render.Purge()
-		base.Log().Printf("TIME: render.Purge(): %v", time.Now().Sub(start))
 		start = time.Now()
 		// TODO: Replace the 'P' key with an appropriate keybind
 		var err error
