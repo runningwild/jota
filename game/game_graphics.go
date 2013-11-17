@@ -326,7 +326,6 @@ func (p *PlayerEnt) Draw(game *Game) {
 	var t *texture.Data
 	var alpha gl.Ubyte
 	if game.local.Side == p.Side() {
-		base.Log().Printf("Cloaking: %2.2v", p.Stats().Cloaking())
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()/2))
 	} else {
 		alpha = gl.Ubyte(255.0 * (1.0 - p.Stats().Cloaking()))

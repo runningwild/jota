@@ -1,4 +1,8 @@
 varying vec3 pos;
+uniform vec2 dir;
+uniform vec2 bolt_root;
+uniform float bolt_thickness;
+uniform float rand_offset;
 
 vec3 mod289(vec3 x) {
   return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -60,25 +64,47 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-
+float distFromPointToLineSegment(vec2 p, vec2 v0, vec2 v1) {
+  vec2 n = v1 - v0;
+  n = normalize(n);
+  if ((dot(n, p - v0) < 0.0) != (dot(n, v1 - p) < 0.0)) {
+    float d0 = length(p - v0);
+    float d1 = length(v1 - p);
+    if (d0 < d1) {
+      return d0;
+    }
+    return d1;
+  }
+  vec2 a = v0;
+  return length((a - p) - (dot(a - p, n) * n));
+}
 
 void main(void) {
-  const float f = 1.1;
-  vec2 p = pos.xy;
-  vec4 noisevec;
-  noisevec.x = snoise(p * f * 1.0) * 8.0;
-  noisevec.y = snoise(p * f * 2.0) * 4.0;
-  noisevec.z = snoise(p * f * 4.0) * 2.0;
-  noisevec.w = snoise(p * f * 8.0);//1.0;
-  noisevec *= 0.125;
+  vec2 bolt = vec2(
+      dot(pos.xy - bolt_root, vec2(dir.y, -dir.x)),
+      dot(pos.xy - bolt_root, dir));
+  bolt = bolt / 45.0;
+  bolt.x = bolt.x * 2.0;
 
-  float intensity = abs(noisevec[0] - 0.20) + 
-                    abs(noisevec[1] - 0.10) + 
-                    abs(noisevec[2] - 0.05) +
-                    abs(noisevec[3] - 0.025);
-  
-  intensity = clamp(intensity * 1.2, 0.0, 1.0);
+  float bolt_index = floor(bolt.y);
+  float bolt_frac = bolt.y - bolt_index;
+  vec2 v[4];
+  v[0] = vec2(snoise(vec2(bolt_index - 1.0, rand_offset * 100.0)), bolt_index - 1.0);
+  v[1] = vec2(snoise(vec2(bolt_index - 0.0, rand_offset * 100.0)), bolt_index - 0.0);
+  v[2] = vec2(snoise(vec2(bolt_index + 1.0, rand_offset * 100.0)), bolt_index + 1.0);
+  v[3] = vec2(snoise(vec2(bolt_index + 2.0, rand_offset * 100.0)), bolt_index + 2.0);
 
-  vec4 value1 = vec4(intensity, intensity, intensity, 1.0);
-  gl_FragColor = value1 * gl_Color;
+
+  float val = 0.0;
+  for (int i = 0; i < 3; i++) {
+    float d = distFromPointToLineSegment(bolt, v[i], v[i+1]);
+    d = bolt_thickness - sqrt(d);
+    if (d < 0.0) {
+      d = 0.0;
+    }
+    d = d / bolt_thickness;
+    val = val + d * d;
+  }
+  val = clamp(val, 0.0, 1.0);
+  gl_FragColor = vec4(val, val, val, val) * gl_Color;
 }

@@ -146,19 +146,38 @@ func (p *lightningBoltProc) Draw(src, obs game.Gid, game *game.Game) {
 		return
 	}
 	base.EnableShader("lightning")
+	base.SetUniformV2("lightning", "dir", p.Seg.Ray().Norm())
+	base.SetUniformV2("lightning", "bolt_root", p.Seg.P.Add(p.Seg.Q).Scale(0.5))
+
+	base.SetUniformF("lightning", "bolt_thickness", 1.1)
 	gl.Disable(gl.TEXTURE_2D)
-	gl.Color4ub(255, 255, 255, 255)
-	perp := p.Seg.Ray().Cross().Norm().Scale(p.Width / 2)
-	gl.Begin(gl.QUADS)
-	v := p.Seg.P.Add(perp)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	v = p.Seg.Q.Add(perp)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	v = p.Seg.Q.Sub(perp)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	v = p.Seg.P.Sub(perp)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	gl.End()
+	displayWidth := p.Width * 10
+	perp := p.Seg.Ray().Cross().Norm().Scale(displayWidth / 2)
+	move := float32(p.NumThinks) / float32(60) / 10.0
+	for i := 0; i < 3; i++ {
+		base.SetUniformF("lightning", "rand_offset", float32(i)+move)
+		if i == 2 {
+			base.SetUniformF("lightning", "bolt_thickness", 1.3)
+		}
+		switch i {
+		case 0:
+			gl.Color4ub(255, 200, 200, 200)
+		case 1:
+			gl.Color4ub(255, 255, 200, 200)
+		case 2:
+			gl.Color4ub(255, 255, 230, 225)
+		}
+		gl.Begin(gl.QUADS)
+		v := p.Seg.P.Add(perp)
+		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		v = p.Seg.Q.Add(perp)
+		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		v = p.Seg.Q.Sub(perp)
+		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		v = p.Seg.P.Sub(perp)
+		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
+		gl.End()
+	}
 	base.EnableShader("")
 }
 func (p *lightningBoltProc) Supply(mana game.Mana) game.Mana {
