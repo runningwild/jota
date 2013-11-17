@@ -3,7 +3,7 @@ package ability
 import (
 	"encoding/gob"
 	gl "github.com/chsc/gogl/gl21"
-	// "github.com/runningwild/jota/base"
+	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
 	// "github.com/runningwild/jota/texture"
@@ -145,6 +145,7 @@ func (p *lightningBoltProc) Draw(src, obs game.Gid, game *game.Game) {
 	if p.NumThinks < p.BuildThinks {
 		return
 	}
+	base.EnableShader("lightning")
 	gl.Disable(gl.TEXTURE_2D)
 	gl.Color4ub(255, 255, 255, 255)
 	perp := p.Seg.Ray().Cross().Norm().Scale(p.Width / 2)
@@ -158,6 +159,7 @@ func (p *lightningBoltProc) Draw(src, obs game.Gid, game *game.Game) {
 	v = p.Seg.P.Sub(perp)
 	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
 	gl.End()
+	base.EnableShader("")
 }
 func (p *lightningBoltProc) Supply(mana game.Mana) game.Mana {
 	return game.Mana{}

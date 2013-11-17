@@ -120,14 +120,21 @@ func mainLoop(engine *cgf.Engine, mode string) {
 		if gin.In().GetKey(gin.AnyEscape).FramePressCount() != 0 {
 			return
 		}
+		start := time.Now()
 		sys.Think()
+		base.Log().Printf("TIME: sys.Think(): %v", time.Now().Sub(start))
+		start = time.Now()
 		render.Queue(func() {
 			ui.Draw()
 		})
 		render.Queue(func() {
+			start = time.Now()
 			sys.SwapBuffers()
+			base.Log().Printf("TIME: sys.SwapBuffers(): %v", time.Now().Sub(start))
 		})
 		render.Purge()
+		base.Log().Printf("TIME: render.Purge(): %v", time.Now().Sub(start))
+		start = time.Now()
 		// TODO: Replace the 'P' key with an appropriate keybind
 		var err error
 		if gin.In().GetKey(gin.AnyKeyP).FramePressCount() > 0 {
@@ -182,30 +189,20 @@ func mainLoop(engine *cgf.Engine, mode string) {
 
 func main() {
 	defer base.StackCatcher()
-	fmt.Printf("sys.Startup()...")
 	sys.Startup()
-	fmt.Printf("successful.\n")
-	fmt.Printf("gl.Init()...")
 	err := gl.Init()
-	fmt.Printf("successful.\n")
 	if err != nil {
 		base.Error().Fatalf("%v", err)
 	}
 
-	fmt.Printf("render.Init()...")
 	render.Init()
-	fmt.Printf("successful.\n")
 	render.Queue(func() {
-		fmt.Printf("sys.CreateWindow()...")
 		sys.CreateWindow(10, 10, wdx, wdy)
-		fmt.Printf("successful.\n")
 		sys.EnableVSync(true)
 	})
 	base.InitShaders()
 	runtime.GOMAXPROCS(10)
-	fmt.Printf("sys.Think()...")
 	sys.Think()
-	fmt.Printf("successful.\n")
 
 	base.LoadAllDictionaries()
 
