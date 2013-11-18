@@ -17,24 +17,6 @@ func NextAbilityId() int {
 	return abilityId
 }
 
-// type NonResponder struct{}
-
-// func (NonResponder) Respond(gid game.Gid, group gin.EventGroup) bool { return false }
-
-// type NeverActive struct {
-// 	NonResponder
-// }
-
-// func (NeverActive) Deactivate(gid game.Gid) []cgf.Event { return nil }
-
-// type NonThinker struct{}
-
-// func (NonThinker) Think(game.Gid, *game.Game) ([]cgf.Event, bool) { return nil, false }
-
-// type NonRendering struct{}
-
-// func (NonRendering) Draw(gid game.Gid, game *game.Game, side int) {}
-
 type NullCondition struct{}
 
 func (NullCondition) ModifyBase(base stats.Base) stats.Base {
