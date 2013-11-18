@@ -151,8 +151,12 @@ func (s SetupSetEngineIds) Apply(_g interface{}) {
 	if g.Setup == nil {
 		return
 	}
+	g.Manager = -1
 	g.Setup.EngineIds = s.EngineIds
 	for _, id := range g.Setup.EngineIds {
+		if g.Manager == -1 || id < g.Manager {
+			g.Manager = id
+		}
 		if _, ok := g.Setup.Players[id]; !ok {
 			g.Setup.Players[id] = &SetupPlayerData{}
 		}
@@ -248,9 +252,12 @@ func (u SetupComplete) Apply(_g interface{}) {
 
 	// Now that we have the information we can set up a lot of the local data for
 	// this engine's player.
-	g.local.Side = g.Engines[g.local.Engine.Id()].Side
-	g.local.Gid = g.Engines[g.local.Engine.Id()].PlayerGid
-	g.local.Data = g.Engines[g.local.Engine.Id()]
+
+	if g.IsPlaying() {
+		g.local.Side = g.Engines[g.local.Engine.Id()].Side
+		g.local.Gid = g.Engines[g.local.Engine.Id()].PlayerGid
+		g.local.Data = g.Engines[g.local.Engine.Id()]
+	}
 
 	var room Room
 	err := base.LoadJson(filepath.Join(base.GetDataDir(), "rooms/basic.json"), &room)
@@ -352,6 +359,10 @@ type localGameData struct {
 }
 
 type Game struct {
+	// Engine id of the engine managing the game - this is distinct from the host
+	// who is just doing networking.
+	Manager int64
+
 	Setup *SetupData
 
 	Level *Level
@@ -383,6 +394,13 @@ type Game struct {
 
 func (g *Game) InitializeClientData() {
 	// TODO: Do something useful with this.
+}
+
+// IsPlaying() returns true if this is a human player playing the game.  This
+// functions returns false if this is a host binary that is simply connecting
+// players together.
+func (g *Game) IsPlaying() bool {
+	return !g.local.Engine.IsHost() || g.local.Engine.Id() == g.Manager
 }
 
 func (g *Game) PathingData() *PathingData {
@@ -516,13 +534,18 @@ func (g *Game) GidToSide(gid Gid) int {
 func (g *Game) ThinkSetup() {
 	g.local.Lock()
 	defer g.local.Unlock()
-	ids := g.local.Engine.Ids()
-	if len(ids) > 0 {
-		// This is the host engine - so update the list of ids in case it's changed
+	if g.local.Engine.IsHost() {
+		// Update the list of ids in case it's changed
+		ids := g.local.Engine.Ids()
+		for i := range ids {
+			if ids[i] == g.local.Engine.Id() {
+				ids[i] = ids[len(ids)-1]
+				ids = ids[0 : len(ids)-1]
+				break
+			}
+		}
 		g.local.Engine.ApplyEvent(SetupSetEngineIds{ids})
-	}
-
-	if len(g.local.Engine.Ids()) == 0 {
+	} else {
 		for i, v := range g.Setup.EngineIds {
 			if v == g.local.Engine.Id() {
 				g.Setup.local.Index = i

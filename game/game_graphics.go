@@ -202,16 +202,15 @@ func (game *Game) HandleEventGroupSetup(group gin.EventGroup) {
 	if found, event := group.FindEvent(control.hat.enter.Id()); found && event.Type == gin.Press {
 		game.Setup.local.Lock()
 		defer game.Setup.local.Unlock()
-		// TEMPORARY: Just testing out the server
-		// if game.Setup.local.Index < len(game.Setup.EngineIds) {
-		// 	id := game.Setup.EngineIds[game.Setup.local.Index]
-		// 	side := (game.Setup.Players[id].Side + 1) % 2
-		// 	game.local.Engine.ApplyEvent(SetupChangeSides{id, side})
-		// } else {
-		// if len(game.local.Engine.Ids()) > 0 {
-		game.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
-		// }
-		// }
+		if game.Setup.local.Index < len(game.Setup.EngineIds) {
+			id := game.Setup.EngineIds[game.Setup.local.Index]
+			side := (game.Setup.Players[id].Side + 1) % 2
+			game.local.Engine.ApplyEvent(SetupChangeSides{id, side})
+		} else {
+			if game.local.Engine.Id() == game.Manager || game.local.Engine.IsHost() {
+				game.local.Engine.ApplyEvent(SetupComplete{time.Now().UnixNano()})
+			}
+		}
 		return
 	}
 }
