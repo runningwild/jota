@@ -105,6 +105,7 @@ func (g *Game) SetSystem(sys system.System) {
 }
 
 func (g *Game) SetEngine(engine *cgf.Engine) {
+	g.local.Engine = engine
 	if control.up == nil {
 		hatUp := gin.In().GetKeyFlat(gin.ControllerHatSwitchUp, gin.DeviceTypeController, gin.DeviceIndexAny)
 		control.hat.up = gin.In().BindDerivedKey(
@@ -170,7 +171,6 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 
 	// TODO: Unregister this at some point, nub
 	gin.In().RegisterEventListener(GameEventHandleWrapper{g})
-	g.local.Engine = engine
 }
 
 func (game *Game) HandleEventGroupSetup(group gin.EventGroup) {

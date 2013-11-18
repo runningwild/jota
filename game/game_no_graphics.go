@@ -18,4 +18,6 @@ type manaSourceLocalData struct{}
 
 func (ms *ManaSource) Draw(zoom float64, dx float64, dy float64) {}
 
-func (g *Game) SetEngine(engine *cgf.Engine) {}
+func (g *Game) SetEngine(engine *cgf.Engine) {
+	g.local.Engine = engine
+}
