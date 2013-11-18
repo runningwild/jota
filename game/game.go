@@ -400,7 +400,11 @@ func (g *Game) InitializeClientData() {
 // functions returns false if this is a host binary that is simply connecting
 // players together.
 func (g *Game) IsPlaying() bool {
-	return !g.local.Engine.IsHost() || g.local.Engine.Id() == g.Manager
+	return !g.local.Engine.IsHost() || g.IsManaging()
+}
+
+func (g *Game) IsManaging() bool {
+	return g.local.Engine.Id() == g.Manager
 }
 
 func (g *Game) PathingData() *PathingData {
@@ -545,7 +549,7 @@ func (g *Game) ThinkSetup() {
 			}
 		}
 		g.local.Engine.ApplyEvent(SetupSetEngineIds{ids})
-	} else {
+	} else if !g.IsManaging() {
 		for i, v := range g.Setup.EngineIds {
 			if v == g.local.Engine.Id() {
 				g.Setup.local.Index = i

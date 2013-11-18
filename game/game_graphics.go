@@ -329,13 +329,13 @@ func (g *Game) RenderLocalSetup(region g2.Region) {
 		}
 		dataStr := fmt.Sprintf("Engine %d, Side %d, %s", id, g.Setup.Players[id].Side, g.Champs[g.Setup.Players[id].ChampIndex].Name)
 		dict.RenderString(dataStr, size, y, 0, size, gui.Left)
-		if g.local.Engine.Id() == 1 && i == g.Setup.local.Index {
+		if g.IsManaging() && i == g.Setup.local.Index {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)
 		}
 	}
 	y += size
 	gui.SetFontColor(0.7, 0.7, 0.7, 1)
-	if g.local.Engine.Id() == 1 {
+	if g.IsManaging() {
 		dict.RenderString("Start!", size, y, 0, size, gui.Left)
 		if g.Setup.local.Index == len(g.Setup.EngineIds) {
 			dict.RenderString(">", 50, y, 0, size, gui.Right)

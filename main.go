@@ -60,17 +60,11 @@ func debugHookup(version string) *cgf.Engine {
 
 	var engine *cgf.Engine
 	if version != "host" {
-		res, err := cgf.SearchLANForHosts(20007, 20002, 500)
-		if err != nil || len(res) == 0 {
-			base.Log().Printf("Unable to connect: %v", err)
-			base.Error().Fatalf("%v", err.Error())
-		}
-		engine, err = cgf.NewClientEngine(17, res[0].Ip, 20007, base.EmailCrashReport, base.Log())
+		engine, err = cgf.NewClientEngine(17, "127.0.0.1", 20007, base.EmailCrashReport, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())
 		}
-		engine.GetState().(*game.Game).SetEngine(engine)
 	} else {
 		sys.Think()
 		g := game.MakeGame()
