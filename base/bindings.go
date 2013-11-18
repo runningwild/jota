@@ -1,3 +1,5 @@
+// +build !nographics
+
 package base
 
 import (
