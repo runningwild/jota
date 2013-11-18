@@ -15,7 +15,6 @@ import (
 	_ "github.com/runningwild/jota/ability"
 	_ "github.com/runningwild/jota/ability/control_point"
 	_ "github.com/runningwild/jota/ability/creep"
-	_ "github.com/runningwild/jota/ability/kassadin"
 	"github.com/runningwild/jota/base"
 	_ "github.com/runningwild/jota/effects"
 	"github.com/runningwild/jota/game"
