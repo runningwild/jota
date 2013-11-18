@@ -1,10 +1,7 @@
 package game
 
 import (
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
-	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 )
 
@@ -77,7 +74,6 @@ func (mc *massCondition) Supply(mana Mana) Mana {
 
 func (mc *massCondition) ModifyBase(b stats.Base) stats.Base {
 	b.Mass *= 1.5
-	base.Log().Printf("Returning mass %v", b.Mass)
 	return b
 }
 func (mc *massCondition) ModifyDamage(damage stats.Damage) stats.Damage {
@@ -159,27 +155,4 @@ func (hs *HeatSeeker) Think(g *Game) {
 	hs.ApplyForce(acc)
 }
 
-func (m *HeatSeeker) Draw(g *Game) {
-	base.EnableShader("status_bar")
-	base.SetUniformF("status_bar", "inner", 0.01)
-	base.SetUniformF("status_bar", "outer", 0.03)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	base.SetUniformF("status_bar", "frac", 1.0)
-	gl.Color4ub(255, 255, 255, 255)
-	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
-	base.SetUniformF("status_bar", "inner", 0.04)
-	base.SetUniformF("status_bar", "outer", 0.045)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	health_frac := float32(m.Stats().HealthCur() / m.Stats().HealthMax())
-	if health_frac > 0.5 {
-		color_frac := 1.0 - (health_frac-0.5)*2.0
-		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
-	} else {
-		color_frac := health_frac * 2.0
-		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
-	}
-	base.SetUniformF("status_bar", "frac", health_frac)
-	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
-	base.EnableShader("")
-}
 func (m *HeatSeeker) Supply(mana Mana) Mana { return Mana{} }

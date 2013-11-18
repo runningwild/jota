@@ -1,3 +1,5 @@
+// +build !nographics
+
 package game
 
 import (
@@ -46,6 +48,12 @@ const (
 	editorActionSave
 	editorActionTogglePathing
 )
+
+func (editor *editorData) SetSystem(sys interface{}) {
+	editor.Lock()
+	defer editor.Unlock()
+	editor.sys = sys.(system.System)
+}
 
 func (editor *editorData) Active() bool {
 	editor.RLock()

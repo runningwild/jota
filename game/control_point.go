@@ -1,10 +1,8 @@
 package game
 
 import (
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
-	"github.com/runningwild/jota/texture"
 	"math"
 )
 
@@ -170,77 +168,6 @@ func (cp *ControlPoint) Think(g *Game) {
 	}
 }
 
-func (cp *ControlPoint) Draw(g *Game) {
-	base.EnableShader("status_bar")
-	base.SetUniformF("status_bar", "inner", 0.0)
-	base.SetUniformF("status_bar", "outer", 0.5)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	base.SetUniformF("status_bar", "frac", 1.0)
-	gl.Color4ub(50, 50, 50, 50)
-	texture.Render(
-		cp.Position.X-cp.Radius,
-		cp.Position.Y-cp.Radius,
-		2*cp.Radius,
-		2*cp.Radius)
-
-	enemyColor := []gl.Ubyte{255, 0, 0, 100}
-	allyColor := []gl.Ubyte{0, 255, 0, 100}
-	neutralColor := []gl.Ubyte{100, 100, 100, 100}
-	var rgba []gl.Ubyte
-	if cp.Controlled {
-		if g.local.Side == cp.Controller {
-			rgba = allyColor
-		} else {
-			rgba = enemyColor
-		}
-	} else {
-		rgba = neutralColor
-	}
-
-	// The texture is flipped if this is being drawn for the controlling side.
-	// This makes it look a little nicer when someone neutralizes a control point
-	// because it makes the angle of the pie slice thingy continue going in the
-	// same direction as it passes the neutralization point.
-	gl.Color4ub(rgba[0], rgba[1], rgba[2], rgba[3])
-	base.SetUniformF("status_bar", "frac", float32(cp.Control))
-	texture.RenderAdvanced(
-		cp.Position.X-cp.Radius,
-		cp.Position.Y-cp.Radius,
-		2*cp.Radius,
-		2*cp.Radius,
-		0,
-		g.local.Side == cp.Controller)
-
-	base.SetUniformF("status_bar", "inner", 0.45)
-	base.SetUniformF("status_bar", "outer", 0.5)
-	base.SetUniformF("status_bar", "frac", 1)
-	gl.Color4ub(rgba[0], rgba[1], rgba[2], 255)
-	texture.RenderAdvanced(
-		cp.Position.X-cp.Radius,
-		cp.Position.Y-cp.Radius,
-		2*cp.Radius,
-		2*cp.Radius,
-		0,
-		g.local.Side == cp.Controller)
-
-	if !cp.Controlled {
-		base.SetUniformF("status_bar", "frac", float32(cp.Control))
-		if g.local.Side == cp.Controller {
-			gl.Color4ub(allyColor[0], allyColor[1], allyColor[2], 255)
-		} else {
-			gl.Color4ub(enemyColor[0], enemyColor[1], enemyColor[2], 255)
-		}
-		texture.RenderAdvanced(
-			cp.Position.X-cp.Radius,
-			cp.Position.Y-cp.Radius,
-			2*cp.Radius,
-			2*cp.Radius,
-			0,
-			g.local.Side == cp.Controller)
-	}
-
-	base.EnableShader("")
-}
 func (cp *ControlPoint) Supply(mana Mana) Mana {
 	base.DoOrdered(cp.Processes, func(a, b int) bool { return a < b }, func(id int, proc Process) {
 		mana = proc.Supply(mana)

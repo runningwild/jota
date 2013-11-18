@@ -1,15 +1,11 @@
-// TODO: gobEncode
-
 package game
 
 import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/jota/base"
-	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
@@ -126,10 +122,7 @@ type ManaSource struct {
 
 	thinks int
 
-	local struct {
-		nodeTextureId   gl.Uint
-		nodeTextureData []byte
-	}
+	local manaSourceLocalData
 }
 
 func (ms *ManaSource) GobEncode() ([]byte, error) {
@@ -256,67 +249,6 @@ func (ms *ManaSource) Init(options *ManaSourceOptions) {
 // func (src *ManaSource) ReleaseResources() {
 // 	deleteNodes(src.rawNodes)
 // }
-
-func (ms *ManaSource) Draw(zoom float64, dx float64, dy float64) {
-	if ms.local.nodeTextureData == nil {
-		//		gl.Enable(gl.TEXTURE_2D)
-		ms.local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
-		gl.GenTextures(1, &ms.local.nodeTextureId)
-		gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
-		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gl.TexImage2D(
-			gl.TEXTURE_2D,
-			0,
-			gl.RGB,
-			gl.Sizei(ms.options.NumNodeRows),
-			gl.Sizei(ms.options.NumNodeCols),
-			0,
-			gl.RGB,
-			gl.UNSIGNED_BYTE,
-			gl.Pointer(&ms.local.nodeTextureData[0]))
-	}
-	for i := range ms.rawNodes {
-		for c := 0; c < 3; c++ {
-			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
-			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
-			ms.local.nodeTextureData[i*3+c] = byte(
-				color_frac*color_range + float64(ms.options.MinNodeBrightness))
-		}
-	}
-	gl.Enable(gl.TEXTURE_2D)
-	//gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
-	gl.TexSubImage2D(
-		gl.TEXTURE_2D,
-		0,
-		0,
-		0,
-		gl.Sizei(ms.options.NumNodeRows),
-		gl.Sizei(ms.options.NumNodeCols),
-		gl.RGB,
-		gl.UNSIGNED_BYTE,
-		gl.Pointer(&ms.local.nodeTextureData[0]))
-
-	base.EnableShader("nodes")
-	base.SetUniformI("nodes", "width", ms.options.NumNodeRows*3)
-	base.SetUniformI("nodes", "height", ms.options.NumNodeCols*3)
-	base.SetUniformI("nodes", "drains", 1)
-	base.SetUniformI("nodes", "tex0", 0)
-	base.SetUniformI("nodes", "tex1", 1)
-	base.SetUniformF("nodes", "zoom", float32(zoom))
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
-
-	// I have no idea why this value for move works, but it does.  So, hooray.
-	move := (dx - dy) / 2
-	texture.RenderAdvanced(move, -move, dy, dx, 3.1415926535/2, true)
-	base.EnableShader("")
-	gl.Disable(gl.TEXTURE_2D)
-}
 
 type nodeThinkData struct {
 	// playerDistSquared and playerControl are both 0 if the node is not in the playerThinkData

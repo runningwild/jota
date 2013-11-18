@@ -2,19 +2,14 @@
 
 package game
 
-import (
-	"github.com/runningwild/glop/gui"
-	g2 "github.com/runningwild/jota/gui"
-)
+type cameraInfo struct{}
 
-type cameraInfo struct {
-}
+func (p *PlayerEnt) Draw(game *Game)  {}
+func (cp *ControlPoint) Draw(g *Game) {}
+func (m *HeatSeeker) Draw(g *Game)    {}
+func (m *Mine) Draw(g *Game)          {}
+func (c *CreepEnt) Draw(g *Game)      {}
 
-func (g *Game) RenderLocal(region g2.Region, local *LocalData) {
-}
+type manaSourceLocalData struct{}
 
-func (p *PlayerEnt) Draw(game *Game) {
-}
-
-func (gw *GameWindow) Draw(region gui.Region, style gui.StyleStack) {
-}
+func (ms *ManaSource) Draw(zoom float64, dx float64, dy float64) {}

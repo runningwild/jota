@@ -5,7 +5,10 @@ package game
 import (
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
+	"github.com/runningwild/cgf"
+	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/gui"
+	"github.com/runningwild/glop/system"
 	"github.com/runningwild/jota/base"
 	g2 "github.com/runningwild/jota/gui"
 	// "github.com/runningwild/jota/stats"
@@ -94,6 +97,10 @@ func (camera *cameraInfo) approachTarget() {
 		camera.current.dims = camera.current.dims.Scale(1 - speed).Add(camera.target.dims.Scale(speed))
 		camera.current.mid = camera.current.mid.Scale(1 - speed).Add(camera.target.mid.Scale(speed))
 	}
+}
+
+func (g *Game) SetSystem(sys system.System) {
+	g.editor.SetSystem(sys)
 }
 
 func (g *Game) RenderLocalSetup(region g2.Region) {
@@ -370,6 +377,240 @@ func (p *PlayerEnt) Draw(game *Game) {
 	texture.Render(p.Position.X-100, p.Position.Y-100, 200, 200)
 	base.EnableShader("")
 }
+
+func (cp *ControlPoint) Draw(g *Game) {
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.0)
+	base.SetUniformF("status_bar", "outer", 0.5)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	base.SetUniformF("status_bar", "frac", 1.0)
+	gl.Color4ub(50, 50, 50, 50)
+	texture.Render(
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius)
+
+	enemyColor := []gl.Ubyte{255, 0, 0, 100}
+	allyColor := []gl.Ubyte{0, 255, 0, 100}
+	neutralColor := []gl.Ubyte{100, 100, 100, 100}
+	var rgba []gl.Ubyte
+	if cp.Controlled {
+		if g.local.Side == cp.Controller {
+			rgba = allyColor
+		} else {
+			rgba = enemyColor
+		}
+	} else {
+		rgba = neutralColor
+	}
+
+	// The texture is flipped if this is being drawn for the controlling side.
+	// This makes it look a little nicer when someone neutralizes a control point
+	// because it makes the angle of the pie slice thingy continue going in the
+	// same direction as it passes the neutralization point.
+	gl.Color4ub(rgba[0], rgba[1], rgba[2], rgba[3])
+	base.SetUniformF("status_bar", "frac", float32(cp.Control))
+	texture.RenderAdvanced(
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius,
+		0,
+		g.local.Side == cp.Controller)
+
+	base.SetUniformF("status_bar", "inner", 0.45)
+	base.SetUniformF("status_bar", "outer", 0.5)
+	base.SetUniformF("status_bar", "frac", 1)
+	gl.Color4ub(rgba[0], rgba[1], rgba[2], 255)
+	texture.RenderAdvanced(
+		cp.Position.X-cp.Radius,
+		cp.Position.Y-cp.Radius,
+		2*cp.Radius,
+		2*cp.Radius,
+		0,
+		g.local.Side == cp.Controller)
+
+	if !cp.Controlled {
+		base.SetUniformF("status_bar", "frac", float32(cp.Control))
+		if g.local.Side == cp.Controller {
+			gl.Color4ub(allyColor[0], allyColor[1], allyColor[2], 255)
+		} else {
+			gl.Color4ub(enemyColor[0], enemyColor[1], enemyColor[2], 255)
+		}
+		texture.RenderAdvanced(
+			cp.Position.X-cp.Radius,
+			cp.Position.Y-cp.Radius,
+			2*cp.Radius,
+			2*cp.Radius,
+			0,
+			g.local.Side == cp.Controller)
+	}
+
+	base.EnableShader("")
+}
+
+func (m *HeatSeeker) Draw(g *Game) {
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.01)
+	base.SetUniformF("status_bar", "outer", 0.03)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	base.SetUniformF("status_bar", "frac", 1.0)
+	gl.Color4ub(255, 255, 255, 255)
+	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
+	base.SetUniformF("status_bar", "inner", 0.04)
+	base.SetUniformF("status_bar", "outer", 0.045)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	health_frac := float32(m.Stats().HealthCur() / m.Stats().HealthMax())
+	if health_frac > 0.5 {
+		color_frac := 1.0 - (health_frac-0.5)*2.0
+		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
+	} else {
+		color_frac := health_frac * 2.0
+		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
+	}
+	base.SetUniformF("status_bar", "frac", health_frac)
+	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
+	base.EnableShader("")
+}
+
+func (m *Mine) Draw(g *Game) {
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.01)
+	base.SetUniformF("status_bar", "outer", 0.03)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	base.SetUniformF("status_bar", "frac", 1.0)
+	gl.Color4ub(255, 255, 255, 255)
+	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
+	base.SetUniformF("status_bar", "inner", 0.04)
+	base.SetUniformF("status_bar", "outer", 0.045)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	health_frac := float32(m.Stats().HealthCur() / m.Stats().HealthMax())
+	if health_frac > 0.5 {
+		color_frac := 1.0 - (health_frac-0.5)*2.0
+		gl.Color4ub(gl.Ubyte(255.0*color_frac), 255, 0, 255)
+	} else {
+		color_frac := health_frac * 2.0
+		gl.Color4ub(255, gl.Ubyte(255.0*color_frac), 0, 255)
+	}
+	base.SetUniformF("status_bar", "frac", health_frac)
+	texture.Render(m.Position.X-100, m.Position.Y-100, 200, 200)
+	base.EnableShader("")
+}
+
+func (c *CreepEnt) Draw(g *Game) {
+	base.EnableShader("status_bar")
+	base.SetUniformF("status_bar", "inner", 0.01)
+	base.SetUniformF("status_bar", "outer", 0.03)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	base.SetUniformF("status_bar", "frac", 1.0)
+	if c.Side() == g.local.Side {
+		gl.Color4ub(100, 255, 100, 255)
+	} else {
+		gl.Color4ub(255, 100, 100, 255)
+	}
+	texture.Render(c.Position.X-100, c.Position.Y-100, 200, 200)
+	base.SetUniformF("status_bar", "inner", 0.04)
+	base.SetUniformF("status_bar", "outer", 0.045)
+	base.SetUniformF("status_bar", "buffer", 0.01)
+	base.SetUniformF("status_bar", "frac", 1.0)
+	texture.Render(c.Position.X-100, c.Position.Y-100, 200, 200)
+	base.EnableShader("")
+}
+
+type manaSourceLocalData struct {
+	nodeTextureId   gl.Uint
+	nodeTextureData []byte
+}
+
+func (ms *ManaSource) Draw(zoom float64, dx float64, dy float64) {
+	if ms.local.nodeTextureData == nil {
+		//		gl.Enable(gl.TEXTURE_2D)
+		ms.local.nodeTextureData = make([]byte, ms.options.NumNodeRows*ms.options.NumNodeCols*3)
+		gl.GenTextures(1, &ms.local.nodeTextureId)
+		gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
+		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGB,
+			gl.Sizei(ms.options.NumNodeRows),
+			gl.Sizei(ms.options.NumNodeCols),
+			0,
+			gl.RGB,
+			gl.UNSIGNED_BYTE,
+			gl.Pointer(&ms.local.nodeTextureData[0]))
+	}
+	for i := range ms.rawNodes {
+		for c := 0; c < 3; c++ {
+			color_frac := ms.rawNodes[i].Mana[c] * 1.0 / ms.options.NodeMagnitude
+			color_range := float64(ms.options.MaxNodeBrightness - ms.options.MinNodeBrightness)
+			ms.local.nodeTextureData[i*3+c] = byte(
+				color_frac*color_range + float64(ms.options.MinNodeBrightness))
+		}
+	}
+	gl.Enable(gl.TEXTURE_2D)
+	//gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
+	gl.TexSubImage2D(
+		gl.TEXTURE_2D,
+		0,
+		0,
+		0,
+		gl.Sizei(ms.options.NumNodeRows),
+		gl.Sizei(ms.options.NumNodeCols),
+		gl.RGB,
+		gl.UNSIGNED_BYTE,
+		gl.Pointer(&ms.local.nodeTextureData[0]))
+
+	base.EnableShader("nodes")
+	base.SetUniformI("nodes", "width", ms.options.NumNodeRows*3)
+	base.SetUniformI("nodes", "height", ms.options.NumNodeCols*3)
+	base.SetUniformI("nodes", "drains", 1)
+	base.SetUniformI("nodes", "tex0", 0)
+	base.SetUniformI("nodes", "tex1", 1)
+	base.SetUniformF("nodes", "zoom", float32(zoom))
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, ms.local.nodeTextureId)
+
+	// I have no idea why this value for move works, but it does.  So, hooray.
+	move := (dx - dy) / 2
+	texture.RenderAdvanced(move, -move, dy, dx, 3.1415926535/2, true)
+	base.EnableShader("")
+	gl.Disable(gl.TEXTURE_2D)
+}
+
+type GameWindow struct {
+	Engine *cgf.Engine
+	Dims   g2.Dims
+	game   *Game
+}
+
+func (gw *GameWindow) String() string {
+	return "game window"
+}
+func (gw *GameWindow) Expandable() (bool, bool) {
+	return false, false
+}
+func (gw *GameWindow) Requested() g2.Dims {
+	return g2.Dims{800, 600}
+}
+func (gw *GameWindow) Think(g *g2.Gui) {
+	gw.Engine.Pause()
+	// gw.Engine.GetState().(*Game)
+	gw.Engine.Unpause()
+}
+func (gw *GameWindow) Respond(group gin.EventGroup) {
+}
+func (gw *GameWindow) RequestedDims() g2.Dims {
+	return gw.Dims
+}
+
+func (gw *GameWindow) DrawFocused(region gui.Region) {}
 
 func (gw *GameWindow) Draw(region g2.Region, style g2.StyleStack) {
 	defer base.StackCatcher()

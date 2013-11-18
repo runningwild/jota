@@ -2,10 +2,8 @@ package game
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/stats"
-	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
@@ -28,25 +26,6 @@ func (c *CreepEnt) Think(g *Game) {
 
 func (c *CreepEnt) Supply(mana Mana) Mana {
 	return mana
-}
-func (c *CreepEnt) Draw(g *Game) {
-	base.EnableShader("status_bar")
-	base.SetUniformF("status_bar", "inner", 0.01)
-	base.SetUniformF("status_bar", "outer", 0.03)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	base.SetUniformF("status_bar", "frac", 1.0)
-	if c.Side() == g.local.Side {
-		gl.Color4ub(100, 255, 100, 255)
-	} else {
-		gl.Color4ub(255, 100, 100, 255)
-	}
-	texture.Render(c.Position.X-100, c.Position.Y-100, 200, 200)
-	base.SetUniformF("status_bar", "inner", 0.04)
-	base.SetUniformF("status_bar", "outer", 0.045)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	base.SetUniformF("status_bar", "frac", 1.0)
-	texture.Render(c.Position.X-100, c.Position.Y-100, 200, 200)
-	base.EnableShader("")
 }
 
 func (g *Game) AddCreeps(pos linear.Vec2, count, side int, params map[string]interface{}) {

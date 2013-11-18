@@ -74,7 +74,8 @@ func debugHookup(version string) *cgf.Engine {
 		engine.GetState().(*game.Game).SetEngine(engine)
 	} else {
 		sys.Think()
-		g := game.MakeGame(sys)
+		g := game.MakeGame()
+		g.SetSystem(sys)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 20007, base.EmailCrashReport, base.Log())
 			if err != nil {

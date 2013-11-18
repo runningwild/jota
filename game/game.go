@@ -6,11 +6,9 @@ import (
 	"github.com/runningwild/cgf"
 	"github.com/runningwild/cmwc"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/glop/system"
 	"github.com/runningwild/glop/util/algorithm"
 	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/champ"
-	"github.com/runningwild/jota/gui"
 	"github.com/runningwild/jota/stats"
 	"github.com/runningwild/linear"
 	"math"
@@ -620,9 +618,8 @@ func (g *Game) SetEngine(engine *cgf.Engine) {
 	g.local.Engine = engine
 }
 
-func MakeGame(sys system.System) *Game {
+func MakeGame() *Game {
 	var g Game
-	g.editor.sys = sys
 	g.Setup = &SetupData{}
 	g.Setup.Players = make(map[int64]*SetupPlayerData)
 
@@ -913,34 +910,6 @@ func (m Move) Apply(_g interface{}) {
 	}
 	ent.Move(m.Angle, m.Magnitude)
 }
-
-type GameWindow struct {
-	Engine *cgf.Engine
-	Dims   gui.Dims
-	game   *Game
-}
-
-func (gw *GameWindow) String() string {
-	return "game window"
-}
-func (gw *GameWindow) Expandable() (bool, bool) {
-	return false, false
-}
-func (gw *GameWindow) Requested() gui.Dims {
-	return gui.Dims{800, 600}
-}
-func (gw *GameWindow) Think(g *gui.Gui) {
-	gw.Engine.Pause()
-	// gw.Engine.GetState().(*Game)
-	gw.Engine.Unpause()
-}
-func (gw *GameWindow) Respond(group gin.EventGroup) {
-}
-func (gw *GameWindow) RequestedDims() gui.Dims {
-	return gw.Dims
-}
-
-func (gw *GameWindow) DrawFocused(region gui.Region) {}
 
 // Utils
 
