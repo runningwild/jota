@@ -1,3 +1,5 @@
+- Abilities have tons of non-exported fields, but they have to be exported if
+  we want someone to be able to rejoin the game while it's going.
 - Ability Draw (and maybe other Draw methods) should take the relevant local data
   so that it can draw properly depending on what side you're on.
 - Need separate creeps for each color.

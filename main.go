@@ -60,7 +60,7 @@ func debugHookup(version string) *cgf.Engine {
 
 	var engine *cgf.Engine
 	if version != "host" {
-		engine, err = cgf.NewClientEngine(17, "127.0.0.1", 20007, base.EmailCrashReport, base.Log())
+		engine, err = cgf.NewClientEngine(17, "thunderingvictory.dyndns.org", 20007, base.EmailCrashReport, base.Log())
 		if err != nil {
 			base.Log().Printf("Unable to connect: %v", err)
 			base.Error().Fatalf("%v", err.Error())

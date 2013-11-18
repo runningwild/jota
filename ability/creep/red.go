@@ -29,6 +29,10 @@ type asplode struct {
 	endRadius      float64
 	durationThinks int
 	dps            float64
+
+	// This is silly - but it's because otherwise gob might complain that nothing
+	// is exported.
+	Export struct{}
 }
 
 func (a *asplode) Input(ent game.Ent, g *game.Game, pressAmt float64, trigger bool) {

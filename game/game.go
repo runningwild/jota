@@ -161,6 +161,22 @@ func (s SetupSetEngineIds) Apply(_g interface{}) {
 			g.Setup.Players[id] = &SetupPlayerData{}
 		}
 	}
+	if len(g.Setup.EngineIds) > len(s.EngineIds) {
+		unused := make(map[int64]bool)
+		for _, id := range g.Setup.EngineIds {
+			unused[id] = true
+		}
+		for _, id := range s.EngineIds {
+			delete(unused, id)
+		}
+		var usedEngineIds []int64
+		for _, id := range g.Setup.EngineIds {
+			if !unused[id] {
+				usedEngineIds = append(usedEngineIds, id)
+			}
+		}
+		g.Setup.EngineIds = usedEngineIds
+	}
 }
 func init() {
 	gob.Register(SetupSetEngineIds{})
