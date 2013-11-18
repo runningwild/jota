@@ -2,14 +2,8 @@ package ability
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
-	"github.com/runningwild/jota/texture"
-	// "github.com/runningwild/linear"
-	// "math"
-	// "math/rand"
 )
 
 func makeCloak(params map[string]float64) game.Ability {
@@ -100,24 +94,6 @@ func (p *cloakProc) CauseDamage() stats.Damage {
 	return stats.Damage{}
 }
 
-func (p *cloakProc) Draw(src, obs game.Gid, game *game.Game) {
-	if src != obs {
-		return
-	}
-	ent := game.Ents[src]
-	if ent == nil {
-		return
-	}
-	gl.Color4ub(0, 0, 255, 255)
-	frac := float32(p.Cloak / p.MaxCloak)
-	base.EnableShader("status_bar")
-	base.SetUniformF("status_bar", "frac", frac)
-	base.SetUniformF("status_bar", "inner", 0.2)
-	base.SetUniformF("status_bar", "outer", 0.23)
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	texture.Render(ent.Pos().X-100, ent.Pos().Y-100, 200, 200)
-	base.EnableShader("")
-}
 func (p *cloakProc) Supply(mana game.Mana) game.Mana {
 	remaining := (p.MaxCloak - p.Cloak) * p.ManaPerCloak
 	if mana[game.ColorBlue] > remaining {

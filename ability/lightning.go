@@ -2,14 +2,10 @@ package ability
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
-	// "github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 	"math"
-	// "math/rand"
 )
 
 func makeLightning(params map[string]float64) game.Ability {
@@ -111,20 +107,6 @@ func (l *lightning) Think(ent game.Ent, g *game.Game) {
 		})
 	}
 }
-func (f *lightning) Draw(ent game.Ent, g *game.Game) {
-	if !f.draw {
-		return
-	}
-	gl.Disable(gl.TEXTURE_2D)
-	gl.Color4ub(255, 255, 255, 255)
-	forward := (linear.Vec2{1, 0}).Rotate(ent.Angle()).Scale(100000.0)
-	gl.Begin(gl.LINES)
-	v := ent.Pos().Add(forward)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	v = ent.Pos().Sub(forward)
-	gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-	gl.End()
-}
 func (f *lightning) IsActive() bool {
 	return false
 }
@@ -141,45 +123,6 @@ type lightningBoltProc struct {
 	Killed         bool
 }
 
-func (p *lightningBoltProc) Draw(src, obs game.Gid, game *game.Game) {
-	if p.NumThinks < p.BuildThinks {
-		return
-	}
-	base.EnableShader("lightning")
-	base.SetUniformV2("lightning", "dir", p.Seg.Ray().Norm())
-	base.SetUniformV2("lightning", "bolt_root", p.Seg.P.Add(p.Seg.Q).Scale(0.5))
-
-	base.SetUniformF("lightning", "bolt_thickness", 1.1)
-	gl.Disable(gl.TEXTURE_2D)
-	displayWidth := p.Width * 10
-	perp := p.Seg.Ray().Cross().Norm().Scale(displayWidth / 2)
-	move := float32(p.NumThinks) / float32(60) / 10.0
-	for i := 0; i < 3; i++ {
-		base.SetUniformF("lightning", "rand_offset", float32(i)+move)
-		if i == 2 {
-			base.SetUniformF("lightning", "bolt_thickness", 1.3)
-		}
-		switch i {
-		case 0:
-			gl.Color4ub(255, 200, 200, 200)
-		case 1:
-			gl.Color4ub(255, 255, 200, 200)
-		case 2:
-			gl.Color4ub(255, 255, 230, 225)
-		}
-		gl.Begin(gl.QUADS)
-		v := p.Seg.P.Add(perp)
-		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		v = p.Seg.Q.Add(perp)
-		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		v = p.Seg.Q.Sub(perp)
-		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		v = p.Seg.P.Sub(perp)
-		gl.Vertex2d(gl.Double(v.X), gl.Double(v.Y))
-		gl.End()
-	}
-	base.EnableShader("")
-}
 func (p *lightningBoltProc) Supply(mana game.Mana) game.Mana {
 	return game.Mana{}
 }

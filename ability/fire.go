@@ -2,11 +2,8 @@ package ability
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
 	"github.com/runningwild/jota/stats"
-	"github.com/runningwild/jota/texture"
 	"github.com/runningwild/linear"
 	"math"
 	"math/rand"
@@ -168,27 +165,6 @@ func (f *fire) Think(ent game.Ent, g *game.Game) {
 	}
 }
 func (f *fire) Draw(ent game.Ent, g *game.Game) {
-	// if !f.draw {
-	// 	return
-	// }
-	// player, ok := ent.(*game.PlayerEnt)
-	// if !ok {
-	// 	return
-	// }
-	// // TODO: Don't draw for enemies?
-	// gl.Color4d(1, 1, 1, 1)
-	// gl.Disable(gl.TEXTURE_2D)
-	// v1 := player.Pos()
-	// v2 := v1.Add(linear.Vec2{1000, 0})
-	// v3 := v2.RotateAround(v1, player.Angle()-f.angle/2)
-	// v4 := v2.RotateAround(v1, player.Angle()+f.angle/2)
-	// gl.Begin(gl.LINES)
-	// vs := []linear.Vec2{v3, v4, player.Pos()}
-	// for i := range vs {
-	// 	gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
-	// 	gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
-	// }
-	// gl.End()
 }
 func (f *fire) IsActive() bool {
 	return false
@@ -207,17 +183,6 @@ type asplosionProc struct {
 	Killed         bool
 }
 
-func (p *asplosionProc) Draw(src, obs game.Gid, game *game.Game) {
-	base.EnableShader("circle")
-	base.SetUniformF("circle", "edge", 0.7)
-	gl.Color4ub(255, 50, 10, gl.Ubyte(150))
-	texture.Render(
-		p.Pos.X-p.CurrentRadius,
-		p.Pos.Y-p.CurrentRadius,
-		2*p.CurrentRadius,
-		2*p.CurrentRadius)
-	base.EnableShader("")
-}
 func (p *asplosionProc) Supply(mana game.Mana) game.Mana {
 	return game.Mana{}
 }

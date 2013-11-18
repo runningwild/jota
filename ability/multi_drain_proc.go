@@ -1,11 +1,7 @@
 package ability
 
 import (
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/runningwild/jota/base"
 	"github.com/runningwild/jota/game"
-	"github.com/runningwild/jota/texture"
-	"math"
 )
 
 // Typical process for draining mana for an ability that can be triggered
@@ -26,37 +22,6 @@ type multiDrain struct {
 	Killed bool
 }
 
-func (p *multiDrain) Draw(src, obs game.Gid, game *game.Game) {
-	if src != obs {
-		return
-	}
-	ent := game.Ents[src]
-	if ent == nil {
-		return
-	}
-	base.EnableShader("status_bar")
-	frac := p.Stored
-	ready := math.Floor(frac)
-	if ready == 0 {
-		gl.Color4ub(255, 0, 0, 255)
-	} else {
-		gl.Color4ub(0, 255, 0, 255)
-	}
-	outer := 0.2
-	increase := 0.01
-	base.SetUniformF("status_bar", "frac", float32(frac-ready))
-	base.SetUniformF("status_bar", "inner", float32(outer-increase*(ready+1)))
-	base.SetUniformF("status_bar", "outer", float32(outer))
-	base.SetUniformF("status_bar", "buffer", 0.01)
-	texture.Render(ent.Pos().X-100, ent.Pos().Y-100, 200, 200)
-	if ready > 0 {
-		base.SetUniformF("status_bar", "frac", 1.0)
-		base.SetUniformF("status_bar", "inner", float32(outer-ready*increase))
-		base.SetUniformF("status_bar", "outer", float32(outer))
-		texture.Render(ent.Pos().X-100, ent.Pos().Y-100, 200, 200)
-	}
-	base.EnableShader("")
-}
 func (p *multiDrain) Supply(mana game.Mana) game.Mana {
 	frac := -1.0
 	for color, amt := range p.Unit {

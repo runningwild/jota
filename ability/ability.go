@@ -1,8 +1,6 @@
 package ability
 
 import (
-	// 	"github.com/runningwild/cgf"
-	// 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/jota/stats"
 	"sync"
 )

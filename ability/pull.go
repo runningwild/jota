@@ -2,9 +2,7 @@ package ability
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/jota/game"
-	"github.com/runningwild/linear"
 	"math"
 )
 
@@ -86,29 +84,6 @@ func (p *pull) Think(ent game.Ent, g *game.Game) {
 			player.ApplyForce(ray.Scale(p.force).Scale(0.01))
 		}
 	}
-}
-func (p *pull) Draw(ent game.Ent, g *game.Game) {
-	if !p.draw {
-		return
-	}
-	player, ok := ent.(*game.PlayerEnt)
-	if !ok {
-		return
-	}
-	// TODO: Don't draw for enemies?
-	gl.Color4d(1, 1, 1, 1)
-	gl.Disable(gl.TEXTURE_2D)
-	v1 := player.Pos()
-	v2 := v1.Add(linear.Vec2{1000, 0})
-	v3 := v2.RotateAround(v1, player.Angle()-p.angle/2)
-	v4 := v2.RotateAround(v1, player.Angle()+p.angle/2)
-	gl.Begin(gl.LINES)
-	vs := []linear.Vec2{v3, v4, player.Pos()}
-	for i := range vs {
-		gl.Vertex2d(gl.Double(vs[i].X), gl.Double(vs[i].Y))
-		gl.Vertex2d(gl.Double(vs[(i+1)%len(vs)].X), gl.Double(vs[(i+1)%len(vs)].Y))
-	}
-	gl.End()
 }
 func (p *pull) IsActive() bool {
 	return false
