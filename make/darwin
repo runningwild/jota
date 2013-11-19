@@ -18,5 +18,6 @@ function doBuild {
 }
 
 doBuild 'client'
+doBuild 'client2'
 open client.app
 false

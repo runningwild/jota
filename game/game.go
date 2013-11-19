@@ -240,17 +240,6 @@ func (u SetupComplete) Apply(_g interface{}) {
 	for _, spd := range g.Setup.Players {
 		sideCount[spd.Side]++
 	}
-	aiCount := 0
-	for side, count := range sideCount {
-		for count < 2 {
-			aiCount++
-			count++
-			g.Setup.Players[int64(-aiCount)] = &SetupPlayerData{
-				Side:       side,
-				ChampIndex: 0,
-			}
-		}
-	}
 	g.Engines = make(map[int64]*PlayerData)
 	for id, player := range g.Setup.Players {
 		var gid Gid
@@ -295,13 +284,11 @@ func (u SetupComplete) Apply(_g interface{}) {
 	g.Friction = 0.97
 	g.losCache = makeLosCache(g.Level.Room.Dx, g.Level.Room.Dy)
 	sides := make(map[int][]int64)
-	for id, data := range g.Engines {
-		sides[data.Side] = append(sides[data.Side], id)
-	}
 	var playerDatas []*PlayerData
-	for _, playerData := range g.Engines {
-		playerDatas = append(playerDatas, playerData)
-	}
+	base.DoOrdered(g.Engines, func(a, b int64) bool { return a < b }, func(id int64, data *PlayerData) {
+		sides[data.Side] = append(sides[data.Side], id)
+		playerDatas = append(playerDatas, data)
+	})
 	for id, ed := range g.Engines {
 		base.Log().Printf("%v -> %v", id, *ed)
 	}
@@ -739,6 +726,9 @@ func (m Move) Apply(_g interface{}) {
 	ent := g.Ents[m.Gid]
 	if ent == nil {
 		return
+	}
+	if ent.Id() != m.Gid {
+		base.Error().Printf("Move.Apply(): %v %v")
 	}
 	ent.Move(m.Angle, m.Magnitude)
 }
