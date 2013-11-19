@@ -543,7 +543,7 @@ func init() {
 }
 
 func Maker(name string, engine *cgf.Engine, gid game.Gid) game.Ai {
-	if engine.Ids == nil {
+	if !engine.IsHost() {
 		// Scripts should only run on the host engine
 		return &GameAi{}
 	}
