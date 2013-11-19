@@ -18,6 +18,6 @@ function doBuild {
 }
 
 doBuild 'client'
-doBuild 'client2'
 open client.app
+doBuild 'client2'
 false

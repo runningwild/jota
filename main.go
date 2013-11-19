@@ -68,7 +68,6 @@ func debugHookup(version string) *cgf.Engine {
 	} else {
 		sys.Think()
 		g := game.MakeGame()
-		g.SetSystem(sys)
 		if version == "host" {
 			engine, err = cgf.NewHostEngine(g, 17, "", 20007, base.EmailCrashReport, base.Log())
 			if err != nil {
@@ -85,6 +84,9 @@ func debugHookup(version string) *cgf.Engine {
 			base.Error().Fatalf("%v", err.Error())
 		}
 	}
+	engine.Pause()
+	engine.GetState().(*game.Game).SetSystem(sys)
+	engine.Unpause()
 
 	base.Log().Printf("Engine Id: %v", engine.Id())
 	base.Log().Printf("All Ids: %v", engine.Ids())
