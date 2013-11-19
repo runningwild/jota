@@ -111,6 +111,9 @@ func (b *BaseEnt) BindAi(name string, engine *cgf.Engine) {
 }
 
 func (b *BaseEnt) Think(g *Game) {
+	if b.Id() == "10022" {
+		base.Log().Printf("Ent(10022): Pos %2.3v", b.Pos())
+	}
 	// This will clear out old conditions
 	b.StatsInst.Think()
 

@@ -614,16 +614,14 @@ func (g *Game) ThinkGame() {
 	}
 
 	// Death countdown
-	for _, engineData := range g.Engines {
+	base.DoOrdered(g.Engines, func(a, b int64) bool { return a < b }, func(_ int64, engineData *PlayerData) {
 		if engineData.CountdownFrames > 0 {
 			engineData.CountdownFrames--
 			if engineData.CountdownFrames == 0 {
-				base.Log().Printf("Reading %v", *engineData)
-				// TODO: It's a bit janky to do it like this, right?
 				g.AddPlayers([]*PlayerData{engineData})
 			}
 		}
-	}
+	})
 
 	if g.local.temp.AllEnts == nil || g.local.temp.AllEntsDirty {
 		g.local.temp.AllEnts = g.local.temp.AllEnts[0:0]
