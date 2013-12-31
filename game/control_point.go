@@ -133,7 +133,7 @@ func (cp *ControlPoint) Think(g *Game) {
 		side = -1
 	}
 
-	progress := 0.0002
+	progress := 0.0008
 	if side != -1 {
 		amt := progress * math.Sqrt(float64(count))
 		switch {
